@@ -89,7 +89,7 @@ func (s *Server) ServeExec(w http.ResponseWriter, req *http.Request, token strin
 	handler.Handle(w, req, remotecommandserver.ExecOptions{})
 }
 
-func (e executorExec) Exec(ctx context.Context, in io.Reader, out io.WriteCloser, resize remotecommand.TerminalSizeQueue) error {
+func (e executorExec) Exec(ctx context.Context, in io.Reader, out io.WriteCloser, _ remotecommand.TerminalSizeQueue) error {
 	var wg sync.WaitGroup
 
 	machineID := e.ExecRequest.MachineId
@@ -153,6 +153,7 @@ func (e executorExec) Exec(ctx context.Context, in io.Reader, out io.WriteCloser
 	// WriteOutput: go routine for writing the output back to the Writer.
 	go func() {
 		defer wg.Done()
+		// Ignoring error to allow graceful shutdown without flagging as an error; not needed at this stage.
 		_, _ = io.Copy(out, f)
 		log.Info("Closed writing to the terminal")
 	}()
