@@ -14,7 +14,7 @@ import (
 func (s *Server) Status(ctx context.Context, req *iri.StatusRequest) (*iri.StatusResponse, error) {
 	log := s.loggerFrom(ctx)
 
-	host, err := mcr.GetResources(ctx)
+	host, err := s.machineClasses.GetResources(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get host resources: %w", err)
 	}

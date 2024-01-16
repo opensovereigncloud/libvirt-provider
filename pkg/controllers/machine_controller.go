@@ -64,6 +64,7 @@ type MachineReconcilerOptions struct {
 	Host                   providerhost.Host
 	VolumePluginManager    *providervolume.PluginManager
 	NetworkInterfacePlugin providernetworkinterface.Plugin
+	DisableHugepages       bool
 }
 
 func NewMachineReconciler(
@@ -98,6 +99,7 @@ func NewMachineReconciler(
 		raw:                    opts.Raw,
 		volumePluginManager:    opts.VolumePluginManager,
 		networkInterfacePlugin: opts.NetworkInterfacePlugin,
+		disableHugepages:       opts.DisableHugepages,
 	}, nil
 }
 
@@ -111,6 +113,7 @@ type MachineReconciler struct {
 	host              providerhost.Host
 	imageCache        providerimage.Cache
 	raw               raw.Raw
+	disableHugepages  bool
 
 	volumePluginManager    *providervolume.PluginManager
 	networkInterfacePlugin providernetworkinterface.Plugin
@@ -597,10 +600,17 @@ func (r *MachineReconciler) setDomainResources(ctx context.Context, log logr.Log
 		Unit:  "Byte",
 	}
 
+	if !r.disableHugepages {
+		domain.MemoryBacking = &libvirtxml.DomainMemoryBacking{
+			MemoryHugePages: &libvirtxml.DomainMemoryHugepages{},
+		}
+	}
+
 	cpu := uint(machine.Spec.CpuMillis / 1000)
 	domain.VCPU = &libvirtxml.DomainVCPU{
 		Value: cpu,
 	}
+
 	return nil
 }
 

@@ -77,6 +77,8 @@ type Options struct {
 
 	ApinetKubeconfig string
 
+	DisableHugepages bool
+
 	Libvirt   LibvirtOptions
 	NicPlugin *networkinterfaceplugin.Options
 }
@@ -105,6 +107,8 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 		"constructed from the streaming-address")
 
 	flag.StringVar(&virshExecutable, "virsh-executable", "virsh", "Path / name of the virsh executable.")
+
+	fs.BoolVar(&o.DisableHugepages, "disable-hugepages", false, "Disable using Hugepages.")
 
 	// LibvirtOptions
 	fs.StringVar(&o.Libvirt.Socket, "libvirt-socket", o.Libvirt.Socket, "Path to the libvirt socket to use.")
@@ -289,6 +293,7 @@ func Run(ctx context.Context, opts Options) error {
 			Host:                   providerHost,
 			VolumePluginManager:    volumePlugins,
 			NetworkInterfacePlugin: nicPlugin,
+			DisableHugepages:       opts.DisableHugepages,
 		},
 	)
 	if err != nil {
@@ -301,7 +306,7 @@ func Run(ctx context.Context, opts Options) error {
 		return fmt.Errorf("failed to initialize machine class registry: %w", err)
 	}
 
-	machineClasses, err := mcr.NewMachineClassRegistry(classes)
+	machineClasses, err := mcr.NewMachineClassRegistry(ctx, classes, opts.DisableHugepages)
 	if err != nil {
 		return fmt.Errorf("failed to initialize machine class registry: %w", err)
 	}

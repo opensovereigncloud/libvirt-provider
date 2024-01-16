@@ -36,14 +36,28 @@ func LoadMachineClassesFile(filename string) ([]iri.MachineClass, error) {
 	return LoadMachineClasses(file)
 }
 
-func NewMachineClassRegistry(classes []iri.MachineClass) (*Mcr, error) {
+func NewMachineClassRegistry(ctx context.Context, classes []iri.MachineClass, disableHugepages bool) (*Mcr, error) {
 	registry := Mcr{
-		classes: map[string]iri.MachineClass{},
+		classes:          map[string]iri.MachineClass{},
+		disableHugepages: disableHugepages,
+	}
+
+	var hugepageSize uint64
+	if !disableHugepages {
+		hostMem, err := mem.VirtualMemoryWithContext(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get host memory: %w", err)
+		}
+		hugepageSize = hostMem.HugePageSize
 	}
 
 	for _, class := range classes {
 		if _, ok := registry.classes[class.Name]; ok {
 			return nil, fmt.Errorf("multiple classes with same name (%s) found", class.Name)
+		}
+
+		if hugepageSize != 0 {
+			roundHugepagesUp(&class, int64(hugepageSize))
 		}
 		registry.classes[class.Name] = class
 	}
@@ -52,7 +66,8 @@ func NewMachineClassRegistry(classes []iri.MachineClass) (*Mcr, error) {
 }
 
 type Mcr struct {
-	classes map[string]iri.MachineClass
+	classes          map[string]iri.MachineClass
+	disableHugepages bool
 }
 
 func (m *Mcr) Get(machineClassName string) (*iri.MachineClass, bool) {
@@ -69,6 +84,10 @@ func (m *Mcr) List() []*iri.MachineClass {
 	return classes
 }
 
+func (m *Mcr) GetResources(ctx context.Context) (*Host, error) {
+	return GetResources(ctx, m.disableHugepages)
+}
+
 func GetQuantity(class *iri.MachineClass, host *Host) int64 {
 	cpuRatio := host.Cpu.Value() / class.Capabilities.CpuMillis
 	memoryRatio := host.Mem.Value() / class.Capabilities.MemoryBytes
@@ -76,7 +95,7 @@ func GetQuantity(class *iri.MachineClass, host *Host) int64 {
 	return int64(math.Min(float64(cpuRatio), float64(memoryRatio)))
 }
 
-func GetResources(ctx context.Context) (*Host, error) {
+func GetResources(ctx context.Context, disableHugepages bool) (*Host, error) {
 	hostMem, err := mem.VirtualMemoryWithContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get host memory: %w", err)
@@ -92,10 +111,26 @@ func GetResources(ctx context.Context) (*Host, error) {
 		hostCPUSum += int64(v.Cores)
 	}
 
-	return &Host{
+	host := &Host{
 		Cpu: resource.NewScaledQuantity(hostCPUSum, resource.Kilo),
-		Mem: resource.NewQuantity(int64(hostMem.Total), resource.BinarySI),
-	}, nil
+	}
+
+	if disableHugepages {
+		host.Mem = resource.NewQuantity(int64(hostMem.Total), resource.BinarySI)
+	} else {
+		if hostMem.HugePagesFree == 0 {
+			host.Mem = resource.NewQuantity(0, resource.BinarySI)
+		} else {
+			host.Mem = resource.NewQuantity(int64(hostMem.HugePageSize*hostMem.HugePagesFree), resource.BinarySI)
+		}
+	}
+	return host, nil
+}
+
+func roundHugepagesUp(class *iri.MachineClass, hugepageSize int64) {
+	hugepageCount := int64(math.Ceil(float64(class.GetCapabilities().MemoryBytes) / float64(hugepageSize)))
+	class.GetCapabilities().MemoryBytes = hugepageCount * int64(hugepageSize)
+	fmt.Println(hugepageCount, hugepageSize, class.GetCapabilities().MemoryBytes)
 }
 
 type Host struct {
