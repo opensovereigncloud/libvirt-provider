@@ -42,13 +42,13 @@ func NewMachineClassRegistry(ctx context.Context, classes []iri.MachineClass, di
 		disableHugepages: disableHugepages,
 	}
 
-	var hugepageSize uint64
+	var hugepageSize int64
 	if !disableHugepages {
 		hostMem, err := mem.VirtualMemoryWithContext(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get host memory: %w", err)
 		}
-		hugepageSize = hostMem.HugePageSize
+		hugepageSize = int64(hostMem.HugePageSize)
 	}
 
 	for _, class := range classes {
@@ -57,7 +57,7 @@ func NewMachineClassRegistry(ctx context.Context, classes []iri.MachineClass, di
 		}
 
 		if hugepageSize != 0 {
-			roundHugepagesUp(&class, int64(hugepageSize))
+			roundHugepagesUp(&class, hugepageSize)
 		}
 		registry.classes[class.Name] = class
 	}
