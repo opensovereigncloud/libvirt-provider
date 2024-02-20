@@ -36,6 +36,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/pkg/qcow2"
 	"github.com/ironcore-dev/libvirt-provider/pkg/raw"
 	"github.com/ironcore-dev/libvirt-provider/pkg/utils"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	providerhttp "github.com/ironcore-dev/libvirt-provider/provider/http"
 	"github.com/ironcore-dev/libvirt-provider/provider/networkinterfaceplugin"
@@ -68,6 +69,7 @@ func init() {
 type Options struct {
 	Address          string
 	StreamingAddress string
+	MetricsAddress   string
 	BaseURL          string
 
 	RootDir string
@@ -113,6 +115,8 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 		"constructed from the streaming-address")
 
 	fs.StringVar(&o.VirshExecutable, "virsh-executable", "virsh", "Path / name of the virsh executable.")
+
+	fs.StringVar(&o.MetricsAddress, "metrics-address", ":8080", "Address to listen on exposing of metrics.")
 
 	fs.BoolVar(&o.EnableHugepages, "enable-hugepages", false, "Enable using Hugepages.")
 
@@ -349,6 +353,11 @@ func Run(ctx context.Context, opts Options) error {
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return runMetricsServer(ctx, setupLog, opts.MetricsAddress)
+	})
+
 	g.Go(func() error {
 		setupLog.Info("Starting image cache")
 		if err := imgCache.Start(ctx); err != nil {
@@ -451,5 +460,39 @@ func runStreamingServer(ctx context.Context, setupLog, log logr.Logger, srv *ser
 	if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("error listening / serving streaming server: %w", err)
 	}
+	return nil
+}
+
+func runMetricsServer(ctx context.Context, setupLog logr.Logger, addr string) error {
+	setupLog.Info("Starting metrics server on " + addr)
+
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+
+	srv := http.Server{
+		Addr:         addr,
+		Handler:      mux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		IdleTimeout:  2 * time.Second,
+	}
+
+	go func() {
+		<-ctx.Done()
+		setupLog.Info("Shutting down streaming server")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		locErr := srv.Shutdown(shutdownCtx)
+		if locErr != nil {
+			setupLog.Error(locErr, "metrics server wasn't shutdown properly")
+		}
+		setupLog.Info("Metrics server is shutdown")
+	}()
+
+	err := srv.ListenAndServe()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("error listening / serving metrics server: %w", err)
+	}
+
 	return nil
 }
