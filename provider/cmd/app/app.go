@@ -69,8 +69,9 @@ func init() {
 type Options struct {
 	Address          string
 	StreamingAddress string
-	MetricsAddress   string
 	BaseURL          string
+
+	Servers ServersOptions
 
 	RootDir string
 
@@ -90,6 +91,16 @@ type Options struct {
 	VirshExecutable string
 }
 
+type HTTPServerOptions struct {
+	Addr         string
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	IdleTimeout  time.Duration
+}
+
+type ServersOptions struct {
+	Metrics HTTPServerOptions
+}
 type LibvirtOptions struct {
 	Socket  string
 	Address string
@@ -116,7 +127,10 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 
 	fs.StringVar(&o.VirshExecutable, "virsh-executable", "virsh", "Path / name of the virsh executable.")
 
-	fs.StringVar(&o.MetricsAddress, "metrics-address", ":8080", "Address to listen on exposing of metrics.")
+	fs.StringVar(&o.Servers.Metrics.Addr, "servers-metrics-address", ":8080", "Address to listen on exposing of metrics.")
+	fs.DurationVar(&o.Servers.Metrics.ReadTimeout, "servers-metrics-readtimeout", 200*time.Millisecond, "Read timeout for metrics server.")
+	fs.DurationVar(&o.Servers.Metrics.WriteTimeout, "servers-metrics-writetimeout", 200*time.Millisecond, "Write timeout for metrics server.")
+	fs.DurationVar(&o.Servers.Metrics.IdleTimeout, "server-metrics-idletimeout", 1*time.Second, "Idle timeout for connections to metrics server.")
 
 	fs.BoolVar(&o.EnableHugepages, "enable-hugepages", false, "Enable using Hugepages.")
 
@@ -355,7 +369,7 @@ func Run(ctx context.Context, opts Options) error {
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		return runMetricsServer(ctx, setupLog, opts.MetricsAddress)
+		return runMetricsServer(ctx, setupLog, opts.Servers.Metrics)
 	})
 
 	g.Go(func() error {
@@ -463,18 +477,18 @@ func runStreamingServer(ctx context.Context, setupLog, log logr.Logger, srv *ser
 	return nil
 }
 
-func runMetricsServer(ctx context.Context, setupLog logr.Logger, addr string) error {
-	setupLog.Info("Starting metrics server on " + addr)
+func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOptions) error {
+	setupLog.Info("Starting metrics server on " + opts.Addr)
 
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
 
 	srv := http.Server{
-		Addr:         addr,
+		Addr:         opts.Addr,
 		Handler:      mux,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
-		IdleTimeout:  2 * time.Second,
+		ReadTimeout:  opts.ReadTimeout,
+		WriteTimeout: opts.WriteTimeout,
+		IdleTimeout:  opts.IdleTimeout,
 	}
 
 	go func() {
