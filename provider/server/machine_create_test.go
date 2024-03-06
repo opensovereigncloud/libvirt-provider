@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	osImage       = "ghcr.io/ironcore-dev/ironcore-image/gardenlinux:rootfs-dev-20231206-v1"
+	osImage       = "ghcr.io/ironcore-dev/ironcore-image/gardenlinux:squashfs-dev-20240123-v2"
 	emptyDiskSize = 1024 * 1024 * 1024
 )
 

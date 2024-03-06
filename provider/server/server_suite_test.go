@@ -88,7 +88,7 @@ var _ = BeforeSuite(func() {
 	DeferCleanup(os.Remove, machineClassesFile.Name())
 
 	pluginOpts := networkinterfaceplugin.NewDefaultOptions()
-	pluginOpts.PluginName = "isolated"
+	pluginOpts.PluginName = "providernet"
 
 	tempDir = GinkgoT().TempDir()
 	Expect(os.Chmod(tempDir, 0730)).Should(Succeed())
