@@ -101,6 +101,7 @@ type HTTPServerOptions struct {
 type ServersOptions struct {
 	Metrics HTTPServerOptions
 }
+
 type LibvirtOptions struct {
 	Socket  string
 	Address string
@@ -127,7 +128,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 
 	fs.StringVar(&o.VirshExecutable, "virsh-executable", "virsh", "Path / name of the virsh executable.")
 
-	fs.StringVar(&o.Servers.Metrics.Addr, "servers-metrics-address", ":8080", "Address to listen on exposing of metrics.")
+	fs.StringVar(&o.Servers.Metrics.Addr, "servers-metrics-address", "", "Address to listen on exposing of metrics. If address isn't set, server is disabled.")
 	fs.DurationVar(&o.Servers.Metrics.ReadTimeout, "servers-metrics-readtimeout", 200*time.Millisecond, "Read timeout for metrics server.")
 	fs.DurationVar(&o.Servers.Metrics.WriteTimeout, "servers-metrics-writetimeout", 200*time.Millisecond, "Write timeout for metrics server.")
 	fs.DurationVar(&o.Servers.Metrics.IdleTimeout, "server-metrics-idletimeout", 1*time.Second, "Idle timeout for connections to metrics server.")
@@ -478,6 +479,11 @@ func runStreamingServer(ctx context.Context, setupLog, log logr.Logger, srv *ser
 }
 
 func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOptions) error {
+	if opts.Addr == "" {
+		setupLog.Info("Metrics server address isn't configured. Metrics server is disabled.")
+		return nil
+	}
+
 	setupLog.Info("Starting metrics server on " + opts.Addr)
 
 	mux := http.NewServeMux()
