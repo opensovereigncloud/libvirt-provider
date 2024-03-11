@@ -110,7 +110,6 @@ var _ = BeforeSuite(func() {
 		GCVMGracefulShutdownTimeout:    10 * time.Second,
 		ResyncIntervalGarbageCollector: 5 * time.Second,
 		ResyncIntervalVolumeSize:       1 * time.Minute,
-		VirshExecutable:                "virsh",
 	}
 
 	srvCtx, cancel := context.WithCancel(context.Background())

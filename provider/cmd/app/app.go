@@ -84,8 +84,6 @@ type Options struct {
 
 	GCVMGracefulShutdownTimeout    time.Duration
 	ResyncIntervalGarbageCollector time.Duration
-
-	VirshExecutable string
 }
 
 type LibvirtOptions struct {
@@ -111,8 +109,6 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.StreamingAddress, "streaming-address", "127.0.0.1:20251", "Address to run the streaming server on")
 	fs.StringVar(&o.BaseURL, "base-url", "", "The base url to construct urls for streaming from. If empty it will be "+
 		"constructed from the streaming-address")
-
-	fs.StringVar(&o.VirshExecutable, "virsh-executable", "virsh", "Path / name of the virsh executable.")
 
 	fs.BoolVar(&o.EnableHugepages, "enable-hugepages", false, "Enable using Hugepages.")
 
@@ -340,7 +336,6 @@ func Run(ctx context.Context, opts Options) error {
 		MachineClasses:  machineClasses,
 		VolumePlugins:   volumePlugins,
 		NetworkPlugins:  nicPlugin,
-		VirshExecutable: opts.VirshExecutable,
 		EnableHugepages: opts.EnableHugepages,
 	})
 	if err != nil {
