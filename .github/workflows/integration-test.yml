@@ -85,4 +85,4 @@ jobs:
           sudo rm -rf /var/lib/apt/lists
 
       - name: Run integration tests
-        run: make integration-tests
+        run: su libvirt-qemu -c 'make integration-tests'
