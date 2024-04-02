@@ -561,7 +561,10 @@ func initResourceManager(ctx context.Context, opts ResourceManageroptions, machi
 
 		switch source.GetName() {
 		case core.ResourceCPU:
-			manager.AddTotalResourcesTuner(source.TuneTotalResources)
+			err = manager.AddTotalResourcesTuner(source.TuneTotalResources)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
