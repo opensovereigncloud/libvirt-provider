@@ -39,8 +39,8 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/raw"
 	"github.com/ironcore-dev/libvirt-provider/internal/server"
 	"github.com/ironcore-dev/libvirt-provider/internal/strategy"
-	"github.com/ironcore-dev/libvirt-provider/pkg/libvirt/guest"
 	"github.com/ironcore-dev/libvirt-provider/pkg/resources/manager"
+	"github.com/ironcore-dev/libvirt-provider/pkg/resources/sources"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -91,7 +91,7 @@ type Options struct {
 	GCVMGracefulShutdownTimeout    time.Duration
 	ResyncIntervalGarbageCollector time.Duration
 
-	ResourceManagerSources []string
+	ResourceManagerOptions sources.Options
 }
 
 type HTTPServerOptions struct {
@@ -147,7 +147,8 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&o.GCVMGracefulShutdownTimeout, "gc-vm-graceful-shutdown-timeout", 5*time.Minute, "Duration to wait for the VM to gracefully shut down. If the VM does not shut down within this period, it will be forcibly destroyed by garbage collector.")
 	fs.DurationVar(&o.ResyncIntervalGarbageCollector, "gc-resync-interval", 1*time.Minute, "Interval for resynchronizing the garbage collector.")
 
-	fs.StringSliceVar(&o.ResourceManagerSources, "resource-manager-sources", []string{"cpu", "memory"}, fmt.Sprintf("Sources for loading resources. Available: %v", manager.GetSourcesAvailable()))
+	fs.StringSliceVar(&o.ResourceManagerOptions.Sources, "resource-manager-sources", []string{"cpu", "memory"}, fmt.Sprintf("Sources for loading resources. Available: %v", manager.GetSourcesAvailable()))
+	fs.Float64Var(&o.ResourceManagerOptions.OvercommitVCPU, "resource-manager-overcommit-vcpu", 1.0, "Sets the overcommit ratio for vCPUs, enabling higher VM density per CPU core.")
 
 	o.NicPlugin = networkinterfaceplugin.NewDefaultOptions()
 	o.NicPlugin.AddFlags(fs)
@@ -329,7 +330,7 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
-	err = initResourceManager(ctx, opts.ResourceManagerSources, machineStore, machineClasses)
+	err = initResourceManager(ctx, opts.ResourceManagerOptions, machineStore, machineClasses)
 	if err != nil {
 		setupLog.Error(err, "failed to initialize resource manager")
 		return err
@@ -528,12 +529,13 @@ func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServer
 	return nil
 }
 
-func initResourceManager(ctx context.Context, requiredSources []string, machineStore *host.Store[*api.Machine], classRegistry *mcr.Mcr) error {
-	for _, sourceName := range requiredSources {
-		source, err := manager.GetSource(sourceName)
+func initResourceManager(ctx context.Context, opts sources.Options, machineStore *host.Store[*api.Machine], classRegistry *mcr.Mcr) error {
+	for _, sourceName := range opts.Sources {
+		source, err := manager.GetSource(sourceName, opts)
 		if err != nil {
 			return err
 		}
+
 		err = manager.AddSource(source)
 		if err != nil {
 			return err
