@@ -25,7 +25,7 @@ require (
 	google.golang.org/grpc v1.63.2
 	k8s.io/api v0.30.0
 	k8s.io/apimachinery v0.30.0
-	k8s.io/client-go v0.29.4
+	k8s.io/client-go v0.30.0
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 	libvirt.org/go/libvirtxml v1.10002.0
 	sigs.k8s.io/controller-runtime v0.17.3
@@ -35,7 +35,7 @@ require (
 	github.com/creack/pty v1.1.21 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
-	k8s.io/cli-runtime v0.29.4 // indirect
+	k8s.io/cli-runtime v0.30.0 // indirect
 )
 
 require (
@@ -123,10 +123,10 @@ require (
 	gotest.tools/v3 v3.5.1 // indirect
 	k8s.io/apiextensions-apiserver v0.29.2 // indirect
 	k8s.io/apiserver v0.29.2 // indirect
-	k8s.io/component-base v0.29.4 // indirect
+	k8s.io/component-base v0.30.0 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
-	k8s.io/kubectl v0.29.4
+	k8s.io/kubectl v0.30.0
 	oras.land/oras-go v1.2.5 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
