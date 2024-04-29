@@ -299,19 +299,6 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
-	setupLog.V(1).Info("Loading machine classes", "Path", opts.PathSupportedMachineClasses)
-	classes, err := mcr.LoadMachineClassesFile(opts.PathSupportedMachineClasses)
-	if err != nil {
-		setupLog.Error(err, "failed to load machine classes")
-		return err
-	}
-
-	machineClasses, err := mcr.NewMachineClassRegistry(classes)
-	if err != nil {
-		setupLog.Error(err, "failed to initialize machine class registry")
-		return err
-	}
-
 	setupLog.Info("Configuring machine store", "Directory", providerHost.MachineStoreDir())
 	machineStore, err := host.NewStore(host.Options[*api.Machine]{
 		NewFunc:        func() *api.Machine { return &api.Machine{} },
@@ -323,6 +310,18 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
+	err = initResourceManager(ctx, opts.ResourceManagerOptions, machineStore, opts.PathSupportedMachineClasses)
+	if err != nil {
+		setupLog.Error(err, "failed to initialize resource manager")
+		return err
+	}
+
+	machineClasses, err := mcr.NewMachineClassRegistry(manager.GetIRIMachineClasses())
+	if err != nil {
+		setupLog.Error(err, "failed to initialize machine class registry")
+		return err
+	}
+
 	machineEvents, err := event.NewListWatchSource[*api.Machine](
 		machineStore.List,
 		machineStore.Watch,
@@ -330,12 +329,6 @@ func Run(ctx context.Context, opts Options) error {
 	)
 	if err != nil {
 		setupLog.Error(err, "failed to initialize machine events")
-		return err
-	}
-
-	err = initResourceManager(ctx, opts.ResourceManagerOptions, machineStore, machineClasses)
-	if err != nil {
-		setupLog.Error(err, "failed to initialize resource manager")
 		return err
 	}
 
@@ -532,7 +525,7 @@ func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServer
 	return nil
 }
 
-func initResourceManager(ctx context.Context, opts sources.Options, machineStore *host.Store[*api.Machine], classRegistry *mcr.Mcr) error {
+func initResourceManager(ctx context.Context, opts sources.Options, machineStore *host.Store[*api.Machine], filename string) error {
 	err := manager.ValidateOptions(opts)
 	if err != nil {
 		return err
@@ -550,7 +543,7 @@ func initResourceManager(ctx context.Context, opts sources.Options, machineStore
 		}
 	}
 
-	err = manager.SetMachineClasses(classRegistry.List())
+	err = manager.SetMachineClassesFilename(filename)
 	if err != nil {
 		return err
 	}

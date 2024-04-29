@@ -33,6 +33,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"github.com/ironcore-dev/libvirt-provider/pkg/resources/manager"
 	"github.com/ironcore-dev/libvirt-provider/pkg/resources/sources"
+	"github.com/ironcore-dev/libvirt-provider/pkg/sgx"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/utils/ptr"
@@ -702,6 +704,8 @@ func (r *MachineReconciler) domainFor(
 	if err := r.setTCMallocPath(domainDesc); err != nil {
 		return nil, nil, nil, err
 	}
+
+	sgx.EnableSGXInDomain(&machine.Spec, domainDesc)
 
 	if machine.Spec.GuestAgent != api.GuestAgentNone {
 		r.setGuestAgent(machine, domainDesc)
