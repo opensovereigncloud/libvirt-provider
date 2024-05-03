@@ -76,7 +76,6 @@ type MachineReconcilerOptions struct {
 	VolumeEvents                   event.Source[*api.Machine]
 	ResyncIntervalVolumeSize       time.Duration
 	ResyncIntervalGarbageCollector time.Duration
-	EnableHugepages                bool
 	GCVMGracefulShutdownTimeout    time.Duration
 }
 
@@ -114,7 +113,6 @@ func NewMachineReconciler(
 		networkInterfacePlugin:         opts.NetworkInterfacePlugin,
 		resyncIntervalVolumeSize:       opts.ResyncIntervalVolumeSize,
 		resyncIntervalGarbageCollector: opts.ResyncIntervalGarbageCollector,
-		enableHugepages:                opts.EnableHugepages,
 		gcVMGracefulShutdownTimeout:    opts.GCVMGracefulShutdownTimeout,
 	}, nil
 }
@@ -129,8 +127,6 @@ type MachineReconciler struct {
 	host              providerhost.Host
 	imageCache        providerimage.Cache
 	raw               raw.Raw
-
-	enableHugepages bool
 
 	volumePluginManager    *providervolume.PluginManager
 	networkInterfacePlugin providernetworkinterface.Plugin
