@@ -42,8 +42,6 @@ type Server struct {
 	activeConsoles   sync.Map
 	libvirt          *libvirt.Libvirt
 
-	enableHugepages bool
-
 	guestAgent api.GuestAgent
 }
 
@@ -59,10 +57,9 @@ type Options struct {
 
 	MachineClasses MachineClassRegistry
 
-	VolumePlugins   *volume.PluginManager
-	NetworkPlugins  providernetworkinterface.Plugin
-	EnableHugepages bool
-	GuestAgent      api.GuestAgent
+	VolumePlugins  *volume.PluginManager
+	NetworkPlugins providernetworkinterface.Plugin
+	GuestAgent     api.GuestAgent
 }
 
 func setOptionsDefaults(o *Options) {
@@ -87,7 +84,6 @@ func New(opts Options) (*Server, error) {
 		volumePlugins:          opts.VolumePlugins,
 		networkInterfacePlugin: opts.NetworkPlugins,
 		machineClasses:         opts.MachineClasses,
-		enableHugepages:        opts.EnableHugepages,
 		guestAgent:             opts.GuestAgent,
 		execRequestCache:       request.NewCache[*iri.ExecRequest](),
 		activeConsoles:         sync.Map{},

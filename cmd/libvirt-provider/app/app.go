@@ -81,8 +81,6 @@ type Options struct {
 
 	ApinetKubeconfig string
 
-	EnableHugepages bool
-
 	GuestAgent GuestAgentOption
 
 	Libvirt   LibvirtOptions
@@ -130,7 +128,6 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.Servers.Metrics.Addr, "servers-metrics-address", "", "Address to listen on exposing of metrics. If address isn't set, server is disabled.")
 	fs.DurationVar(&o.Servers.Metrics.GracefulTimeout, "servers-metrics-gracefultimeout", 2*time.Second, "Graceful timeout for shutdown metrics server. Ideally set it little longer as idletimeout.")
 
-	fs.BoolVar(&o.EnableHugepages, "enable-hugepages", false, "Enable using Hugepages.")
 	fs.Var(&o.GuestAgent, "guest-agent-type", fmt.Sprintf("Guest agent implementation to use. Available: %v", guestAgentOptionAvailable()))
 
 	// LibvirtOptions
@@ -346,7 +343,6 @@ func Run(ctx context.Context, opts Options) error {
 			NetworkInterfacePlugin:         nicPlugin,
 			ResyncIntervalVolumeSize:       opts.ResyncIntervalVolumeSize,
 			ResyncIntervalGarbageCollector: opts.ResyncIntervalGarbageCollector,
-			EnableHugepages:                opts.EnableHugepages,
 			GCVMGracefulShutdownTimeout:    opts.GCVMGracefulShutdownTimeout,
 		},
 	)
@@ -356,14 +352,13 @@ func Run(ctx context.Context, opts Options) error {
 	}
 
 	srv, err := server.New(server.Options{
-		BaseURL:         baseURL,
-		Libvirt:         libvirt,
-		MachineStore:    machineStore,
-		MachineClasses:  machineClasses,
-		VolumePlugins:   volumePlugins,
-		NetworkPlugins:  nicPlugin,
-		EnableHugepages: opts.EnableHugepages,
-		GuestAgent:      opts.GuestAgent.GetAPIGuestAgent(),
+		BaseURL:        baseURL,
+		Libvirt:        libvirt,
+		MachineStore:   machineStore,
+		MachineClasses: machineClasses,
+		VolumePlugins:  volumePlugins,
+		NetworkPlugins: nicPlugin,
+		GuestAgent:     opts.GuestAgent.GetAPIGuestAgent(),
 	})
 	if err != nil {
 		setupLog.Error(err, "failed to initialize server")
