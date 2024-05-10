@@ -371,6 +371,11 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
+	healthCheck := providerhttp.HealthCheck{
+		Libvirt: libvirt,
+		Log:     log.WithName("health-check"),
+	}
+
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -423,9 +428,9 @@ func Run(ctx context.Context, opts Options) error {
 	})
 
 	g.Go(func() error {
-		setupLog.Info("Starting libvirt connection server")
-		if err := runLibvirtConnectionServer(ctx, setupLog, log, srv, opts.Servers.LibvirtConnect); err != nil {
-			setupLog.Error(err, "failed to start libvirt connection server")
+		setupLog.Info("Starting health check server")
+		if err := runHealthCheckServer(ctx, setupLog, healthCheck, opts.Servers.LibvirtConnect); err != nil {
+			setupLog.Error(err, "failed to start health check server")
 			return err
 		}
 		return nil
@@ -535,14 +540,13 @@ func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServer
 	return nil
 }
 
-func runLibvirtConnectionServer(ctx context.Context, setupLog, log logr.Logger, srv *server.Server, opts HTTPServerOptions) error {
-	httpHandler := providerhttp.NewHandler(srv, providerhttp.HandlerOptions{
-		Log: log.WithName("libvirt-connection-server"),
-	})
+func runHealthCheckServer(ctx context.Context, setupLog logr.Logger, healthCheck providerhttp.HealthCheck, opts HTTPServerOptions) error {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", healthCheck.HealthCheckHandler)
 
-	httpSrv := &http.Server{
+	srv := http.Server{
 		Addr:    opts.Addr,
-		Handler: httpHandler,
+		Handler: mux,
 	}
 
 	var wg sync.WaitGroup
@@ -550,20 +554,20 @@ func runLibvirtConnectionServer(ctx context.Context, setupLog, log logr.Logger, 
 	go func() {
 		defer wg.Done()
 		<-ctx.Done()
-		setupLog.Info("Shutting down libvirt connection server")
+		setupLog.Info("Shutting down health check server")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), opts.GracefulTimeout)
 		defer cancel()
-		locErr := httpSrv.Shutdown(shutdownCtx)
+		locErr := srv.Shutdown(shutdownCtx)
 		if locErr != nil {
-			setupLog.Error(locErr, "libvirt connection server wasn't shutdown properly")
+			setupLog.Error(locErr, "health checkserver wasn't shutdown properly")
 		} else {
-			setupLog.Info("Libvirt connection server is shutdown")
+			setupLog.Info("Health check server is shutdown")
 		}
 	}()
 
-	setupLog.V(1).Info("Starting libvirt connection server", "Address", opts.Addr)
-	if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("error listening / serving libvirt connection server: %w", err)
+	setupLog.V(1).Info("Starting health check server", "Address", opts.Addr)
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("error listening / serving health check server: %w", err)
 	}
 
 	wg.Wait()

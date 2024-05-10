@@ -178,16 +178,9 @@ func ApplySecret(lv *libvirt.Libvirt, secret *libvirtxml.Secret, value []byte) e
 	return nil
 }
 
-func ReconnectLibvirt(clnt *libvirt.Libvirt) error {
-	log := ctrl.Log.WithName("libvirt-connect")
+func IsConnected(clnt *libvirt.Libvirt) error {
 	if !clnt.IsConnected() {
-		log.V(1).Info("Failed to connect to the libvirt client. Reconnecting...")
-		err := clnt.Connect()
-		if err != nil {
-			log.V(1).Info("Failed establishing connection with the libvirt client.")
-			return fmt.Errorf("libvirt reconnect failed: %w", err)
-		}
-		log.V(1).Info("Connection established with the libvirt client.")
+		return errors.New("no active libvirt connection")
 	}
 
 	return nil

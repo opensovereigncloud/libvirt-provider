@@ -33,8 +33,6 @@ func NewHandler(srv *server.Server, opts HandlerOptions) http.Handler {
 	r.Use(utilshttp.InjectLogger(opts.Log))
 	r.Use(utilshttp.LogRequest)
 
-	r.MethodFunc(http.MethodGet, "/libvirt-connect", srv.LibvirtConnectionCheckHandler)
-
 	for _, method := range []string{http.MethodHead, http.MethodGet, http.MethodPost} {
 		r.MethodFunc(method, "/exec/{token}", func(w http.ResponseWriter, req *http.Request) {
 			token := chi.URLParam(req, "token")
