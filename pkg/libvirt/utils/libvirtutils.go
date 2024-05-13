@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"sync"
 	"time"
 
 	"github.com/digitalocean/go-libvirt"
@@ -27,8 +26,7 @@ const (
 )
 
 var (
-	log         = ctrl.Log.WithName("libvirtutils")
-	reconnectMX = sync.Mutex{}
+	log = ctrl.Log.WithName("libvirtutils")
 )
 
 func wellKnownSocketPaths() []string {
@@ -180,14 +178,9 @@ func ApplySecret(lv *libvirt.Libvirt, secret *libvirtxml.Secret, value []byte) e
 	return nil
 }
 
-func ReconnectLibvirt(clnt *libvirt.Libvirt) error {
-	reconnectMX.Lock()
-	defer reconnectMX.Unlock()
+func IsConnected(clnt *libvirt.Libvirt) error {
 	if !clnt.IsConnected() {
-		err := clnt.Connect()
-		if err != nil {
-			return fmt.Errorf("libvirt reconnect failed: %w", err)
-		}
+		return errors.New("no active libvirt connection")
 	}
 
 	return nil
