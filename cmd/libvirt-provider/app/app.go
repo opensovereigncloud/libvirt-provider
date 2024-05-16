@@ -23,9 +23,10 @@ import (
 	commongrpc "github.com/ironcore-dev/ironcore/broker/common/grpc"
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
-	http "github.com/ironcore-dev/libvirt-provider/internal/console"
+	"github.com/ironcore-dev/libvirt-provider/internal/console"
 	"github.com/ironcore-dev/libvirt-provider/internal/controllers"
 	"github.com/ironcore-dev/libvirt-provider/internal/event"
+	"github.com/ironcore-dev/libvirt-provider/internal/healthcheck"
 	"github.com/ironcore-dev/libvirt-provider/internal/host"
 	"github.com/ironcore-dev/libvirt-provider/internal/libvirt/guest"
 	libvirtutils "github.com/ironcore-dev/libvirt-provider/internal/libvirt/utils"
@@ -37,10 +38,10 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/volume/emptydisk"
 	"github.com/ironcore-dev/libvirt-provider/internal/qcow2"
 	"github.com/ironcore-dev/libvirt-provider/internal/raw"
+	"github.com/ironcore-dev/libvirt-provider/internal/resources/manager"
+	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
 	"github.com/ironcore-dev/libvirt-provider/internal/server"
 	"github.com/ironcore-dev/libvirt-provider/internal/strategy"
-	"github.com/ironcore-dev/libvirt-provider/pkg/resources/manager"
-	"github.com/ironcore-dev/libvirt-provider/pkg/resources/sources"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -369,7 +370,7 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
-	healthCheck := providerhttp.HealthCheck{
+	healthCheck := healthcheck.HealthCheck{
 		Libvirt: libvirt,
 		Log:     log.WithName("health-check"),
 	}
@@ -538,7 +539,7 @@ func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServer
 	return nil
 }
 
-func runHealthCheckServer(ctx context.Context, setupLog logr.Logger, healthCheck providerhttp.HealthCheck, opts HTTPServerOptions) error {
+func runHealthCheckServer(ctx context.Context, setupLog logr.Logger, healthCheck healthcheck.HealthCheck, opts HTTPServerOptions) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthCheck.HealthCheckHandler)
 

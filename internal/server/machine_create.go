@@ -10,7 +10,7 @@ import (
 	"github.com/go-logr/logr"
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
 	api "github.com/ironcore-dev/libvirt-provider/api"
-	"github.com/ironcore-dev/libvirt-provider/pkg/resources/manager"
+	"github.com/ironcore-dev/libvirt-provider/internal/resources/manager"
 )
 
 func (s *Server) createMachineFromIRIMachine(ctx context.Context, log logr.Logger, iriMachine *iri.Machine) (*api.Machine, error) {

@@ -7,7 +7,7 @@ import (
 	"context"
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
-	"github.com/ironcore-dev/libvirt-provider/pkg/api"
+	"github.com/ironcore-dev/libvirt-provider/api"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 

@@ -8,11 +8,10 @@ import (
 
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
-	"github.com/onmetal/onmetal-api/broker/bucketbroker/apiutils"
 )
 
 func (s *Server) convertMachineToIRIMachine(machine *api.Machine) (*iri.Machine, error) {
-	metadata, err := apiutils.GetObjectMetadata(machine.Metadata)
+	metadata, err := api.GetObjectMetadata(machine.Metadata)
 	if err != nil {
 		return nil, fmt.Errorf("error getting iri metadata: %w", err)
 	}

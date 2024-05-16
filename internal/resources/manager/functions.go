@@ -11,9 +11,9 @@ import (
 	"github.com/go-logr/logr"
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
-	"github.com/ironcore-dev/libvirt-provider/pkg/api"
-	"github.com/ironcore-dev/libvirt-provider/pkg/resources/sources"
-	"github.com/ironcore-dev/libvirt-provider/pkg/sgx"
+	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
+	"github.com/ironcore-dev/libvirt-provider/internal/sgx"
 )
 
 // AddSource just registers source into manager

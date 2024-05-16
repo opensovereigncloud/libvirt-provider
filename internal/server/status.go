@@ -7,7 +7,7 @@ import (
 	"context"
 
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
-	"github.com/ironcore-dev/libvirt-provider/pkg/resources/manager"
+	"github.com/ironcore-dev/libvirt-provider/internal/resources/manager"
 )
 
 func (s *Server) Status(ctx context.Context, req *iri.StatusRequest) (*iri.StatusResponse, error) {
