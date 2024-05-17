@@ -1,5 +1,5 @@
 # Build the libvirt-provider binary
-FROM --platform=$BUILDPLATFORM golang:1.22.2-bookworm as builder
+FROM --platform=$BUILDPLATFORM golang:1.22.3-bookworm as builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -12,8 +12,9 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go mod download
 
 # Copy the go source
-COPY provider/ provider/
-COPY pkg/ pkg/
+COPY api/ api/
+COPY internal/ internal/
+COPY cmd/ cmd/
 COPY hack/ hack/
 
 ARG TARGETOS
@@ -27,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Build
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
-    CGO_ENABLED=1 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on go build -ldflags="-s -w" -a -o libvirt-provider ./provider/cmd/main.go
+    CGO_ENABLED=1 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on go build -ldflags="-s -w" -a -o libvirt-provider ./cmd/libvirt-provider/main.go
 
 # Install irictl-machine
 RUN --mount=type=cache,target=/root/.cache/go-build \
