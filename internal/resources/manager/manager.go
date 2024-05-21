@@ -244,7 +244,9 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 		return err
 	}
 
-	r.log.Info("Available VM slots:" + r.getAvailableVMSlotsAsString())
+	if r.maxVMsLimit != 0 {
+		r.log.Info("Available VM slots:" + r.getAvailableVMSlotsAsString())
+	}
 	r.log.Info("Available resources: " + r.convertResourcesToString(r.getAvailableResources()))
 	r.log.Info("Machine classes availibility: " + r.getMachineClassAvailibilityAsString())
 	r.operationError = nil
@@ -462,7 +464,9 @@ func (r *resourceManager) printAvailableResources(operation string) {
 		return
 	}
 
-	r.log.V(traceLevel).Info("Available VM slots after " + operation + ": " + r.getAvailableVMSlotsAsString())
+	if r.maxVMsLimit != 0 {
+		r.log.V(traceLevel).Info("Available VM slots after " + operation + ": " + r.getAvailableVMSlotsAsString())
+	}
 	r.log.V(traceLevel).Info("Available resources after " + operation + ": " + r.convertResourcesToString(r.getAvailableResources()))
 	r.log.V(traceLevel).Info("Machineclasses availibility: " + r.getMachineClassAvailibilityAsString())
 }
