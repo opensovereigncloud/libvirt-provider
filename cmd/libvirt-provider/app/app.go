@@ -99,8 +99,8 @@ type HTTPServerOptions struct {
 }
 
 type ServersOptions struct {
-	Metrics        HTTPServerOptions
-	LibvirtConnect HTTPServerOptions
+	Metrics     HTTPServerOptions
+	HealthCheck HTTPServerOptions
 }
 
 type LibvirtOptions struct {
@@ -130,8 +130,8 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.Servers.Metrics.Addr, "servers-metrics-address", "", "Address to listen on exposing of metrics. If address isn't set, server is disabled.")
 	fs.DurationVar(&o.Servers.Metrics.GracefulTimeout, "servers-metrics-gracefultimeout", 2*time.Second, "Graceful timeout for shutdown metrics server.")
 
-	fs.StringVar(&o.Servers.LibvirtConnect.Addr, "servers-libvirt-connect-address", "127.0.0.1:8080", "Address to listen on libvirt connect liveness.")
-	fs.DurationVar(&o.Servers.LibvirtConnect.GracefulTimeout, "servers-libvirt-connect-gracefultimeout", 2*time.Second, "Graceful timeout for shutdown libvirt connect server.")
+	fs.StringVar(&o.Servers.HealthCheck.Addr, "servers-health-check-address", "127.0.0.1:8080", "Address to listen on health check liveness.")
+	fs.DurationVar(&o.Servers.HealthCheck.GracefulTimeout, "servers-health-check-gracefultimeout", 2*time.Second, "Graceful timeout for shutdown health check server.")
 
 	fs.Var(&o.GuestAgent, "guest-agent-type", fmt.Sprintf("Guest agent implementation to use. Available: %v", guestAgentOptionAvailable()))
 
@@ -428,7 +428,7 @@ func Run(ctx context.Context, opts Options) error {
 
 	g.Go(func() error {
 		setupLog.Info("Starting health check server")
-		if err := runHealthCheckServer(ctx, setupLog, healthCheck, opts.Servers.LibvirtConnect); err != nil {
+		if err := runHealthCheckServer(ctx, setupLog, healthCheck, opts.Servers.HealthCheck); err != nil {
 			setupLog.Error(err, "failed to start health check server")
 			return err
 		}
@@ -463,7 +463,7 @@ func runGRPCServer(ctx context.Context, setupLog logr.Logger, log logr.Logger, s
 		<-ctx.Done()
 		setupLog.Info("Shutting down grpc server")
 		grpcSrv.GracefulStop()
-		setupLog.Info("Shut down grpc server")
+		setupLog.Info("GRPC server is shutdown")
 	}()
 	if err := grpcSrv.Serve(l); err != nil {
 		return fmt.Errorf("error serving grpc: %w", err)
@@ -485,7 +485,7 @@ func runStreamingServer(ctx context.Context, setupLog, log logr.Logger, srv *ser
 		<-ctx.Done()
 		setupLog.Info("Shutting down streaming server")
 		_ = httpSrv.Close()
-		setupLog.Info("Shut down streaming server")
+		setupLog.Info("Streaming server is shutdown")
 	}()
 
 	setupLog.V(1).Info("Starting streaming server", "Address", opts.StreamingAddress)
@@ -558,7 +558,7 @@ func runHealthCheckServer(ctx context.Context, setupLog logr.Logger, healthCheck
 		defer cancel()
 		locErr := srv.Shutdown(shutdownCtx)
 		if locErr != nil {
-			setupLog.Error(locErr, "health checkserver wasn't shutdown properly")
+			setupLog.Error(locErr, "health check server wasn't shutdown properly")
 		} else {
 			setupLog.Info("Health check server is shutdown")
 		}
