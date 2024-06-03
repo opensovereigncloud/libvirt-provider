@@ -5,8 +5,10 @@ package sources
 
 import (
 	"context"
+	"fmt"
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -17,15 +19,11 @@ const (
 
 // Dummy source serves for dynamic change of available memory for unit tests
 type Dummy struct {
-	totalResources core.ResourceList
+	availableQuantity *resource.Quantity
 }
 
-func NewSourceDummy(totalResources core.ResourceList, _ Options) *Dummy {
-	return &Dummy{totalResources: totalResources}
-}
-
-func (d *Dummy) GetTotalResources(ctx context.Context) (core.ResourceList, error) {
-	return d.totalResources, nil
+func NewSourceDummy(availableQuantity *resource.Quantity) *Dummy {
+	return &Dummy{availableQuantity: availableQuantity}
 }
 
 func (d *Dummy) GetName() string {
@@ -33,26 +31,53 @@ func (d *Dummy) GetName() string {
 }
 
 // Modify is dummy function
-func (d *Dummy) Modify(_ core.ResourceList) error {
+func (d *Dummy) Modify(resources core.ResourceList) error {
+	_, ok := resources[ResourceDummy]
+	if ok {
+		return fmt.Errorf("error while modifing resource")
+	}
+
 	return nil
 }
 
 func (d *Dummy) Allocate(requiredResources core.ResourceList) (core.ResourceList, error) {
-	return nil, nil
+	dummy, ok := requiredResources[ResourceDummy]
+	if !ok {
+		return nil, nil
+	}
+
+	newDummy := *d.availableQuantity
+	newDummy.Sub(dummy)
+	if newDummy.Sign() == -1 {
+		return nil, fmt.Errorf("failed to allocate %s: %w", ResourceDummy, ErrResourceNotAvailable)
+	}
+
+	d.availableQuantity = &newDummy
+	return core.ResourceList{ResourceDummy: dummy}, nil
 }
 
 func (d *Dummy) Deallocate(requiredResources core.ResourceList) []core.ResourceName {
-	return nil
+	dummy, ok := requiredResources[ResourceDummy]
+	if !ok {
+		return nil
+	}
+
+	d.availableQuantity.Add(dummy)
+	return []core.ResourceName{ResourceDummy}
 }
 
 func (d *Dummy) GetAvailableResources() core.ResourceList {
-	return core.ResourceList{core.ResourceCPU: *d.totalResources.CPU(), core.ResourceMemory: *d.totalResources.Memory()}.DeepCopy()
+	return core.ResourceList{ResourceDummy: *d.availableQuantity}.DeepCopy()
 }
 
 func (d *Dummy) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
-	return nil, nil
+	return sets.New(ResourceDummy, core.ResourceCPU, core.ResourceMemory, core.ResourceName("memory.epc.sgx")), nil
 }
 
 func (d *Dummy) CalculateMachineClassQuantity(requiredResources core.ResourceList) int64 {
-	return 0
+	return d.availableQuantity.Value()
+}
+
+func (d *Dummy) SetQuantity(quantity int64) {
+	d.availableQuantity = resource.NewQuantity(quantity, resource.DecimalSI)
 }
