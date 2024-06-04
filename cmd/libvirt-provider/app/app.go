@@ -130,7 +130,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.Servers.Metrics.Addr, "servers-metrics-address", "", "Address to listen on exposing of metrics. If address isn't set, server is disabled.")
 	fs.DurationVar(&o.Servers.Metrics.GracefulTimeout, "servers-metrics-gracefultimeout", 2*time.Second, "Graceful timeout for shutdown metrics server.")
 
-	fs.StringVar(&o.Servers.HealthCheck.Addr, "servers-health-check-address", "127.0.0.1:8080", "Address to listen on health check liveness.")
+	fs.StringVar(&o.Servers.HealthCheck.Addr, "servers-health-check-address", "127.0.0.1:8181", "Address to listen on health check liveness.")
 	fs.DurationVar(&o.Servers.HealthCheck.GracefulTimeout, "servers-health-check-gracefultimeout", 2*time.Second, "Graceful timeout for shutdown health check server.")
 
 	fs.Var(&o.GuestAgent, "guest-agent-type", fmt.Sprintf("Guest agent implementation to use. Available: %v", guestAgentOptionAvailable()))

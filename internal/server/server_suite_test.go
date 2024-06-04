@@ -5,7 +5,6 @@ package server_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,6 +18,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/api"
 	"github.com/ironcore-dev/libvirt-provider/cmd/libvirt-provider/app"
 	"github.com/ironcore-dev/libvirt-provider/internal/networkinterfaceplugin"
+	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc"
@@ -41,6 +41,7 @@ const (
 	emptyDiskSize                  = 1024 * 1024 * 1024
 	baseURL                        = "http://localhost:20251"
 	streamingAddress               = "127.0.0.1:20251"
+	healthCheckAddress             = "127.0.0.1:20252"
 	metricsAddress                 = "" // disable metrics server for integration tests
 )
 
@@ -48,6 +49,7 @@ var (
 	machineClient      iriv1alpha1.MachineRuntimeClient
 	libvirtConn        *libvirt.Libvirt
 	machineClassesFile *os.File
+	err                error
 	tempDir            string
 	cephMonitors       = os.Getenv("CEPH_MONITORS")
 	cephImage          = os.Getenv("CEPH_IMAGE")
@@ -70,28 +72,26 @@ var _ = BeforeSuite(func() {
 
 	By("starting the app")
 
-	machineClasses := []iriv1alpha1.MachineClass{
+	machineClassData := `[
 		{
-			Name: machineClassx3xlarge,
-			Capabilities: &iriv1alpha1.MachineClassCapabilities{
-				CpuMillis:   4000,
-				MemoryBytes: 8589934592,
-			},
+			"name": "x2-medium",
+			"capabilities": {
+				"cpu": 2000,
+				"memory": 2147483648
+			}
 		},
 		{
-			Name: machineClassx2medium,
-			Capabilities: &iriv1alpha1.MachineClassCapabilities{
-				CpuMillis:   2000,
-				MemoryBytes: 2147483648,
-			},
-		},
-	}
-	machineClassData, err := json.Marshal(machineClasses)
-	Expect(err).NotTo(HaveOccurred())
+			"name": "x3-xlarge",
+			"capabilities": {
+				"cpu": 4000,
+				"memory": 8589934592
+			}
+		}
+	]`
+
 	machineClassesFile, err = os.CreateTemp(GinkgoT().TempDir(), "machineclasses")
 	Expect(err).NotTo(HaveOccurred())
-	Expect(os.WriteFile(machineClassesFile.Name(), machineClassData, 0600)).To(Succeed())
-	DeferCleanup(machineClassesFile.Close)
+	Expect(os.WriteFile(machineClassesFile.Name(), []byte(machineClassData), 0600)).To(Succeed())
 	DeferCleanup(os.Remove, machineClassesFile.Name())
 
 	pluginOpts := networkinterfaceplugin.NewDefaultOptions()
@@ -110,6 +110,9 @@ var _ = BeforeSuite(func() {
 			Metrics: app.HTTPServerOptions{
 				Addr: metricsAddress,
 			},
+			HealthCheck: app.HTTPServerOptions{
+				Addr: healthCheckAddress,
+			},
 		},
 		Libvirt: app.LibvirtOptions{
 			Socket:                "/var/run/libvirt/libvirt-sock",
@@ -117,6 +120,10 @@ var _ = BeforeSuite(func() {
 			PreferredDomainTypes:  []string{"kvm", "qemu"},
 			PreferredMachineTypes: []string{"pc-q35", "pc-i440fx"},
 			Qcow2Type:             "exec",
+		},
+		ResourceManagerOptions: sources.Options{
+			OvercommitVCPU: 1.0,
+			Sources:        []string{"cpu", "memory"},
 		},
 		NicPlugin:                      pluginOpts,
 		GCVMGracefulShutdownTimeout:    gracefulShutdownTimeout,
