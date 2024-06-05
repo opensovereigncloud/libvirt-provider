@@ -25,8 +25,8 @@ import (
 )
 
 const (
-	ResourceMemorySGX           core.ResourceName = "memory.epc.sgx"
-	ResourceMemorySGXNumaPrefix core.ResourceName = "memory.epc.sgx.numa."
+	ResourceMemorySGX           core.ResourceName = "sgx.intel.com/epc"
+	ResourceMemorySGXNumaPrefix core.ResourceName = "sgx.intel.com/epc.numa."
 
 	nodeDir          = "/sys/devices/system/node"
 	SourceSGX string = "sgx"
