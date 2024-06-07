@@ -12,4 +12,4 @@ Additionally, it announces the available `MachineClasses` which are supported by
 criteria.
 
 Further information about the architecture and concepts of the `libvirt-provider` project can be found in the
-[architecture](/architecture) section.
+[architecture](./architecture) section.

@@ -11,7 +11,7 @@
     "capabilities": {
       "cpu": 2000,
       "memory": 2147483648,
-      "memory.epc.sgx": 2147483648
+      "sgx.intel.com/epc": 2147483648
     }
   },
   {
