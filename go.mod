@@ -25,9 +25,9 @@ require (
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/sync v0.7.0
 	google.golang.org/grpc v1.64.0
-	k8s.io/api v0.30.1
-	k8s.io/apimachinery v0.30.1
-	k8s.io/client-go v0.30.1
+	k8s.io/api v0.30.2
+	k8s.io/apimachinery v0.30.2
+	k8s.io/client-go v0.30.2
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 	libvirt.org/go/libvirtxml v1.10002.0
 	sigs.k8s.io/controller-runtime v0.18.4
@@ -39,7 +39,7 @@ require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
-	k8s.io/cli-runtime v0.30.1 // indirect
+	k8s.io/cli-runtime v0.30.2 // indirect
 )
 
 require (
@@ -128,7 +128,7 @@ require (
 	k8s.io/apiserver v0.30.1 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
-	k8s.io/kubectl v0.30.1
+	k8s.io/kubectl v0.30.2
 	oras.land/oras-go v1.2.5 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
