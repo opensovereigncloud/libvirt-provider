@@ -14,6 +14,8 @@ import (
 	"slices"
 	"strings"
 
+	"libvirt.org/go/libvirtxml"
+
 	"github.com/digitalocean/go-libvirt"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
@@ -24,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	utilstrings "k8s.io/utils/strings"
-	"libvirt.org/go/libvirtxml"
 )
 
 func (r *MachineReconciler) deleteVolumes(ctx context.Context, log logr.Logger, machine *api.Machine) error {
@@ -823,6 +824,8 @@ func (a *libvirtVolumeAttacher) providerVolumeToLibvirt(computeVolumeName string
 		disk.Driver = &libvirtxml.DomainDiskDriver{
 			Cache: "none",
 			IO:    "threads",
+			Name:  "qemu",
+			Type:  "raw",
 		}
 
 		return disk, secret, encryptionSecret, secretValue, encryptionSecretValue, nil
