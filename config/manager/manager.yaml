@@ -48,7 +48,7 @@ spec:
             - |
               IFS=' ' read -r -a dependencies <<< "$DEPENDENCIES"
               for dependency in "${dependencies[@]}"; do
-                if ! dpkg --root=/host-root --get-selections | grep -E "^${dependency}\s+install$" > /dev/null; then
+                if ! dpkg --root=/host-root --get-selections | grep -E "^${dependency}\s+install$" -q; then
                   echo "Error: $dependency is not installed."
                   exit 1
                 fi
