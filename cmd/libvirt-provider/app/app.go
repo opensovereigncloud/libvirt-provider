@@ -26,6 +26,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/console"
 	"github.com/ironcore-dev/libvirt-provider/internal/controllers"
 	"github.com/ironcore-dev/libvirt-provider/internal/event"
+	"github.com/ironcore-dev/libvirt-provider/internal/event/machineevent"
 	"github.com/ironcore-dev/libvirt-provider/internal/healthcheck"
 	"github.com/ironcore-dev/libvirt-provider/internal/host"
 	"github.com/ironcore-dev/libvirt-provider/internal/libvirt/guest"
@@ -91,6 +92,8 @@ type Options struct {
 	ResyncIntervalGarbageCollector time.Duration
 
 	ResourceManagerOptions sources.Options
+
+	MachineEventStore machineevent.EventStoreOptions
 }
 
 type HTTPServerOptions struct {
@@ -154,6 +157,10 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.Uint64Var(&o.ResourceManagerOptions.BlockedHugepages, "resource-manager-blocked-hugepages", 0, "Count of hugepages which aren't use for vms. Effective only if hugepages source is set")
 	fs.Var(&o.ResourceManagerOptions.ReservedMemorySize, "resource-manager-reserved-memory-size", "Size of memory which aren't use for vms in human-readable format. Effective only if memory source is set")
 	fs.Uint64Var(&o.ResourceManagerOptions.VMLimit, "resource-manager-vm-limit", 0, "Maximum number of the VMs to be created on the host")
+
+	fs.IntVar(&o.MachineEventStore.MachineEventMaxEvents, "machine-event-max-events", 100, "Maximum number of machine events that can be stored.")
+	fs.DurationVar(&o.MachineEventStore.MachineEventTTL, "machine-event-ttl", 5*time.Minute, "Time to live for machine events.")
+	fs.DurationVar(&o.MachineEventStore.MachineEventResyncInterval, "machine-event-resync-interval", 1*time.Minute, "Interval for resynchronizing the machine events.")
 
 	o.NicPlugin = networkinterfaceplugin.NewDefaultOptions()
 	o.NicPlugin.AddFlags(fs)
@@ -334,11 +341,14 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
+	eventStore := machineevent.NewEventStore(log, opts.MachineEventStore)
+
 	machineReconciler, err := controllers.NewMachineReconciler(
 		log.WithName("machine-reconciler"),
 		libvirt,
 		machineStore,
 		machineEvents,
+		eventStore,
 		controllers.MachineReconcilerOptions{
 			GuestCapabilities:              caps,
 			ImageCache:                     imgCache,
@@ -360,6 +370,7 @@ func Run(ctx context.Context, opts Options) error {
 		BaseURL:        baseURL,
 		Libvirt:        libvirt,
 		MachineStore:   machineStore,
+		EventStore:     eventStore,
 		MachineClasses: machineClasses,
 		VolumePlugins:  volumePlugins,
 		NetworkPlugins: nicPlugin,
@@ -405,6 +416,12 @@ func Run(ctx context.Context, opts Options) error {
 			setupLog.Error(err, "failed to start machine events")
 			return err
 		}
+		return nil
+	})
+
+	g.Go(func() error {
+		setupLog.Info("Starting machine events garbage collector")
+		eventStore.Start(ctx)
 		return nil
 	})
 
