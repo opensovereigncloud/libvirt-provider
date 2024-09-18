@@ -133,7 +133,7 @@ run: manifests generate fmt vet ## Run the binary
 
 .PHONY: docker-build
 docker-build: ## Build docker image with partitionlet
-	$(CONTAINER_TOOL) build $(CONTAINER_BUILDARGS) -t ${IMG} $(GITHUB_PAT_MOUNT) .
+	podman -r  build $(CONTAINER_BUILDARGS) -t ${IMG} $(GITHUB_PAT_MOUNT) .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.

@@ -13,4 +13,5 @@ type MachineClass struct {
 	Capabilities core.ResourceList `json:"capabilities"`
 	available    int64
 	iriClass     *iri.MachineClass
+	capacity     int64
 }

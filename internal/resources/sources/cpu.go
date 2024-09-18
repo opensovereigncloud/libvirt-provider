@@ -50,7 +50,7 @@ func (c *CPU) CalculateMachineClassQuantity(requiredResources core.ResourceList)
 		return 0
 	}
 
-	return int64(math.Ceil(float64(c.availableCPU.Value()) / float64(cpu.Value())))
+	return int64(math.Floor(float64(c.availableCPU.Value()) / float64(cpu.Value())))
 }
 
 func (c *CPU) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {

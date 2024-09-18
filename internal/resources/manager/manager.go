@@ -229,6 +229,16 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 
 	r.log.Info("Initialized resources: " + r.convertResourcesToString(r.getAvailableResources()))
 
+	err := r.initMachineClasses()
+	if err != nil {
+		return err
+	}
+
+	err = r.calculateMachineClassCapacity()
+	if err != nil {
+		return err
+	}
+
 	// Allocating resources for pre-existing machines in store
 	for _, machine := range machines {
 		for _, s := range r.sources {
@@ -239,7 +249,12 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 		}
 	}
 
-	err := r.initMachineClasses()
+	// err := r.initMachineClasses()
+	// if err != nil {
+	// 	return err
+	// }
+
+	err = r.updateMachineClassAvailable()
 	if err != nil {
 		return err
 	}
@@ -379,6 +394,7 @@ func (r *resourceManager) getAvailableMachineClasses() []*iri.MachineClassStatus
 		classStatus := &iri.MachineClassStatus{
 			MachineClass: &i,
 			Quantity:     class.available,
+			Capacity:     class.capacity,
 		}
 
 		status[index] = classStatus
@@ -420,6 +436,29 @@ func (r *resourceManager) calculateMachineClassQuantity(class *MachineClass) err
 	}
 
 	class.available = count
+
+	return nil
+}
+
+func (r *resourceManager) calculateMachineClassCapacity() error {
+	for _, class := range r.machineClasses {
+		count := int64(math.MaxInt64)
+		classResources := class.Capabilities.DeepCopy()
+
+		for key := range classResources {
+			s, ok := r.registredResources[key]
+			if !ok {
+				return fmt.Errorf("failed to find source for resource %s: %w", key, ErrManagerSourcesMissing)
+			}
+			sourceCount := s.CalculateMachineClassQuantity(classResources)
+
+			if sourceCount < count {
+				count = sourceCount
+			}
+		}
+
+		class.capacity = count
+	}
 
 	return nil
 }

@@ -62,7 +62,7 @@ func (m *Hugepages) CalculateMachineClassQuantity(requiredResources core.Resourc
 		return 0
 	}
 
-	return int64(math.Ceil(float64(m.availableMemory.Value()) / float64(mem.Value())))
+	return int64(math.Floor(float64(m.availableMemory.Value()) / float64(mem.Value())))
 }
 
 func (m *Hugepages) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {

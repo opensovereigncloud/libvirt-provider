@@ -14,6 +14,7 @@ func (s *Server) Status(ctx context.Context, req *iri.StatusRequest) (*iri.Statu
 	log := s.loggerFrom(ctx)
 
 	log.V(1).Info("Returning machine classes")
+
 	return &iri.StatusResponse{
 		MachineClassStatus: manager.GetMachineClassStatus(),
 	}, nil
