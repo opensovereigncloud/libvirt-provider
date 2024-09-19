@@ -58,7 +58,7 @@ func (c *CPU) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
 
 	// Convert the calculated CPU quantity to an int64 to ensure that it represents a whole number of CPUs.
 	cpuQuantity := int64(float64(hostCPUSum) * c.overcommitVCPU)
-	c.availableCPU = resource.NewScaledQuantity(cpuQuantity, resource.Kilo)
+	c.availableCPU = resource.NewQuantity(cpuQuantity, resource.DecimalSI)
 
 	return sets.New(core.ResourceCPU), nil
 }
