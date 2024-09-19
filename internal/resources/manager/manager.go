@@ -338,7 +338,7 @@ func (r *resourceManager) deallocate(machine *api.Machine, deallocateResources c
 
 		for _, resource := range resourceNames {
 			// TODO: we have to optimize this
-			delete(deallocateResources, key)
+			delete(deallocateResources, resource)
 			delete(machine.Spec.Resources, resource)
 		}
 	}
