@@ -80,6 +80,7 @@ func (s *Server) createMachineFromIRIMachine(ctx context.Context, log logr.Logge
 		machine.Spec.Image = &iriMachine.Spec.Image.Image
 	}
 
+	log.V(2).Info("allocating machine with machineclass:" + iriMachine.Spec.Class)
 	requiredResources, err := manager.GetMachineClassRequiredResources(iriMachine.Spec.Class)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get class resources: %w", err)

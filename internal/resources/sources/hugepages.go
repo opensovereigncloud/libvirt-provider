@@ -50,7 +50,7 @@ func (m *Hugepages) Modify(resources core.ResourceList) error {
 	hugepages := uint64(math.Ceil(size / float64(m.pageSize)))
 	resources[ResourceHugepages] = *resource.NewQuantity(int64(hugepages), resource.DecimalSI)
 	// i don't want to do rounding
-	resources[core.ResourceMemory] = *resource.NewQuantity(int64(hugepages)*int64(m.pageSize), resource.DecimalSI)
+	resources[core.ResourceMemory] = *resource.NewQuantity(int64(hugepages)*int64(m.pageSize), resource.BinarySI)
 
 	return nil
 }

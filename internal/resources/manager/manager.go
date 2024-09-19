@@ -286,6 +286,11 @@ func (r *resourceManager) allocate(machine *api.Machine, requiredResources core.
 		}
 
 		mergeResourceLists(totalAllocatedRes, allocatedRes)
+
+		// Avoid double allocation when one source manages more resources
+		for allocatedKey := range allocatedRes {
+			delete(requiredResources, allocatedKey)
+		}
 	}
 
 	machine.Spec.Resources = totalAllocatedRes

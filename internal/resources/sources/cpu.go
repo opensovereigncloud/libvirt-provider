@@ -31,15 +31,7 @@ func (c *CPU) GetName() string {
 }
 
 // Modify rounding up cpu to total cores
-func (c *CPU) Modify(resources core.ResourceList) error {
-	cpu, ok := resources[core.ResourceCPU]
-	if !ok {
-		return fmt.Errorf("cannot found cpu in resources")
-	}
-
-	cpu.RoundUp(resource.Kilo)
-	resources[core.ResourceCPU] = cpu
-
+func (c *CPU) Modify(_ core.ResourceList) error {
 	return nil
 }
 
