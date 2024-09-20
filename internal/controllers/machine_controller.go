@@ -36,7 +36,6 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
 	"github.com/ironcore-dev/libvirt-provider/internal/utils"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/utils/ptr"
@@ -804,7 +803,7 @@ func (r *MachineReconciler) setDomainResources(machine *api.Machine, domain *lib
 
 	cpu := machine.Spec.Resources[core.ResourceCPU]
 	domain.VCPU = &libvirtxml.DomainVCPU{
-		Value: uint(cpu.ScaledValue(resource.Kilo)),
+		Value: uint(cpu.Value()),
 	}
 
 	return nil

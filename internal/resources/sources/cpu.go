@@ -31,15 +31,7 @@ func (c *CPU) GetName() string {
 }
 
 // Modify rounding up cpu to total cores
-func (c *CPU) Modify(resources core.ResourceList) error {
-	cpu, ok := resources[core.ResourceCPU]
-	if !ok {
-		return fmt.Errorf("cannot found cpu in resources")
-	}
-
-	cpu.RoundUp(resource.Kilo)
-	resources[core.ResourceCPU] = cpu
-
+func (c *CPU) Modify(_ core.ResourceList) error {
 	return nil
 }
 
@@ -66,7 +58,7 @@ func (c *CPU) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
 
 	// Convert the calculated CPU quantity to an int64 to ensure that it represents a whole number of CPUs.
 	cpuQuantity := int64(float64(hostCPUSum) * c.overcommitVCPU)
-	c.availableCPU = resource.NewScaledQuantity(cpuQuantity, resource.Kilo)
+	c.availableCPU = resource.NewQuantity(cpuQuantity, resource.DecimalSI)
 
 	return sets.New(core.ResourceCPU), nil
 }
