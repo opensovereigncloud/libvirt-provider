@@ -99,6 +99,9 @@ var _ = BeforeSuite(func() {
 	DeferCleanup(machineClassesFile.Close)
 	DeferCleanup(os.Remove, machineClassesFile.Name())
 
+	apinetKubeconfigFile, err = os.CreateTemp(GinkgoT().TempDir(), "apinet-kubeconfig")
+	Expect(err).NotTo(HaveOccurred())
+
 	pluginOpts := networkinterfaceplugin.NewDefaultOptions()
 	pluginOpts.PluginName = "isolated"
 
@@ -109,6 +112,7 @@ var _ = BeforeSuite(func() {
 		Address:                     filepath.Join(tempDir, "test.sock"),
 		BaseURL:                     baseURL,
 		PathSupportedMachineClasses: machineClassesFile.Name(),
+		ApinetKubeconfig:            apinetKubeconfigFile.Name(),
 		RootDir:                     filepath.Join(tempDir, "libvirt-provider"),
 		StreamingAddress:            streamingAddress,
 		Servers: app.ServersOptions{
