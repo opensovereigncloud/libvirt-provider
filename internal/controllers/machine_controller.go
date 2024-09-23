@@ -77,6 +77,7 @@ type MachineReconcilerOptions struct {
 	ResyncIntervalVolumeSize       time.Duration
 	ResyncIntervalGarbageCollector time.Duration
 	GCVMGracefulShutdownTimeout    time.Duration
+	VolumeCachePolicy              string
 }
 
 func NewMachineReconciler(
@@ -116,6 +117,7 @@ func NewMachineReconciler(
 		resyncIntervalVolumeSize:       opts.ResyncIntervalVolumeSize,
 		resyncIntervalGarbageCollector: opts.ResyncIntervalGarbageCollector,
 		gcVMGracefulShutdownTimeout:    opts.GCVMGracefulShutdownTimeout,
+		volumeCachePolicy:              opts.VolumeCachePolicy,
 	}, nil
 }
 
@@ -141,6 +143,8 @@ type MachineReconciler struct {
 
 	gcVMGracefulShutdownTimeout    time.Duration
 	resyncIntervalGarbageCollector time.Duration
+
+	volumeCachePolicy string
 }
 
 func (r *MachineReconciler) Start(ctx context.Context) error {
@@ -541,7 +545,7 @@ func (r *MachineReconciler) updateDomain(
 		return nil, nil, fmt.Errorf("error getting domain description: %w", err)
 	}
 
-	attacher, err := NewLibvirtVolumeAttacher(domainDesc, NewRunningDomainExecutor(r.libvirt, machine.ID))
+	attacher, err := NewLibvirtVolumeAttacher(domainDesc, NewRunningDomainExecutor(r.libvirt, machine.ID), r.volumeCachePolicy)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error construction volume attacher: %w", err)
 	}
@@ -733,7 +737,7 @@ func (r *MachineReconciler) domainFor(
 		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "NoIgnitionData", "Machine does not have ignition data")
 	}
 
-	attacher, err := NewLibvirtVolumeAttacher(domainDesc, NewCreateDomainExecutor(r.libvirt))
+	attacher, err := NewLibvirtVolumeAttacher(domainDesc, NewCreateDomainExecutor(r.libvirt), r.volumeCachePolicy)
 	if err != nil {
 		return nil, nil, nil, err
 	}

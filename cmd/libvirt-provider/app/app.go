@@ -94,6 +94,8 @@ type Options struct {
 	ResourceManagerOptions sources.Options
 
 	MachineEventStore machineevent.EventStoreOptions
+
+	VolumeCachePolicy string
 }
 
 type HTTPServerOptions struct {
@@ -158,9 +160,16 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.Var(&o.ResourceManagerOptions.ReservedMemorySize, "resource-manager-reserved-memory-size", "Size of memory which aren't use for vms in human-readable format. Effective only if memory source is set")
 	fs.Uint64Var(&o.ResourceManagerOptions.VMLimit, "resource-manager-vm-limit", 0, "Maximum number of the VMs to be created on the host")
 
+	// Machine event store options
 	fs.IntVar(&o.MachineEventStore.MachineEventMaxEvents, "machine-event-max-events", 100, "Maximum number of machine events that can be stored.")
 	fs.DurationVar(&o.MachineEventStore.MachineEventTTL, "machine-event-ttl", 5*time.Minute, "Time to live for machine events.")
 	fs.DurationVar(&o.MachineEventStore.MachineEventResyncInterval, "machine-event-resync-interval", 1*time.Minute, "Interval for resynchronizing the machine events.")
+
+	// Volume cache policy option
+	fs.StringVar(&o.VolumeCachePolicy, "volume-cache-policy", "none",
+		`Policy to use when creating a remote disk. (one of 'none', 'writeback', 'writethrough', 'directsync', 'unsafe').
+Note: The available options may depend on the hypervisor and libvirt version in use. 
+Please refer to the official documentation for more details: https://libvirt.org/formatdomain.html#hard-drives-floppy-disks-cdroms.`)
 
 	o.NicPlugin = networkinterfaceplugin.NewDefaultOptions()
 	o.NicPlugin.AddFlags(fs)
@@ -359,6 +368,7 @@ func Run(ctx context.Context, opts Options) error {
 			ResyncIntervalVolumeSize:       opts.ResyncIntervalVolumeSize,
 			ResyncIntervalGarbageCollector: opts.ResyncIntervalGarbageCollector,
 			GCVMGracefulShutdownTimeout:    opts.GCVMGracefulShutdownTimeout,
+			VolumeCachePolicy:              opts.VolumeCachePolicy,
 		},
 	)
 	if err != nil {
