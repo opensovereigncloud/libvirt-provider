@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/digitalocean/go-libvirt"
@@ -136,6 +137,12 @@ func (r *MachineReconciler) attachDetachVolumes(ctx context.Context, log logr.Lo
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("attach/detach error(s): %v", errs)
 	}
+
+	// sort is required for avoid reconcile loop triggered by different order of volumes.
+	sort.SliceStable(volumeStates, func(i, j int) bool {
+		return volumeStates[i].Name < volumeStates[j].Name
+	})
+
 	return volumeStates, nil
 }
 
