@@ -22,8 +22,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-const perm = 0777
-const suffixSwpExtension = ".swp"
+const (
+	suffixSwpExtension = ".swp"
+)
 
 type Options[E api.Object] struct {
 	//TODO
@@ -37,7 +38,7 @@ func NewStore[E api.Object](opts Options[E]) (*Store[E], error) {
 		return nil, fmt.Errorf("must specify opts.NewFunc")
 	}
 
-	if err := os.MkdirAll(opts.Dir, perm); err != nil {
+	if err := os.MkdirAll(opts.Dir, permFolder); err != nil {
 		return nil, fmt.Errorf("error creating store directory: %w", err)
 	}
 
@@ -278,8 +279,8 @@ func (s *Store[E]) set(obj E) (E, error) {
 
 	filePath := filepath.Join(s.dir, obj.GetID())
 	swpFilePath := filePath + suffixSwpExtension
-	if err := os.WriteFile(swpFilePath, data, 0600); err != nil {
-		return utils.Zero[E](), nil
+	if err := os.WriteFile(swpFilePath, data, permFile); err != nil {
+		return utils.Zero[E](), fmt.Errorf("failed to update file in store: %w", err)
 	}
 
 	err = os.Rename(swpFilePath, filePath)
