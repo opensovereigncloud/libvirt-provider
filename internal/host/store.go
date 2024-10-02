@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 )
 
 const perm = 0777
+const suffixSwpExtension = ".swp"
 
 type Options[E api.Object] struct {
 	//TODO
@@ -197,6 +199,10 @@ func (s *Store[E]) List(ctx context.Context) ([]E, error) {
 			continue
 		}
 
+		if strings.HasSuffix(entry.Name(), suffixSwpExtension) {
+			continue
+		}
+
 		object, err := s.Get(ctx, entry.Name())
 		if err != nil {
 			return nil, fmt.Errorf("failed to read object: %w", err)
@@ -248,7 +254,14 @@ func (s *Store[E]) set(obj E) (E, error) {
 		return utils.Zero[E](), fmt.Errorf("failed to marshal obj: %w", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(s.dir, obj.GetID()), data, 0666); err != nil {
+	filePath := filepath.Join(s.dir, obj.GetID())
+	swpFilePath := filePath + suffixSwpExtension
+	if err := os.WriteFile(swpFilePath, data, 0600); err != nil {
+		return utils.Zero[E](), nil
+	}
+
+	err = os.Rename(swpFilePath, filePath)
+	if err != nil {
 		return utils.Zero[E](), nil
 	}
 
