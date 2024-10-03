@@ -33,7 +33,6 @@ type Options[E api.Object] struct {
 }
 
 func NewStore[E api.Object](opts Options[E]) (*Store[E], error) {
-
 	if opts.NewFunc == nil {
 		return nil, fmt.Errorf("must specify opts.NewFunc")
 	}
@@ -228,6 +227,29 @@ func (s *Store[E]) Watch(_ context.Context) (store.Watch[E], error) {
 	s.watches.Insert(w)
 
 	return w, nil
+}
+
+func (s *Store[E]) CleanupSwapFiles() []error {
+	entries, err := os.ReadDir(s.dir)
+	if err != nil {
+		return []error{fmt.Errorf("cleanup: failed to list objects: %w", err)}
+	}
+
+	errs := []error{}
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), suffixSwpExtension) {
+			continue
+		}
+
+		if entry.Type().IsRegular() {
+			err = os.Remove(filepath.Join(s.dir, entry.Name()))
+			if err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	return errs
 }
 
 func (s *Store[E]) get(id string) (E, error) {

@@ -328,6 +328,16 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
+	errs := machineStore.CleanupSwapFiles()
+	// these errors don't affect bussines logic
+	if len(errs) > 0 {
+		for _, err := range errs {
+			setupLog.Error(err, "failed to remove all swap files from machine store")
+		}
+
+		return fmt.Errorf("failed to cleanup machine store")
+	}
+
 	err = initResourceManager(ctx, opts.ResourceManagerOptions, machineStore, opts.PathSupportedMachineClasses)
 	if err != nil {
 		setupLog.Error(err, "failed to initialize resource manager")
