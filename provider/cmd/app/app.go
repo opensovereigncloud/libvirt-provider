@@ -154,6 +154,8 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.Uint64Var(&o.ResourceManagerOptions.BlockedHugepages, "resource-manager-blocked-hugepages", 0, "Count of hugepages which aren't use for vms. Effective only if hugepages source is set")
 	fs.Var(&o.ResourceManagerOptions.ReservedMemorySize, "resource-manager-reserved-memory-size", "Size of memory which aren't use for vms in human-readable format. Effective only if memory source is set")
 	fs.Uint64Var(&o.ResourceManagerOptions.VMLimit, "resource-manager-vm-limit", 0, "Maximum number of the VMs to be created on the host")
+	fs.Uint64Var(&o.ResourceManagerOptions.ReservedNics, "resource-manager-reserved-nics", 0, "Count of NICs which aren't use for vms. Effective only if nic/mellanox source is set")
+	fs.Uint64Var(&o.ResourceManagerOptions.NicLimit, "resource-manager-nic-limit", 0, "Maximum number of the NICs to be used by VMs")
 
 	o.NicPlugin = networkinterfaceplugin.NewDefaultOptions()
 	o.NicPlugin.AddFlags(fs)

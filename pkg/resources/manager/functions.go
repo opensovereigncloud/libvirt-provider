@@ -13,6 +13,7 @@ import (
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/pkg/api"
 	"github.com/ironcore-dev/libvirt-provider/pkg/resources/sources"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // AddSource just registers source into manager
@@ -96,6 +97,10 @@ func GetSource(name string, options sources.Options) (Source, error) {
 		return sources.NewSourceCPU(options), nil
 	case sources.SourceHugepages:
 		return sources.NewSourceHugepages(options), nil
+	case sources.SourceMellanox:
+		return sources.NewSourceMellanox(options), nil
+	case sources.SourceNic:
+		return sources.NewSourceNIC(options), nil
 	default:
 		return nil, fmt.Errorf("unsupported source %s", name)
 	}
@@ -105,13 +110,16 @@ func GetSourcesAvailable() []string {
 	return []string{sources.SourceCPU, sources.SourceMemory, sources.SourceHugepages}
 }
 
-func GetMachineClassRequiredResources(name string) (core.ResourceList, error) {
-	class, err := mng.getMachineClass(name)
+func GetRequiredResources(machineSpec iri.MachineSpec) (core.ResourceList, error) {
+	class, err := mng.getMachineClass(machineSpec.Class)
 	if err != nil {
 		return nil, err
 	}
 
-	return class.resources.DeepCopy(), nil
+	RequiredResourceList := class.resources.DeepCopy()
+	RequiredResourceList[sources.ResourceNic] = *resource.NewQuantity(int64(len(machineSpec.NetworkInterfaces)), resource.DecimalSI)
+
+	return RequiredResourceList, nil
 }
 
 func ValidateOptions(options sources.Options) error {
@@ -121,22 +129,30 @@ func ValidateOptions(options sources.Options) error {
 		return errors.New("overcommitVCPU cannot be zero or negative")
 	}
 
-	var hasMemory, hasHugepages bool
+	availableSources := make(map[string]bool)
+
 	for _, source := range options.Sources {
-		if source == sources.SourceMemory {
-			hasMemory = true
-		}
-		if source == sources.SourceHugepages {
-			hasHugepages = true
-		}
+		availableSources[source] = true
 	}
 
-	if options.ReservedMemorySize != 0 && !hasMemory {
+	if options.ReservedMemorySize != 0 && !availableSources[sources.SourceMemory] {
 		return fmt.Errorf("reserved memory size can only be set with %s source", sources.SourceMemory)
 	}
 
-	if options.BlockedHugepages != 0 && !hasHugepages {
+	if options.BlockedHugepages != 0 && !availableSources[sources.SourceHugepages] {
 		return fmt.Errorf("blocked hugepages can only be set with %s source", sources.SourceHugepages)
+	}
+
+	if options.NicLimit != 0 && !availableSources[sources.SourceNic] {
+		return fmt.Errorf("NIC limit can only be set with %s source", sources.SourceNic)
+	}
+
+	if availableSources[sources.SourceNic] && options.NicLimit == 0 {
+		return fmt.Errorf("NIC limit has to be set while using source %s", sources.SourceNic)
+	}
+
+	if options.ReservedNics != 0 && !availableSources[sources.SourceNic] && !availableSources[sources.SourceMellanox] {
+		return fmt.Errorf("reserved nics can only be set with source %s or %s", sources.SourceNic, sources.SourceMellanox)
 	}
 
 	return nil

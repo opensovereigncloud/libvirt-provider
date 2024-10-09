@@ -12,6 +12,8 @@ type Options struct {
 	OvercommitVCPU     float64
 	ReservedMemorySize MemorySize
 	BlockedHugepages   uint64
+	ReservedNics       uint64
+	NicLimit           uint64
 	VMLimit            uint64
 }
 

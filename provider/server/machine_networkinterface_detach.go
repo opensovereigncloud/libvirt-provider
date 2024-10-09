@@ -7,8 +7,12 @@ import (
 	"context"
 	"fmt"
 
+	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/pkg/api"
+	"github.com/ironcore-dev/libvirt-provider/pkg/resources/manager"
+	"github.com/ironcore-dev/libvirt-provider/pkg/resources/sources"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func (s *Server) DetachNetworkInterface(
@@ -45,6 +49,11 @@ func (s *Server) DetachNetworkInterface(
 
 	if _, err := s.machineStore.Update(ctx, apiMachine); err != nil {
 		return nil, fmt.Errorf("failed to update machine: %w", err)
+	}
+
+	err = manager.Deallocate(apiMachine, core.ResourceList{sources.ResourceNic: *resource.NewQuantity(int64(1), resource.DecimalSI)})
+	if err != nil {
+		return nil, fmt.Errorf("failed to deallocate nic in resource manager: %w", err)
 	}
 
 	return &iri.DetachNetworkInterfaceResponse{}, nil
