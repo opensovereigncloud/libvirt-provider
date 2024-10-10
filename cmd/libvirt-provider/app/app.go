@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -106,6 +107,7 @@ type HTTPServerOptions struct {
 type ServersOptions struct {
 	Metrics     HTTPServerOptions
 	HealthCheck HTTPServerOptions
+	PPROF       HTTPServerOptions
 }
 
 type LibvirtOptions struct {
@@ -138,6 +140,9 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.Servers.HealthCheck.Addr, "servers-health-check-address", ":8181", "Address to listen on health check liveness.")
 	fs.DurationVar(&o.Servers.HealthCheck.GracefulTimeout, "servers-health-check-gracefultimeout", 2*time.Second, "Graceful timeout for shutdown health check server.")
 
+	fs.StringVar(&o.Servers.PPROF.Addr, "servers-pprof-address", "", "Address to listen on exposing of pprof. If address isn't set, server is disabled.")
+	fs.DurationVar(&o.Servers.PPROF.GracefulTimeout, "servers-pprof-gracefultimeout", 2*time.Second, "Graceful timeout for shutdown pprof server.")
+
 	fs.Var(&o.GuestAgent, "guest-agent-type", fmt.Sprintf("Guest agent implementation to use. Available: %v", guestAgentOptionAvailable()))
 
 	// LibvirtOptions
@@ -168,7 +173,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	// Volume cache policy option
 	fs.StringVar(&o.VolumeCachePolicy, "volume-cache-policy", "none",
 		`Policy to use when creating a remote disk. (one of 'none', 'writeback', 'writethrough', 'directsync', 'unsafe').
-Note: The available options may depend on the hypervisor and libvirt version in use. 
+Note: The available options may depend on the hypervisor and libvirt version in use.
 Please refer to the official documentation for more details: https://libvirt.org/formatdomain.html#hard-drives-floppy-disks-cdroms.`)
 
 	o.NicPlugin = networkinterfaceplugin.NewDefaultOptions()
@@ -472,6 +477,15 @@ func Run(ctx context.Context, opts Options) error {
 		return nil
 	})
 
+	g.Go(func() error {
+		setupLog.Info("Starting pprof server")
+		if err := runPPROFServer(ctx, setupLog, opts.Servers.PPROF); err != nil {
+			setupLog.Error(err, "failed to start pprof server")
+			return err
+		}
+		return nil
+	})
+
 	return g.Wait()
 }
 
@@ -570,6 +584,54 @@ func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServer
 	}
 
 	setupLog.Info("Metrics server stopped serve new connections")
+
+	wg.Wait()
+
+	return nil
+}
+
+func runPPROFServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOptions) error {
+	if opts.Addr == "" {
+		setupLog.Info("pprof server address isn't configured. pprof server is disabled.")
+		return nil
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+	srv := http.Server{
+		Addr:    opts.Addr,
+		Handler: mux,
+	}
+
+	setupLog.Info("Starting pprof server on " + opts.Addr)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-ctx.Done()
+		setupLog.Info("Shutting down pprof server")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), opts.GracefulTimeout)
+		defer cancel()
+		locErr := srv.Shutdown(shutdownCtx)
+		if locErr != nil {
+			setupLog.Error(locErr, "pprof server wasn't shutdown properly")
+		} else {
+			setupLog.Info("pprof server is shutdown")
+		}
+	}()
+
+	err := srv.ListenAndServe()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("error listening / serving pprof server: %w", err)
+	}
+
+	setupLog.Info("pprof server stopped serve new connections")
 
 	wg.Wait()
 
