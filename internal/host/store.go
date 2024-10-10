@@ -18,7 +18,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
 	utilssync "github.com/ironcore-dev/libvirt-provider/internal/sync"
 	"github.com/ironcore-dev/libvirt-provider/internal/utils"
-	"k8s.io/apimachinery/pkg/util/json"
+	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -253,7 +253,7 @@ func (s *Store[E]) CleanupSwapFiles() []error {
 }
 
 func (s *Store[E]) get(id string) (E, error) {
-	file, err := os.ReadFile(filepath.Join(s.dir, id))
+	fd, err := os.Open(filepath.Join(s.dir, id))
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return utils.Zero[E](), fmt.Errorf("failed to read file: %w", err)
@@ -262,32 +262,58 @@ func (s *Store[E]) get(id string) (E, error) {
 		return utils.Zero[E](), fmt.Errorf("object with id %q %w", id, store.ErrNotFound)
 	}
 
+	defer func() {
+		// Todo: improve logging of error
+		_ = fd.Close()
+	}()
+
 	obj := s.newFunc()
-	if err := json.Unmarshal(file, &obj); err != nil {
+	decoder := yaml.NewDecoder(fd)
+	err = decoder.Decode(obj)
+	if err != nil {
 		return utils.Zero[E](), fmt.Errorf("failed to unmarshal object from file %s: %w", id, err)
 	}
 
 	return obj, err
 }
 
-func (s *Store[E]) set(obj E) (E, error) {
-	data, err := json.Marshal(obj)
-	if err != nil {
-		return utils.Zero[E](), fmt.Errorf("failed to marshal obj: %w", err)
-	}
-
+func (s *Store[E]) set(obj E) (result E, err error) {
 	filePath := filepath.Join(s.dir, obj.GetID())
 	swpFilePath := filePath + suffixSwpExtension
-	if err := os.WriteFile(swpFilePath, data, 0600); err != nil {
-		return utils.Zero[E](), nil
+	result = utils.Zero[E]()
+
+	fd, err := os.OpenFile(swpFilePath, os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		locErr := fd.Close()
+		if err == nil && locErr != nil {
+			err = locErr
+		}
+	}()
+
+	encoder := yaml.NewEncoder(fd)
+	err = encoder.Encode(obj)
+	if err != nil {
+		err = fmt.Errorf("failed to marshal obj: %w", err)
+		return
+	}
+
+	err = fd.Sync()
+	if err != nil {
+		err = fmt.Errorf("failed flush data for file %s: %w", swpFilePath, err)
+		return
 	}
 
 	err = os.Rename(swpFilePath, filePath)
 	if err != nil {
-		return utils.Zero[E](), nil
+		return
 	}
 
-	return obj, nil
+	result = obj
+	return
 }
 
 func (s *Store[E]) delete(id string) error {
