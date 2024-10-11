@@ -35,14 +35,8 @@ func (c *CPU) Modify(_ core.ResourceList) error {
 	return nil
 }
 
-func (c *CPU) CalculateMachineClassQuantity(requiredResources core.ResourceList) int64 {
-	cpu, ok := requiredResources[core.ResourceCPU]
-	if !ok {
-		// this code cannot be call ever
-		return 0
-	}
-
-	return int64(math.Floor(float64(c.availableCPU.Value()) / float64(cpu.Value())))
+func (c *CPU) CalculateMachineClassQuantity(_ core.ResourceName, quantity *resource.Quantity) int64 {
+	return int64(math.Floor(float64(c.availableCPU.Value()) / float64(quantity.Value())))
 }
 
 func (c *CPU) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {

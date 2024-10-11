@@ -8,6 +8,7 @@ import (
 	"time"
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
+	"libvirt.org/go/libvirtxml"
 )
 
 type Machine struct {
@@ -46,6 +47,7 @@ type MachineStatus struct {
 	State                  MachineState             `json:"state"`
 	ImageRef               string                   `json:"imageRef"`
 	GuestAgentStatus       *GuestAgentStatus        `json:"guestAgentStatus,omitempty"`
+	PCIDevices             []PCIDevice              `json:"pciDevices"`
 }
 
 type MachineState string
@@ -121,4 +123,29 @@ const (
 
 type GuestAgentStatus struct {
 	Addr string `json:"addr,omitempty"`
+}
+
+type PCIDevice struct {
+	Addr PCIAddress
+	Name core.ResourceName
+}
+
+type PCIAddress struct {
+	Domain   uint
+	Bus      uint
+	Slot     uint
+	Function uint
+}
+
+func (p PCIAddress) GetDomainSubsysPCI() *libvirtxml.DomainHostdevSubsysPCI {
+	return &libvirtxml.DomainHostdevSubsysPCI{
+		Source: &libvirtxml.DomainHostdevSubsysPCISource{
+			Address: &libvirtxml.DomainAddressPCI{
+				Domain:   &p.Domain,
+				Bus:      &p.Bus,
+				Slot:     &p.Slot,
+				Function: &p.Function,
+			},
+		},
+	}
 }
