@@ -27,4 +27,3 @@ graph TD
     C -- creates --> I[Libvirt Domain XML]
     C -- defines --> VC[Supported MachineClasses]
 ```
-

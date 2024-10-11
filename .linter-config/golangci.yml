@@ -1,0 +1,168 @@
+run:
+  # timeout for analysis, e.g. 30s, 5m, default is 1m
+  timeout: 5m
+  modules-download-mode: readonly
+  build-tags:
+    - exclude_graphdriver_btrfs
+    - btrfs_noversion
+    - exclude_graphdriver_devicemapper
+    - containers_image_openpgp
+    - remote
+
+output:
+  sort-results: true
+
+linters:
+  enable-all: true
+  disable:
+    - contextcheck # creating of new context doesn't make sense for this small tool
+    - godox # Tool for detection of FIXME, TODO. Reason: todo's are cool.
+    - depguard # we don't have list of trusted packages.
+    - nlreturn # Checks for a new line before return and branch statements to increase code clarity. Reason: it's a matter of taste.
+    - exhaustruct # default values are good sometimes or they can be set later.
+    - wrapcheck # wrapping of error can be useful, but logs contain specific steps + maybe it will be better migrate to another error library
+    - wsl # Adds mandatory empty lines around code blocks. Reason: it's a matter of taste.
+    # deprecated
+    - gomnd
+    - execinquery
+
+linters-settings:
+  nlreturn:
+    block-size: 4
+
+  tagalign:
+    align: true
+    sort: true
+
+  varnamelen:
+    max-distance: 15
+
+  gci:
+    # Section configuration to compare against.
+    # Section names are case-insensitive and may contain parameters in ().
+    # The default order of sections is `standard > default > custom > blank > dot`,
+    # If `custom-order` is `true`, it follows the order of `sections` option.
+    # Default: ["standard", "default"]
+    sections:
+      - standard # Standard section: captures all standard packages.
+      - default # Default section: contains all imports that could not be matched to another section type.
+      - prefix(github.com/ironcore-dev/ironcore/)
+      - prefix(github.com/ironcore-dev/libvirt-provider/)
+      - blank
+      - dot
+    # Skip generated files.
+    # Default: true
+    skip-generated: true
+    # Enable custom order of sections.
+    # If `true`, make the section order the same as the order of `sections`.
+    # Default: false
+    custom-order: true
+
+  cyclop:
+    max-complexity: 20
+    skip-tests: true
+
+  revive:
+    severity: warning
+    confidence: 0.8
+
+  dupl:
+    threshold: 30
+
+  errcheck:
+    # report about not checking of errors in type assertions: `a := b.(MyStruct)`;
+    # default is false: such cases aren't reported by default.
+    check-type-assertions: true
+
+    # report about assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`;
+    # default is false: such cases aren't reported by default.
+    check-blank: true
+
+  errorlint:
+    # Check whether fmt.Errorf uses the %w verb for formatting errors.
+    errorf: true
+    # Check for plain type assertions and type switches
+    asserts: true
+    # Check for plain error comparisons
+    comparison: true
+
+  funlen:
+    lines: 100
+    statements: 50
+
+  goconst:
+    # Search also for duplicated numbers, false by default.
+    numbers: true
+
+  gocritic:
+    disabled-checks:
+      - unnamedResult # Reason: named return params may be less readable but it is discussible.
+
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+      - experimental
+      - opinionated
+
+  gocyclo:
+    # Minimal code complexity to report, 30 by default (but we recommend 10-20).
+    min-complexity: 20
+
+  gofumpt:
+    extra-rules: true
+
+  gosimple:
+    checks: [ "all" ]
+
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment # it requires switch string to pointer
+
+  lll:
+    line-length: 170
+
+  misspell:
+    locale: US
+
+  staticcheck:
+    checks: [ "all" ]
+
+  stylecheck:
+    checks: ["all", "-ST1000", "-ST1020", "-ST1021", "-ST1022"]
+
+  nestif:
+    min-complexity: 5
+
+  whitespace:
+    multi-if: false   # Enforces newlines (or comments) after every multi-line if statement. Reason: it's a matter of taste.
+    multi-func: false # Enforces newlines (or comments) after every multi-line function signature. Reason: it's a matter of taste.
+
+issues:
+  exclude-dirs:
+    - vendor
+    - artifacts
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - funlen
+        - gocyclo
+        - dupl
+        - gosec
+        - ineffassign
+        - forcetypeassert
+
+  # To list all excluded by default patterns execute `golangci-lint run --help`.
+  # Default value for this option is true.
+  exclude-use-default: false
+
+  # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
+  max-issues-per-linter: 0
+
+  # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
+  max-same-issues: 0
+
+  # Fix found issues (if it's supported by the linter)
+  fix: false # you can change for temporary only
