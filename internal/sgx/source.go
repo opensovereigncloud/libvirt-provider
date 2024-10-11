@@ -68,14 +68,10 @@ func (c *SGX) Modify(resources core.ResourceList) error {
 	return nil
 }
 
-func (c *SGX) CalculateMachineClassQuantity(requiredResources core.ResourceList) int64 {
-	sgx, ok := requiredResources[ResourceMemorySGX]
-	if !ok {
-		return sources.QuantityCountIgnore
-	}
+func (c *SGX) CalculateMachineClassQuantity(_ core.ResourceName, quantity *resource.Quantity) int64 {
 	count := int64(0)
-	for _, quantity := range c.availableResources {
-		numaCount := int64(math.Floor(float64(quantity.Value()) / float64(sgx.Value())))
+	for _, numaQuantity := range c.availableResources {
+		numaCount := int64(math.Floor(float64(numaQuantity.Value()) / float64(quantity.Value())))
 		if numaCount < 0 {
 			numaCount = 0
 		}

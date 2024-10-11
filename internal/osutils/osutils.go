@@ -6,7 +6,10 @@ package osutils
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
+
+	"github.com/go-logr/logr"
 )
 
 func checkStatExists(filename string, check func(stat os.FileInfo) error) (bool, error) {
@@ -48,4 +51,20 @@ func WriteFileIfNoFileExists(name string, data []byte, perm os.FileMode) error {
 		return err
 	}
 	return os.WriteFile(name, data, perm)
+}
+
+func CloseWithErrorLogging(resource io.Closer, message string, log *logr.Logger) {
+	if err := resource.Close(); err != nil {
+		// Create a default message when no message is provided
+		if message == "" {
+			message = fmt.Sprintf("error closing %T", resource)
+		}
+
+		// Initialize a default logger when no logger is provided
+		if log == nil {
+			return
+		}
+
+		log.Error(err, message)
+	}
 }

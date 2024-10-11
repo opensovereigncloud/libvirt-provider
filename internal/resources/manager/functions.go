@@ -102,11 +102,17 @@ func GetSource(name string, options sources.Options) (Source, error) {
 		return sources.NewSourceCPU(options), nil
 	case sources.SourceHugepages:
 		return sources.NewSourceHugepages(options), nil
+	case sources.SourcePCI:
+		return sources.NewSourcePCI(options), nil
 	case sgx.SourceSGX:
 		return sgx.NewSourceSGX(options), nil
 	default:
 		return nil, fmt.Errorf("unsupported source %s", name)
 	}
+}
+
+func GetPCIManager() PCIManager {
+	return mng.getPCIManager()
 }
 
 func GetSourcesAvailable() []string {
@@ -129,7 +135,7 @@ func ValidateOptions(options sources.Options) error {
 		return errors.New("overcommitVCPU cannot be zero or negative")
 	}
 
-	var hasMemory, hasHugepages bool
+	var hasMemory, hasHugepages, hasPCI bool
 	for _, source := range options.Sources {
 		if source == sources.SourceMemory {
 			hasMemory = true
@@ -137,6 +143,13 @@ func ValidateOptions(options sources.Options) error {
 		if source == sources.SourceHugepages {
 			hasHugepages = true
 		}
+		if source == sources.SourcePCI {
+			hasPCI = true
+		}
+	}
+
+	if options.PCIDevicesFile == "" && hasPCI {
+		return fmt.Errorf("missing path to supported pci devices for pci source")
 	}
 
 	if options.ReservedMemorySize != 0 && !hasMemory {
