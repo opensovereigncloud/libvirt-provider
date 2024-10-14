@@ -28,7 +28,7 @@ spec:
           image: ubuntu
           securityContext:
             privileged: true
-          command: [ '/bin/bash', '-c' ]
+          command: ['/bin/bash', '-c']
           env:
             - name: USER
               value: "libvirt-provider"
@@ -156,7 +156,7 @@ spec:
       terminationGracePeriodSeconds: 10
       volumes:
         - name: var-run
-          emptyDir: { }
+          emptyDir: {}
         - name: libvirt
           hostPath:
             path: /var/run/libvirt

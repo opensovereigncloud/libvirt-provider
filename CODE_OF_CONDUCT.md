@@ -1,1 +1,3 @@
+# Code of Conduct
+
 Please refer to the [Gardener on Metal code of conduct](https://onmetal.github.io/documentation/contribute/overview/#code-of-conduct).

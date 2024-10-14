@@ -14,4 +14,3 @@ else
   echo "No Github pat given, rewriting to use plain ssh auth"
   git config --global url."git@github.com:".insteadOf "https://github.com"
 fi
-

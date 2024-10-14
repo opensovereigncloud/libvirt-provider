@@ -16,7 +16,6 @@ workflow:
 file-lint:
   stage: lint
   needs: []
-  allow_failure: true
   variables:
     FILES_LINT_CONFIG: './.linter-config/file-lint.conf'
   tags:
@@ -38,7 +37,6 @@ file-lint:
 yaml-lint:
   stage: lint
   needs: []
-  allow_failure: true
   variables:
     YAML_LINT_CONFIG: './.linter-config/yamllint.yaml'
   tags:
@@ -58,7 +56,6 @@ yaml-lint:
 markdown-lint:
   stage: lint
   needs: []
-  allow_failure: true
   variables:
     MARKDOWN_LINT_CONFIG: './.linter-config/mdlrc'
     MARKDOWN_LINT_IGNORE_CONFIG: "./.linter-config/.markdownlintignore"
