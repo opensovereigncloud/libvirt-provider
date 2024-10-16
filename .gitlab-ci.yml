@@ -124,3 +124,10 @@ build:
           make
         echo 'unqualified-search-registries = ["docker.io"]' > /etc/containers/registries.conf
         CONTAINER_TOOL='podman --remote --url "unix:///run/podman/podman.sock"' CONTAINER_BUILDARGS="--platform linux/amd64 --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64" make docker-build
+
+include:
+  - component: 'gitlab.devops.telekom.de/cas-devs/osc/common/pipeline-community/components/mtr/configure-repo@stable'
+    inputs:
+      image-list-type: 'none'
+      version: 'stable'
+      stage: 'post-processing'
