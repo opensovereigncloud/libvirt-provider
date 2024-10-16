@@ -2,6 +2,7 @@ stages:
   - lint
   - test
   - build
+  - post-processing
 
 variables:
   CI_LINTER_IMG: "mtr.devops.telekom.de/osc/common/pipeline-community/osc-gitlab-runner-linter:alpine-latest-0.8"
