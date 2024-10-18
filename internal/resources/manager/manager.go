@@ -565,7 +565,7 @@ func (r *resourceManager) reset() {
 	r.machineclassesFile = ""
 	r.initialized = false
 	r.registredResources = map[core.ResourceName]Source{}
-	r.pciManager = &dummyPCIManager{}
+	r.pciManager = nil
 }
 
 // this doesn't is very hacky and bad
@@ -597,14 +597,4 @@ func loadMachineClassesFile(filename string) ([]*MachineClass, error) {
 	}
 
 	return loadMachineClasses(file)
-}
-
-type dummyPCIManager struct{}
-
-func (d *dummyPCIManager) AllocatePCIAddress(_ core.ResourceList) ([]api.PCIDevice, error) {
-	return []api.PCIDevice{}, nil
-}
-
-func (d *dummyPCIManager) DeallocatePCIAddress(_ []api.PCIDevice) error {
-	return nil
 }

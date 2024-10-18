@@ -25,19 +25,21 @@ import (
 )
 
 const (
-	SourcePCI           string = "pci"
-	sysPCIDevicesFolder string = "/sys/bus/pci/devices"
+	SourcePCI           = "pci"
+	sysPCIDevicesFolder = "/sys/bus/pci/devices"
 
 	attributeVendor = "vendor"
 	attributeClass  = "class"
 )
 
-type HexID = string
+type HexID string
 
+// DeviceList holds a list of vendors and validates unique IDs
 type DeviceList struct {
 	Vendors []*Vendor `yaml:"vendors" validate:"unique=ID"`
 }
 
+// Vendor represents a PCI vendor with a list of devices
 type Vendor struct {
 	ID            HexID     `yaml:"id" validate:"required,hexadecimal"`
 	Name          string    `yaml:"name" validate:"required"`
@@ -45,15 +47,16 @@ type Vendor struct {
 	loadedDevices map[HexID]*Device
 }
 
+// Device represents a PCI device
 type Device struct {
 	ID   HexID  `yaml:"id" validate:"required,hexadecimal"`
 	Name string `yaml:"name" validate:"required"`
 	Type string `yaml:"type" validate:"required"`
 }
 
+// PCI manages the allocation and deallocation of PCI devices and their resources.
 type PCI struct {
-	deviceFilePath string
-	// this can be optimize
+	deviceFilePath     string
 	devices            map[core.ResourceName][]*api.PCIAddress
 	availableResources core.ResourceList
 	log                logr.Logger
@@ -78,13 +81,10 @@ func (p *PCI) Modify(_ core.ResourceList) error {
 }
 
 func (p *PCI) CalculateMachineClassQuantity(resource core.ResourceName, quantity *resource.Quantity) int64 {
-	availableQuantity, ok := p.availableResources[resource]
-	if !ok {
-		// this cannot be call ever
-		return 0
+	if availableQuantity, exists := p.availableResources[resource]; exists {
+		return int64(math.Floor(float64(availableQuantity.Value()) / float64(quantity.Value())))
 	}
-
-	return int64(math.Floor(float64(availableQuantity.Value()) / float64(quantity.Value())))
+	return 0
 }
 
 func (p *PCI) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
@@ -97,48 +97,39 @@ func (p *PCI) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
 	for key := range p.availableResources {
 		supportedResources.Insert(key)
 	}
-
 	return supportedResources, nil
 }
 
 func (p *PCI) Allocate(requiredResources core.ResourceList) (core.ResourceList, error) {
 	allocatedResources := core.ResourceList{}
-	for key, quantity := range p.availableResources {
-		dev, ok := requiredResources[key]
-		if !ok {
-			continue
-		}
 
-		newQuantity := quantity
-		newQuantity.Sub(dev)
-		if newQuantity.Sign() == -1 {
-			return nil, fmt.Errorf("failed to allocate resource %s: %w", key, ErrResourceNotAvailable)
-		}
+	for key, requiredQty := range requiredResources {
+		if availableQty, exists := p.availableResources[key]; exists {
+			newQty := availableQty.DeepCopy()
+			newQty.Sub(requiredQty)
 
-		allocatedResources[key] = quantity
-		p.availableResources[key] = newQuantity
+			if newQty.Sign() == -1 {
+				return nil, fmt.Errorf("failed to allocate resource %s: %w", key, ErrResourceNotAvailable)
+			}
+
+			allocatedResources[key] = availableQty
+			p.availableResources[key] = newQty
+		}
 	}
-
-	// for key, quantity := range allocatedResources {
-	// 	p.availableResources[key] = quantity
-	// }
 
 	return allocatedResources, nil
 }
 
 func (p *PCI) Deallocate(requiredResources core.ResourceList) []core.ResourceName {
 	deallocatedResources := []core.ResourceName{}
+
 	for key, quantity := range requiredResources {
-		dev, ok := p.availableResources[key]
-		if !ok {
-			continue
+		if availableQty, exists := p.availableResources[key]; exists {
+			availableQty.Add(quantity)
+			p.availableResources[key] = availableQty
+			deallocatedResources = append(deallocatedResources, key)
 		}
-
-		dev.Add(quantity)
-		p.availableResources[key] = dev
-		deallocatedResources = append(deallocatedResources, key)
 	}
-
 	return deallocatedResources
 }
 
@@ -147,27 +138,18 @@ func (p *PCI) GetAvailableResources() core.ResourceList {
 }
 
 func (p *PCI) AllocatePCIAddress(resources core.ResourceList) ([]api.PCIDevice, error) {
-	domainAddrs := []api.PCIDevice{}
-	for key, addrs := range p.devices {
-		quantity, ok := resources[key]
-		if !ok {
-			continue
-		}
+	var domainAddrs []api.PCIDevice
 
-		availableAddressesCount := int64(len(addrs))
+	for resourceName, addrs := range p.devices {
+		if requiredQty, exists := resources[resourceName]; exists {
+			if int64(len(addrs)) < requiredQty.Value() {
+				return nil, fmt.Errorf("not enough PCI addresses for device %s", resourceName)
+			}
 
-		if quantity.Value() > availableAddressesCount {
-			return nil, fmt.Errorf("failed to get pci addresses for device %s: not enough pci addresses", key)
-		}
-
-		for i := int64(0); i < quantity.Value(); i++ {
-			domainAddrs = append(domainAddrs, api.PCIDevice{Addr: *addrs[i], Name: key})
-		}
-
-		if quantity.Value() == availableAddressesCount {
-			p.devices[key] = []*api.PCIAddress{}
-		} else {
-			p.devices[key] = addrs[quantity.Value():]
+			for i := int64(0); i < requiredQty.Value(); i++ {
+				domainAddrs = append(domainAddrs, api.PCIDevice{Addr: *addrs[i], Name: resourceName})
+			}
+			p.devices[resourceName] = addrs[requiredQty.Value():]
 		}
 	}
 
@@ -175,14 +157,23 @@ func (p *PCI) AllocatePCIAddress(resources core.ResourceList) ([]api.PCIDevice, 
 }
 
 func (p *PCI) DeallocatePCIAddress(devices []api.PCIDevice) error {
-	for index := range devices {
-		addrs, ok := p.devices[devices[index].Name]
+	for _, device := range devices {
+		addrs, ok := p.devices[device.Name]
 		if !ok {
 			continue
 		}
 
-		addrs = append(addrs, &devices[index].Addr)
-		p.devices[devices[index].Name] = addrs
+		// Check if the address is already in the list to avoid duplicates
+		addressToAdd := &device.Addr
+		for _, addr := range addrs {
+			if addr == addressToAdd {
+				// Address already exists, skip adding it again
+				continue
+			}
+		}
+
+		// Add the address to the list
+		p.devices[device.Name] = append(p.devices[device.Name], addressToAdd)
 	}
 
 	return nil
@@ -193,10 +184,10 @@ func (p *PCI) loadSupportedDevices() (map[HexID]*Vendor, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer osutils.CloseWithErrorLogging(fd, fmt.Sprintf("error closing file. Path: %s", fd.Name()), &p.log)
 
-	devices := DeviceList{}
-	decoder := yaml.NewDecoder(fd)
-	err = decoder.Decode(&devices)
+	var devices DeviceList
+	err = yaml.NewDecoder(fd).Decode(&devices)
 	if err != nil {
 		return nil, err
 	}
@@ -207,83 +198,73 @@ func (p *PCI) loadSupportedDevices() (map[HexID]*Vendor, error) {
 		return nil, err
 	}
 
-	deviceList := make(map[HexID]*Vendor, len(devices.Vendors))
+	deviceMap := make(map[HexID]*Vendor, len(devices.Vendors))
 	for _, vendor := range devices.Vendors {
-		deviceList[strings.ToLower(vendor.ID)] = vendor
 		vendor.loadedDevices = make(map[HexID]*Device, len(vendor.Devices))
+		deviceMap[vendor.ID] = vendor
+
 		for _, device := range vendor.Devices {
-			vendor.loadedDevices[strings.ToLower(device.ID)] = device
+			vendor.loadedDevices[device.ID] = device
 		}
 	}
 
-	return deviceList, nil
+	return deviceMap, nil
 }
 
 func (p *PCI) discoverDevices() error {
-	devices, err := p.loadSupportedDevices()
+	supportedDevices, err := p.loadSupportedDevices()
 	if err != nil {
 		return err
 	}
 
 	dirEntries, err := os.ReadDir(sysPCIDevicesFolder)
 	if err != nil {
-		return fmt.Errorf("error reading the pci devices from %s: %w", sysPCIDevicesFolder, err)
+		return fmt.Errorf("error reading PCI devices: %w", err)
 	}
 
 	for _, entry := range dirEntries {
-		deviceFolder := filepath.Join(sysPCIDevicesFolder, entry.Name())
-
-		err = p.processPCIDevice(devices, deviceFolder)
+		devicePath := filepath.Join(sysPCIDevicesFolder, entry.Name())
+		err = p.processPCIDevice(supportedDevices, devicePath)
 		if err != nil {
-			p.log.Error(err, "error processing PCI device", "Device", entry.Name())
-			continue
+			p.log.Error(err, "error processing PCI device", "device", entry.Name())
 		}
 	}
 
 	return nil
 }
 
-func (p *PCI) processPCIDevice(supportedDevices map[HexID]*Vendor, folder string) error {
-	vendorID, err := p.readPCIAttribute(folder, attributeVendor)
+func (p *PCI) processPCIDevice(supportedDevices map[HexID]*Vendor, deviceFolder string) error {
+	vendorID, err := p.readPCIAttribute(deviceFolder, attributeVendor)
 	if err != nil {
 		return err
 	}
 
-	vendor, ok := supportedDevices[vendorID]
-	if !ok {
-		return nil
+	vendor, vendorExists := supportedDevices[HexID(vendorID)]
+	if !vendorExists {
+		return fmt.Errorf("unsupported vendor ID: %s", vendorID)
 	}
 
-	classID, err := p.readPCIAttribute(folder, attributeClass)
+	classID, err := p.readPCIAttribute(deviceFolder, attributeClass)
 	if err != nil {
 		return err
 	}
 
-	device, ok := vendor.loadedDevices[classID]
-	if !ok {
-		return nil
+	device, deviceExists := vendor.loadedDevices[HexID(classID)]
+	if !deviceExists {
+		return fmt.Errorf("unsupported class ID: %s for vendor: %s", classID, vendor.Name)
 	}
 
-	pciAddr, err := parsePCIAddress(filepath.Base(folder))
+	pciAddr, err := parsePCIAddress(filepath.Base(deviceFolder))
 	if err != nil {
 		return err
 	}
 
-	resourceName := core.ResourceName(device.Type + "." + vendor.Name + "/" + device.Name)
-
+	resourceName := core.ResourceName(fmt.Sprintf("%s.%s/%s", device.Type, vendor.Name, device.Name))
 	quantity := p.availableResources[resourceName]
 	quantity.Add(*resource.NewQuantity(1, resource.DecimalSI))
 	p.availableResources[resourceName] = quantity
 
-	addresses := p.devices[resourceName]
-	if len(addresses) == 0 {
-		addresses = []*api.PCIAddress{pciAddr}
-	} else {
-		addresses = append(addresses, pciAddr)
-	}
-
-	p.devices[resourceName] = addresses
-
+	p.devices[resourceName] = append(p.devices[resourceName], pciAddr)
 	return nil
 }
 
@@ -323,32 +304,30 @@ func parsePCIAddress(address string) (*api.PCIAddress, error) {
 
 	domain, err := parseHexStringToUint(domainStr)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing domain to uint: %w", err)
+		return nil, fmt.Errorf("error parsing domain: %w", err)
 	}
 
 	bus, err := parseHexStringToUint(busStr)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing bus to uint: %w", err)
+		return nil, fmt.Errorf("error parsing bus: %w", err)
 	}
 
 	slot, err := parseHexStringToUint(slotStr)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing slot to uint: %w", err)
+		return nil, fmt.Errorf("error parsing slot: %w", err)
 	}
 
 	function, err := parseHexStringToUint(functionStr)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing function to uint: %w", err)
+		return nil, fmt.Errorf("error parsing function: %w", err)
 	}
 
-	addr := api.PCIAddress{
+	return &api.PCIAddress{
 		Domain:   domain,
 		Bus:      bus,
 		Slot:     slot,
 		Function: function,
-	}
-
-	return &addr, nil
+	}, nil
 }
 
 func parseHexStringToUint(hexStr string) (uint, error) {
