@@ -112,7 +112,7 @@ func (p *PCI) Allocate(requiredResources core.ResourceList) (core.ResourceList, 
 				return nil, fmt.Errorf("failed to allocate resource %s: %w", key, ErrResourceNotAvailable)
 			}
 
-			allocatedResources[key] = availableQty
+			allocatedResources[key] = requiredQty
 			p.availableResources[key] = newQty
 		}
 	}
