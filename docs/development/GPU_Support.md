@@ -39,12 +39,12 @@ vendors:
 ### Explanation of the PCI Devices File Structure
 
 - **vendors**: This is a list of vendors providing GPU resources. Each vendor must have a unique `id` and a `name`.
-  - **id**: The vendor's hexadecimal ID (e.g., "0x10de" for NVIDIA).
-  - **name**: The name of the vendor (e.g., "nvidia").
-  - **devices**: This is a list of devices associated with the vendor.
-    - **id**: The device's hexadecimal ID (e.g., "0x030200" for a VGA-Compatible Controller).
-    - **name**: A human-readable name for the device (e.g., "ga100gl.rev.a1").
-    - **type**: Specifies the type of the device (e.g., "gpu").
+    - **id**: The vendor's hexadecimal ID (e.g., "0x10de" for NVIDIA).
+    - **name**: The name of the vendor (e.g., "nvidia").
+    - **devices**: This is a list of devices associated with the vendor.
+        - **id**: The device's hexadecimal ID (e.g., "0x030200" for a VGA-Compatible Controller).
+        - **name**: A human-readable name for the device (e.g., "ga100gl.rev.a1").
+        - **type**: Specifies the type of the device (e.g., "gpu").
 
 ## Conclusion
 
