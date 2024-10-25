@@ -1,126 +1,151 @@
 stages:
-  - lint
-  - test
-  - build
+  # - lint
+  # - test
+  # - build
+  - check_and_create_mr
 
 variables:
-  CI_LINTER_IMG: "mtr.devops.telekom.de/osc/common/pipeline-community/osc-gitlab-runner-linter:alpine-latest-0.8"
-  GO_BUILD_IMG: "mtr.devops.telekom.de/osc/common/pipeline-community/osc-go-builder:1.22.4-alpine3.19"
-  PODMAN_IMG: "${OSC_HOST}/osc/onmetal/tools/releaser:v1.0.10"
+  # CI_LINTER_IMG: "mtr.devops.telekom.de/osc/common/pipeline-community/osc-gitlab-runner-linter:alpine-latest-0.8"
+  # GO_BUILD_IMG: "mtr.devops.telekom.de/osc/common/pipeline-community/osc-go-builder:1.22.4-alpine3.19"
+  # PODMAN_IMG: "${OSC_HOST}/osc/onmetal/tools/releaser:v1.0.10"
+  synchronizeImage: mtr.devops.telekom.de/osc/upstream/cloner/gitlab:v4.4.0-alpine
 
-workflow:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-    - if: $CI_COMMIT_TAG =~ /^v[0-9]+\..*/
+# workflow:
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+#     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\..*/
+#     - if: $CI_PIPELINE_SOURCE == 'schedule'
 
-file-lint:
-  stage: lint
-  needs: []
-  variables:
-    FILES_LINT_CONFIG: './.linter-config/file-lint.conf'
+# file-lint:
+#   stage: lint
+#   needs: []
+#   variables:
+#     FILES_LINT_CONFIG: './.linter-config/file-lint.conf'
+#   tags:
+#     - osc-linter
+#   image: "${CI_LINTER_IMG}"
+#   script:
+#     - if [[ ${PIPELINE_DEBUG} == 1 ]]; then debug_flag="-x"; fi
+#     - if [[ -f "${FILES_LINT_CONFIG}" ]]; then cfg="--config ${FILES_LINT_CONFIG}"; fi
+#     - echo "${cfg}"
+#     - bash ${debug_flag} file-empty ${cfg} --path .
+#     - bash ${debug_flag} file-cr ${cfg} --path .
+#     - bash ${debug_flag} file-crlf ${cfg} --path .
+#     - bash ${debug_flag} file-nullbyte ${cfg} --path .
+#     - bash ${debug_flag} file-trailing-single-newline ${cfg} --path .
+#     - bash ${debug_flag} file-trailing-space ${cfg} --path .
+#     - bash ${debug_flag} file-utf8 ${cfg} --path .
+#     - bash ${debug_flag} file-utf8-bom ${cfg} --path .
+
+# yaml-lint:
+#   stage: lint
+#   needs: []
+#   variables:
+#     YAML_LINT_CONFIG: './.linter-config/yamllint.yaml'
+#   tags:
+#     - osc-linter
+#   image: "${CI_LINTER_IMG}"
+#   script:
+#     - |
+#       if [[ -f "${YAML_LINT_CONFIG}" ]]; then
+#         cfg="-c ${YAML_LINT_CONFIG}"
+#       fi
+#       yamllint -f colored ${cfg} . && echo "Linting was successful."
+#   rules:
+#     - exists:
+#         - "**/*.yaml"
+#         - "**/*.yml"
+
+# markdown-lint:
+#   stage: lint
+#   needs: []
+#   variables:
+#     MARKDOWN_LINT_CONFIG: './.linter-config/mdlrc'
+#     MARKDOWN_LINT_IGNORE_CONFIG: "./.linter-config/.markdownlintignore"
+#   tags:
+#     - osc-linter
+#   image: "${CI_LINTER_IMG}"
+#   script:
+#     - |
+#        # copy markdown ignore config if exists
+#        if [[ -f "${MARKDOWN_LINT_IGNORE_CONFIG}" ]]; then
+#          cp "${MARKDOWN_LINT_IGNORE_CONFIG}" .
+#        fi
+#        if [[ -f "${MARKDOWN_LINT_CONFIG}" ]]; then
+#          cfg="--config ${MARKDOWN_LINT_CONFIG}"
+#        fi
+#        { find -iname '*.md' -type f \
+#           | xargs markdownlint ${cfg}; } && echo "Linting was successful."
+#   rules:
+#     - exists:
+#         - "**/*.md"
+
+# go-lint:
+#   stage: lint
+#   needs: []
+#   tags:
+#     - osc-linter
+#   image: "${GO_BUILD_IMG}"
+#   script:
+#     - |
+#         apk update
+#         apk add ceph-dev=18.2.2-r0
+#         apk add librados18=18.2.2-r0
+#         apk add librbd18=18.2.2-r0
+#         apk add linux-headers=6.5-r0
+#         make lint
+
+# unit-tests:
+#   stage: test
+#   tags:
+#     - docker
+#     - pes
+#     - osc
+#   image: "${GO_BUILD_IMG}"
+#   script:
+#     - |
+#         apk update
+#         apk add ceph-dev=18.2.2-r0
+#         apk add librados18=18.2.2-r0
+#         apk add librbd18=18.2.2-r0
+#         apk add linux-headers=6.5-r0
+#         make test
+
+# build:
+#   stage: build
+#   tags:
+#     - podman-node
+#   image: "${PODMAN_IMG}"
+#   script:
+#     - |
+#         apt-get update
+#         apt-get install -y \
+#           librados2 \
+#           librbd1 \
+#           librados-dev \
+#           librbd-dev \
+#           make
+#         echo 'unqualified-search-registries = ["docker.io"]' > /etc/containers/registries.conf
+#         CONTAINER_TOOL='podman --remote --url "unix:///run/podman/podman.sock"' CONTAINER_BUILDARGS="--platform linux/amd64 --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64" make docker-build
+
+check_dependabot_commits:
+  stage: check_and_create_mr
   tags:
-    - osc-linter
-  image: "${CI_LINTER_IMG}"
-  script:
-    - if [[ ${PIPELINE_DEBUG} == 1 ]]; then debug_flag="-x"; fi
-    - if [[ -f "${FILES_LINT_CONFIG}" ]]; then cfg="--config ${FILES_LINT_CONFIG}"; fi
-    - echo "${cfg}"
-    - bash ${debug_flag} file-empty ${cfg} --path .
-    - bash ${debug_flag} file-cr ${cfg} --path .
-    - bash ${debug_flag} file-crlf ${cfg} --path .
-    - bash ${debug_flag} file-nullbyte ${cfg} --path .
-    - bash ${debug_flag} file-trailing-single-newline ${cfg} --path .
-    - bash ${debug_flag} file-trailing-space ${cfg} --path .
-    - bash ${debug_flag} file-utf8 ${cfg} --path .
-    - bash ${debug_flag} file-utf8-bom ${cfg} --path .
-
-yaml-lint:
-  stage: lint
-  needs: []
+    - osc-builder
+  image: $synchronizeImage
   variables:
-    YAML_LINT_CONFIG: './.linter-config/yamllint.yaml'
-  tags:
-    - osc-linter
-  image: "${CI_LINTER_IMG}"
+    PYTHON_GITLAB_CFG: "$CLONER_UPSTREAM_API_TOKEN"
   script:
+    - echo "Checking for dependabot commits in the last 7 days..."
     - |
-      if [[ -f "${YAML_LINT_CONFIG}" ]]; then
-        cfg="-c ${YAML_LINT_CONFIG}"
+      LAST_COMMITS=$(git log --since="20 days ago" --pretty=format:"%H %ae" | grep "dependabot\[bot\]")
+      if [[ -z "$LAST_COMMITS" ]]; then
+        echo "No dependabot commits found in the last 7 days."
+        exit 0
       fi
-      yamllint -f colored ${cfg} . && echo "Linting was successful."
-  rules:
-    - exists:
-        - "**/*.yaml"
-        - "**/*.yml"
 
-markdown-lint:
-  stage: lint
-  needs: []
-  variables:
-    MARKDOWN_LINT_CONFIG: './.linter-config/mdlrc'
-    MARKDOWN_LINT_IGNORE_CONFIG: "./.linter-config/.markdownlintignore"
-  tags:
-    - osc-linter
-  image: "${CI_LINTER_IMG}"
-  script:
-    - |
-       # copy markdown ignore config if exists
-       if [[ -f "${MARKDOWN_LINT_IGNORE_CONFIG}" ]]; then
-         cp "${MARKDOWN_LINT_IGNORE_CONFIG}" .
-       fi
-       if [[ -f "${MARKDOWN_LINT_CONFIG}" ]]; then
-         cfg="--config ${MARKDOWN_LINT_CONFIG}"
-       fi
-       { find -iname '*.md' -type f \
-          | xargs markdownlint ${cfg}; } && echo "Linting was successful."
-  rules:
-    - exists:
-        - "**/*.md"
-
-go-lint:
-  stage: lint
-  needs: []
-  tags:
-    - osc-linter
-  image: "${GO_BUILD_IMG}"
-  script:
-    - |
-        apk update
-        apk add ceph-dev=18.2.2-r0
-        apk add librados18=18.2.2-r0
-        apk add librbd18=18.2.2-r0
-        apk add linux-headers=6.5-r0
-        make lint
-
-unit-tests:
-  stage: test
-  tags:
-    - docker
-    - pes
-    - osc
-  image: "${GO_BUILD_IMG}"
-  script:
-    - |
-        apk update
-        apk add ceph-dev=18.2.2-r0
-        apk add librados18=18.2.2-r0
-        apk add librbd18=18.2.2-r0
-        apk add linux-headers=6.5-r0
-        make test
-
-build:
-  stage: build
-  tags:
-    - podman-node
-  image: "${PODMAN_IMG}"
-  script:
-    - |
-        apt-get update
-        apt-get install -y \
-          librados2 \
-          librbd1 \
-          librados-dev \
-          librbd-dev \
-          make
-        echo 'unqualified-search-registries = ["docker.io"]' > /etc/containers/registries.conf
-        CONTAINER_TOOL='podman --remote --url "unix:///run/podman/podman.sock"' CONTAINER_BUILDARGS="--platform linux/amd64 --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64" make docker-build
+      for COMMIT_HASH in $(echo "$LAST_COMMITS" | awk '{print $1}'); do
+        echo "Processing commit $COMMIT_HASH"
+      done
+  # rules:
+  #   - if: $CI_PIPELINE_SOURCE == 'schedule'  # Only run this job on a schedule
