@@ -893,7 +893,6 @@ func (r *MachineReconciler) setPCIDevices(machine *api.Machine, domain *libvirtx
 
 	machine.Status.PCIDevices = devices
 	for index := range devices {
-
 		domain.Devices.Hostdevs = append(domain.Devices.Hostdevs, libvirtxml.DomainHostdev{
 			Managed:   "yes",
 			SubsysPCI: devices[index].Addr.GetDomainSubsysPCI(),

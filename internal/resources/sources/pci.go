@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/go-logr/logr"
 	"github.com/go-playground/validator/v10"
@@ -32,7 +33,7 @@ const (
 	attributeClass  = "class"
 )
 
-type HexID string
+type HexID = string
 
 // DeviceList holds a list of vendors and validates unique IDs
 type DeviceList struct {
@@ -60,6 +61,7 @@ type PCI struct {
 	devices            map[core.ResourceName][]*api.PCIAddress
 	availableResources core.ResourceList
 	log                logr.Logger
+	mutex              sync.Mutex
 }
 
 func NewSourcePCI(options Options) *PCI {
@@ -102,20 +104,33 @@ func (p *PCI) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
 
 func (p *PCI) Allocate(requiredResources core.ResourceList) (core.ResourceList, error) {
 	allocatedResources := core.ResourceList{}
+	tempAvailableResources := make(core.ResourceList)
 
-	for key, requiredQty := range requiredResources {
-		if availableQty, exists := p.availableResources[key]; exists {
-			newQty := availableQty.DeepCopy()
-			newQty.Sub(requiredQty)
-
-			if newQty.Sign() == -1 {
-				return nil, fmt.Errorf("failed to allocate resource %s: %w", key, ErrResourceNotAvailable)
-			}
-
-			allocatedResources[key] = requiredQty
-			p.availableResources[key] = newQty
-		}
+	// Copy current state of availableResources to temporary storage
+	for key, availableQty := range p.availableResources {
+		tempAvailableResources[key] = availableQty
 	}
+
+	// First pass: check availability without modifying actual available resources
+	for key, requiredQty := range requiredResources {
+		availableQty, exists := tempAvailableResources[key]
+		if !exists {
+			continue
+		}
+		newQty := availableQty
+		newQty.Sub(requiredQty)
+
+		if newQty.Sign() == -1 {
+			return nil, fmt.Errorf("failed to allocate resource %s: %w", key, ErrResourceNotAvailable)
+		}
+
+		// Update temporary resources and add to allocated resources
+		tempAvailableResources[key] = newQty
+		allocatedResources[key] = requiredQty
+	}
+
+	// Second pass: update actual available resources
+	p.availableResources = tempAvailableResources
 
 	return allocatedResources, nil
 }
@@ -138,6 +153,9 @@ func (p *PCI) GetAvailableResources() core.ResourceList {
 }
 
 func (p *PCI) AllocatePCIAddress(resources core.ResourceList) ([]api.PCIDevice, error) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	var domainAddrs []api.PCIDevice
 
 	for resourceName, addrs := range p.devices {
@@ -149,31 +167,24 @@ func (p *PCI) AllocatePCIAddress(resources core.ResourceList) ([]api.PCIDevice, 
 			for i := int64(0); i < requiredQty.Value(); i++ {
 				domainAddrs = append(domainAddrs, api.PCIDevice{Addr: *addrs[i], Name: resourceName})
 			}
-			p.devices[resourceName] = addrs[requiredQty.Value():]
+			// Break the reference by creating a copy of the subslice
+			p.devices[resourceName] = append(addrs[:0:0], addrs[requiredQty.Value():]...)
 		}
 	}
-
 	return domainAddrs, nil
 }
 
 func (p *PCI) DeallocatePCIAddress(devices []api.PCIDevice) error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	for _, device := range devices {
 		addrs, ok := p.devices[device.Name]
 		if !ok {
 			continue
 		}
-
-		// Check if the address is already in the list to avoid duplicates
 		addressToAdd := &device.Addr
-		for _, addr := range addrs {
-			if addr == addressToAdd {
-				// Address already exists, skip adding it again
-				continue
-			}
-		}
-
-		// Add the address to the list
-		p.devices[device.Name] = append(p.devices[device.Name], addressToAdd)
+		p.devices[device.Name] = append(addrs, addressToAdd)
 	}
 
 	return nil
@@ -192,8 +203,7 @@ func (p *PCI) loadSupportedDevices() (map[HexID]*Vendor, error) {
 		return nil, err
 	}
 
-	val := validator.New()
-	err = val.Struct(devices)
+	err = validator.New().Struct(devices)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +287,7 @@ func (p *PCI) readPCIAttribute(devicePath, attributeName string) (string, error)
 
 	defer osutils.CloseWithErrorLogging(file, fmt.Sprintf("error closing file. Path: %s", file.Name()), &p.log)
 
-	// attributeFileSize is higher as file contant can be.
+	// attributeFileSize is higher as file content can be.
 	const attributeFileSize = 16
 	buff := make([]byte, attributeFileSize)
 

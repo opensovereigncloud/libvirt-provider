@@ -568,7 +568,7 @@ func (r *resourceManager) reset() {
 	r.pciManager = nil
 }
 
-// this doesn't is very hacky and bad
+// this is very hacky and bad
 func (r *resourceManager) getPCIManager() PCIManager {
 	return r.pciManager
 }
