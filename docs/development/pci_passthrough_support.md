@@ -49,12 +49,12 @@ vendors:
 The PCI devices file contains a hierarchical structure to organize vendors and their associated devices:
 
 - **vendors**: A list of vendors providing PCI devices. Each vendor entry consists of:
-  - **id**: A unique hexadecimal identifier for the vendor (e.g., "0x10de" for NVIDIA, "0x8086" for Intel).
-  - **name**: A human-readable name for the vendor (e.g., "nvidia", "intel").
-  - **devices**: A list of devices provided by the vendor. Each device entry consists of:
-    - **id**: A unique hexadecimal identifier for the device (e.g., "0x030200" for a GPU, "0x100f" for a network adapter).
-    - **name**: A human-readable name for the device (e.g., "ga100gl.rev.a1", "x520-da2").
-    - **type**: The type of the PCI device, which helps categorize it (e.g., "gpu", "network", "storage").
+    - **id**: A unique hexadecimal identifier for the vendor (e.g., "0x10de" for NVIDIA, "0x8086" for Intel).
+    - **name**: A human-readable name for the vendor (e.g., "nvidia", "intel").
+    - **devices**: A list of devices provided by the vendor. Each device entry consists of:
+        - **id**: A unique hexadecimal identifier for the device (e.g., "0x030200" for a GPU, "0x100f" for a network adapter).
+        - **name**: A human-readable name for the device (e.g., "ga100gl.rev.a1", "x520-da2").
+        - **type**: The type of the PCI device, which helps categorize it (e.g., "gpu", "network", "storage").
 
 #### Example: Handling Multiple Device Types
 
