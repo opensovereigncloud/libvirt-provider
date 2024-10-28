@@ -19,7 +19,9 @@ file-lint:
   variables:
     FILES_LINT_CONFIG: './.linter-config/file-lint.conf'
   tags:
-    - osc-linter
+    - docker
+    - pes
+    - osc
   image: "${CI_LINTER_IMG}"
   script:
     - if [[ ${PIPELINE_DEBUG} == 1 ]]; then debug_flag="-x"; fi
@@ -40,7 +42,9 @@ yaml-lint:
   variables:
     YAML_LINT_CONFIG: './.linter-config/yamllint.yaml'
   tags:
-    - osc-linter
+    - docker
+    - pes
+    - osc
   image: "${CI_LINTER_IMG}"
   script:
     - |
@@ -60,19 +64,21 @@ markdown-lint:
     MARKDOWN_LINT_CONFIG: './.linter-config/mdlrc'
     MARKDOWN_LINT_IGNORE_CONFIG: "./.linter-config/.markdownlintignore"
   tags:
-    - osc-linter
+    - docker
+    - pes
+    - osc
   image: "${CI_LINTER_IMG}"
   script:
     - |
-       # copy markdown ignore config if exists
-       if [[ -f "${MARKDOWN_LINT_IGNORE_CONFIG}" ]]; then
-         cp "${MARKDOWN_LINT_IGNORE_CONFIG}" .
-       fi
-       if [[ -f "${MARKDOWN_LINT_CONFIG}" ]]; then
-         cfg="--config ${MARKDOWN_LINT_CONFIG}"
-       fi
-       { find -iname '*.md' -type f \
-          | xargs markdownlint ${cfg}; } && echo "Linting was successful."
+      # copy markdown ignore config if exists
+      if [[ -f "${MARKDOWN_LINT_IGNORE_CONFIG}" ]]; then
+        cp "${MARKDOWN_LINT_IGNORE_CONFIG}" .
+      fi
+      if [[ -f "${MARKDOWN_LINT_CONFIG}" ]]; then
+        cfg="--config ${MARKDOWN_LINT_CONFIG}"
+      fi
+      { find -iname '*.md' -type f \
+        | xargs markdownlint ${cfg}; } && echo "Linting was successful."
   rules:
     - exists:
         - "**/*.md"
@@ -81,16 +87,18 @@ go-lint:
   stage: lint
   needs: []
   tags:
-    - osc-linter
+    - docker
+    - pes
+    - osc
   image: "${GO_BUILD_IMG}"
   script:
     - |
-        apk update
-        apk add ceph-dev=18.2.2-r0
-        apk add librados18=18.2.2-r0
-        apk add librbd18=18.2.2-r0
-        apk add linux-headers=6.5-r0
-        make lint
+      apk update
+      apk add ceph-dev=18.2.2-r0
+      apk add librados18=18.2.2-r0
+      apk add librbd18=18.2.2-r0
+      apk add linux-headers=6.5-r0
+      make lint
 
 unit-tests:
   stage: test
@@ -101,12 +109,12 @@ unit-tests:
   image: "${GO_BUILD_IMG}"
   script:
     - |
-        apk update
-        apk add ceph-dev=18.2.2-r0
-        apk add librados18=18.2.2-r0
-        apk add librbd18=18.2.2-r0
-        apk add linux-headers=6.5-r0
-        make test
+      apk update
+      apk add ceph-dev=18.2.2-r0
+      apk add librados18=18.2.2-r0
+      apk add librbd18=18.2.2-r0
+      apk add linux-headers=6.5-r0
+      make test
 
 build:
   stage: build
@@ -115,12 +123,12 @@ build:
   image: "${PODMAN_IMG}"
   script:
     - |
-        apt-get update
-        apt-get install -y \
-          librados2 \
-          librbd1 \
-          librados-dev \
-          librbd-dev \
-          make
-        echo 'unqualified-search-registries = ["docker.io"]' > /etc/containers/registries.conf
-        CONTAINER_TOOL='podman --remote --url "unix:///run/podman/podman.sock"' CONTAINER_BUILDARGS="--platform linux/amd64 --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64" make docker-build
+      apt-get update
+      apt-get install -y \
+        librados2 \
+        librbd1 \
+        librados-dev \
+        librbd-dev \
+        make
+      echo 'unqualified-search-registries = ["docker.io"]' > /etc/containers/registries.conf
+      CONTAINER_TOOL='podman --remote --url "unix:///run/podman/podman.sock"' CONTAINER_BUILDARGS="--platform linux/amd64 --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64" make docker-build
