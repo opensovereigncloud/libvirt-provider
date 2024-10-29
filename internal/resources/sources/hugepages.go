@@ -9,6 +9,7 @@ import (
 	"math"
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
+	"github.com/ironcore-dev/libvirt-provider/api"
 	"github.com/shirou/gopsutil/v3/mem"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -78,7 +79,7 @@ func (m *Hugepages) Init(ctx context.Context) (sets.Set[core.ResourceName], erro
 	return sets.New(core.ResourceMemory, ResourceHugepages), nil
 }
 
-func (m *Hugepages) Allocate(requiredResources core.ResourceList) (core.ResourceList, error) {
+func (m *Hugepages) Allocate(_ *api.Machine, requiredResources core.ResourceList) (core.ResourceList, error) {
 	mem, ok := requiredResources[core.ResourceMemory]
 	if !ok {
 		return nil, nil
@@ -107,22 +108,21 @@ func (m *Hugepages) Allocate(requiredResources core.ResourceList) (core.Resource
 	return core.ResourceList{core.ResourceMemory: mem, ResourceHugepages: hugepages}, nil
 }
 
-func (m *Hugepages) Deallocate(requiredResources core.ResourceList) []core.ResourceName {
+func (m *Hugepages) Deallocate(_ *api.Machine, requiredResources core.ResourceList) []core.ResourceName {
+	deallocated := []core.ResourceName{}
 	mem, ok := requiredResources[core.ResourceMemory]
-	if !ok {
-		return nil
+	if ok {
+		m.availableMemory.Add(mem)
+		deallocated = append(deallocated, core.ResourceMemory)
 	}
-
-	m.availableMemory.Add(mem)
 
 	hugepages, ok := requiredResources[ResourceHugepages]
-	if !ok {
-		return []core.ResourceName{core.ResourceMemory}
+	if ok {
+		m.availableHugePages.Add(hugepages)
+		deallocated = append(deallocated, ResourceHugepages)
 	}
 
-	m.availableHugePages.Add(hugepages)
-
-	return []core.ResourceName{core.ResourceMemory, ResourceHugepages}
+	return deallocated
 }
 
 func (m *Hugepages) GetAvailableResources() core.ResourceList {

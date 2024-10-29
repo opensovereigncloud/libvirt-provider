@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
+	"github.com/ironcore-dev/libvirt-provider/api"
 )
 
 const SourceCPU string = "cpu"
@@ -57,7 +58,7 @@ func (c *CPU) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
 	return sets.New(core.ResourceCPU), nil
 }
 
-func (c *CPU) Allocate(requiredResources core.ResourceList) (core.ResourceList, error) {
+func (c *CPU) Allocate(_ *api.Machine, requiredResources core.ResourceList) (core.ResourceList, error) {
 	cpu, ok := requiredResources[core.ResourceCPU]
 	if !ok {
 		return nil, nil
@@ -73,7 +74,7 @@ func (c *CPU) Allocate(requiredResources core.ResourceList) (core.ResourceList, 
 	return core.ResourceList{core.ResourceCPU: cpu}, nil
 }
 
-func (c *CPU) Deallocate(requiredResources core.ResourceList) []core.ResourceName {
+func (c *CPU) Deallocate(_ *api.Machine, requiredResources core.ResourceList) []core.ResourceName {
 	cpu, ok := requiredResources[core.ResourceCPU]
 	if !ok {
 		return nil

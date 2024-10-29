@@ -103,7 +103,7 @@ func (p *PCI) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
 	return supportedResources, nil
 }
 
-func (p *PCI) Allocate(requiredResources core.ResourceList) (core.ResourceList, error) {
+func (p *PCI) Allocate(_ *api.Machine, requiredResources core.ResourceList) (core.ResourceList, error) {
 	allocatedResources := core.ResourceList{}
 	// Clone current state of availableResources to temporary storage
 	tempAvailableResources := maps.Clone(p.availableResources)
@@ -132,7 +132,7 @@ func (p *PCI) Allocate(requiredResources core.ResourceList) (core.ResourceList, 
 	return allocatedResources, nil
 }
 
-func (p *PCI) Deallocate(requiredResources core.ResourceList) []core.ResourceName {
+func (p *PCI) Deallocate(_ *api.Machine, requiredResources core.ResourceList) []core.ResourceName {
 	deallocatedResources := []core.ResourceName{}
 
 	for key, quantity := range requiredResources {

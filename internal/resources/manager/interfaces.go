@@ -22,9 +22,9 @@ type Source interface {
 	// Init ititializes total resources in the source
 	Init(context.Context) (sets.Set[core.ResourceName], error)
 	// Allocate allocates the resources in the source
-	Allocate(core.ResourceList) (core.ResourceList, error)
+	Allocate(*api.Machine, core.ResourceList) (core.ResourceList, error)
 	// Deallocate deallocates the resources from the source
-	Deallocate(core.ResourceList) []core.ResourceName
+	Deallocate(*api.Machine, core.ResourceList) []core.ResourceName
 	// GetAvailableResource provides the available resourcelist in the source
 	GetAvailableResources() core.ResourceList
 	// Calculate allocatable quantity of machines classes for specific resource

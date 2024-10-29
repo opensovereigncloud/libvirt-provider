@@ -18,6 +18,7 @@ import (
 
 	"github.com/go-logr/logr"
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
+	"github.com/ironcore-dev/libvirt-provider/api"
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -82,8 +83,9 @@ func (c *SGX) CalculateMachineClassQuantity(_ core.ResourceName, quantity *resou
 	return count
 }
 
-func (c *SGX) Allocate(requiredResources core.ResourceList) (core.ResourceList, error) {
+func (c *SGX) Allocate(_ *api.Machine, requiredResources core.ResourceList) (core.ResourceList, error) {
 	key, requiredQuantity, found := FindSGXNumaResource(requiredResources)
+	// allocation of allocated resources during startup.
 	if found {
 		quantity, ok := c.availableResources[key]
 		if !ok {
@@ -111,7 +113,7 @@ func (c *SGX) Allocate(requiredResources core.ResourceList) (core.ResourceList, 
 	return core.ResourceList{zone: requiredSGXMem}, nil
 }
 
-func (c *SGX) Deallocate(deallocateResources core.ResourceList) []core.ResourceName {
+func (c *SGX) Deallocate(_ *api.Machine, deallocateResources core.ResourceList) []core.ResourceName {
 	key, requiredQuantity, found := FindSGXNumaResource(deallocateResources)
 	if !found {
 		return nil

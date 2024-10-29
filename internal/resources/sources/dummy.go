@@ -7,6 +7,7 @@ import (
 	"context"
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
+	"github.com/ironcore-dev/libvirt-provider/api"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -38,11 +39,11 @@ func (d *Dummy) Modify(_ core.ResourceList) error {
 	return nil
 }
 
-func (d *Dummy) Allocate(requiredResources core.ResourceList) (core.ResourceList, error) {
+func (d *Dummy) Allocate(_ *api.Machine, _ core.ResourceList) (core.ResourceList, error) {
 	return nil, nil
 }
 
-func (d *Dummy) Deallocate(requiredResources core.ResourceList) []core.ResourceName {
+func (d *Dummy) Deallocate(_ *api.Machine, _ core.ResourceList) []core.ResourceName {
 	return nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"os"
 	"sort"
@@ -241,8 +242,14 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 
 	// Allocating resources for pre-existing machines in store
 	for _, machine := range machines {
-		for _, s := range r.sources {
-			_, err := s.Allocate(machine.Spec.Resources.DeepCopy())
+		requiredResources := machine.Spec.Resources.DeepCopy()
+		for key := range requiredResources {
+			s, ok := r.registredResources[key]
+			if !ok {
+				return fmt.Errorf("failed to find source for resource %s: %w", key, ErrResourceUnsupported)
+			}
+
+			_, err := s.Allocate(machine, requiredResources)
 			if err != nil {
 				return err
 			}
@@ -282,20 +289,19 @@ func (r *resourceManager) allocate(machine *api.Machine, requiredResources core.
 	}
 
 	totalAllocatedRes := core.ResourceList{}
-	var allocatedRes core.ResourceList
 	for key := range requiredResources {
 		s, ok := r.registredResources[key]
 		if !ok {
 			return fmt.Errorf("failed to find source for resource %s: %w", key, ErrResourceUnsupported)
 		}
 
-		allocatedRes, err = s.Allocate(requiredResources)
+		allocatedRes, err := s.Allocate(machine, requiredResources)
 		if err != nil {
-			r.deallocateUnassignResources(totalAllocatedRes)
+			r.deallocateUnassignResources(machine, totalAllocatedRes)
 			return err
 		}
 
-		mergeResourceLists(totalAllocatedRes, allocatedRes)
+		maps.Copy(totalAllocatedRes, allocatedRes)
 
 		// Avoid double allocation when one source manages more resources
 		for allocatedKey := range allocatedRes {
@@ -304,6 +310,9 @@ func (r *resourceManager) allocate(machine *api.Machine, requiredResources core.
 	}
 
 	machine.Spec.Resources = totalAllocatedRes
+	if len(requiredResources) > 0 {
+		return fmt.Errorf("failed to allocate all resources: %v", requiredResources)
+	}
 
 	if r.numaScheduler != nil {
 		cpuQuantity := requiredResources[core.ResourceCPU]
@@ -344,10 +353,9 @@ func (r *resourceManager) deallocate(machine *api.Machine, deallocateResources c
 	}
 	for key := range deallocateResources {
 		s := r.registredResources[key]
-		resourceNames := s.Deallocate(deallocateResources)
+		resourceNames := s.Deallocate(machine, deallocateResources)
 
 		for _, resource := range resourceNames {
-			// TODO: we have to optimize this
 			delete(deallocateResources, resource)
 			delete(machine.Spec.Resources, resource)
 		}
@@ -363,11 +371,11 @@ func (r *resourceManager) deallocate(machine *api.Machine, deallocateResources c
 	return nil
 }
 
-func (r *resourceManager) deallocateUnassignResources(resources core.ResourceList) {
+func (r *resourceManager) deallocateUnassignResources(machine *api.Machine, resources core.ResourceList) {
 	for key := range resources {
 		// if resource is allocated, source has to exist
 		s := r.registredResources[key]
-		_ = s.Deallocate(resources)
+		_ = s.Deallocate(machine, resources)
 	}
 }
 
@@ -533,8 +541,7 @@ func (r *resourceManager) getAvailableResources() core.ResourceList {
 	resourceList := make(core.ResourceList)
 
 	for _, s := range r.sources {
-		list := s.GetAvailableResources()
-		mergeResourceLists(resourceList, list)
+		maps.Copy(resourceList, s.GetAvailableResources())
 	}
 	return resourceList
 }
@@ -546,12 +553,6 @@ func (r *resourceManager) getIRIMachineClasses() []iri.MachineClass {
 	}
 
 	return iriClasses
-}
-
-func mergeResourceLists(dst, src core.ResourceList) {
-	for k, v := range src {
-		dst[k] = v
-	}
 }
 
 // reset internal state of manager and allow reinit
