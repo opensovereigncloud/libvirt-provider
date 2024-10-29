@@ -5,6 +5,7 @@ package sources
 
 import (
 	"github.com/docker/go-units"
+	"github.com/go-logr/logr"
 )
 
 type Options struct {
@@ -13,6 +14,8 @@ type Options struct {
 	ReservedMemorySize MemorySize
 	BlockedHugepages   uint64
 	VMLimit            uint64
+	PCIDevicesFile     string
+	log                logr.Logger
 }
 
 // // MemorySize is a custom type to handle memory sizes in human-readable format.

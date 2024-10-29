@@ -164,6 +164,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.Uint64Var(&o.ResourceManagerOptions.BlockedHugepages, "resource-manager-blocked-hugepages", 0, "Count of hugepages which aren't use for vms. Effective only if hugepages source is set")
 	fs.Var(&o.ResourceManagerOptions.ReservedMemorySize, "resource-manager-reserved-memory-size", "Size of memory which aren't use for vms in human-readable format. Effective only if memory source is set")
 	fs.Uint64Var(&o.ResourceManagerOptions.VMLimit, "resource-manager-vm-limit", 0, "Maximum number of the VMs to be created on the host")
+	fs.StringVar(&o.ResourceManagerOptions.PCIDevicesFile, "resource-manager-pci-devices-file", "", "yaml file with list of supported pci devices for pci source.")
 
 	// Machine event store options
 	fs.IntVar(&o.MachineEventStore.MachineEventMaxEvents, "machine-event-max-events", 100, "Maximum number of machine events that can be stored.")

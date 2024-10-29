@@ -7,6 +7,7 @@ import (
 	"context"
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -53,6 +54,6 @@ func (d *Dummy) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
 	return nil, nil
 }
 
-func (d *Dummy) CalculateMachineClassQuantity(requiredResources core.ResourceList) int64 {
+func (d *Dummy) CalculateMachineClassQuantity(_ core.ResourceName, _ *resource.Quantity) int64 {
 	return 0
 }

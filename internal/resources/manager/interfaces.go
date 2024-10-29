@@ -8,6 +8,7 @@ import (
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -26,8 +27,13 @@ type Source interface {
 	Deallocate(core.ResourceList) []core.ResourceName
 	// GetAvailableResource provides the available resourcelist in the source
 	GetAvailableResources() core.ResourceList
-	// Calculate allocatable quantity of machines classes based on class resources
-	CalculateMachineClassQuantity(core.ResourceList) int64
+	// Calculate allocatable quantity of machines classes for specific resource
+	CalculateMachineClassQuantity(core.ResourceName, *resource.Quantity) int64
+}
+
+type PCIManager interface {
+	AllocatePCIAddress(core.ResourceList) ([]api.PCIDevice, error)
+	DeallocatePCIAddress([]api.PCIDevice) error
 }
 
 type NumaScheduler interface {

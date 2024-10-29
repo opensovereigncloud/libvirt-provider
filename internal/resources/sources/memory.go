@@ -36,14 +36,8 @@ func (m *Memory) Modify(_ core.ResourceList) error {
 	return nil
 }
 
-func (m *Memory) CalculateMachineClassQuantity(requiredResources core.ResourceList) int64 {
-	mem, ok := requiredResources[core.ResourceMemory]
-	if !ok {
-		// this code cannot be call ever
-		return 0
-	}
-
-	return int64(math.Floor(float64(m.availableMemory.Value()) / float64(mem.Value())))
+func (m *Memory) CalculateMachineClassQuantity(_ core.ResourceName, quantity *resource.Quantity) int64 {
+	return int64(math.Floor(float64(m.availableMemory.Value()) / float64(quantity.Value())))
 }
 
 func (m *Memory) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
