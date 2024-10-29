@@ -1,6 +1,9 @@
 # PCI Device Support in `libvirt-provider`
 
-The `libvirt-provider` facilitates PCI device passthrough, enabling resource management for various PCI devices, not limited to GPUs. This document provides a detailed guide on configuring PCI passthrough support, making it adaptable to any PCI device type, such as GPUs, network adapters, storage controllers etc.
+The `libvirt-provider` facilitates PCI device passthrough, enabling resource management for various PCI devices, not limited to GPUs. This document provides a detailed guide on configuring PCI passthrough support, making it adaptable to any PCI device type, such as GPUs, network adapters, storage controllers, etc.
+
+**Status**: Draft / Proof of Concept
+*Note: The current solution may experience issues upon restart, potentially affecting device availability and passthrough functionality. Testing and further development are in progress to address these limitations.*
 
 ## Enabling PCI Passthrough Support
 
@@ -21,6 +24,13 @@ Additionally, you must supply a PCI devices configuration file, which describes 
 ```bash
 --resource-manager-pci-devices-file=/path/to/pci_devices.yaml
 ```
+
+## Finding PCI Vendor and Device IDs
+
+For the PCI passthrough to function correctly, the IDs of each device must be provided. Vendor and Device IDs can be found using system files and online repositories. Here are some options:
+
+- **Linux system files**: You can find PCI IDs in `/sys/bus/pci/devices/`. Each subdirectory represents a PCI device, where files like `vendor` and `device` provide the necessary identifiers.
+- **Online PCI ID repository**: [pci-ids.ucw.cz](https://pci-ids.ucw.cz/) offers a comprehensive list of vendor and device IDs, which can be cross-referenced to ensure the correct information.
 
 ## PCI Devices File Overview
 
@@ -70,7 +80,7 @@ Each device is referenced using its vendor and device IDs, which are crucial for
 
 ## Integration with `libvirt-provider`
 
-When PCI passthrough is enabled, libvirt-provider ensures that the specified PCI devices are allocated to the appropriate virtual machines. The information provided in the `pci_devices.yaml` file is passed through the `libvirt-provider`, allowing seamless passthrough of resources to the VMs.
+When PCI passthrough is enabled, `libvirt-provider` ensures that the specified PCI devices are allocated to the appropriate virtual machines. The information provided in the `pci_devices.yaml` file is passed through the `libvirt-provider`, allowing seamless passthrough of resources to the VMs.
 
 ## Best Practices for PCI Device Management
 
