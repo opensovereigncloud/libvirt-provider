@@ -565,7 +565,7 @@ func (r *resourceManager) reset() {
 	r.machineclassesFile = ""
 	r.initialized = false
 	r.registredResources = map[core.ResourceName]Source{}
-	r.pciManager = nil
+	r.pciManager = &DummyPCIManager{}
 }
 
 // this is very hacky and bad
