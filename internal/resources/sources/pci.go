@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -104,12 +105,8 @@ func (p *PCI) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
 
 func (p *PCI) Allocate(requiredResources core.ResourceList) (core.ResourceList, error) {
 	allocatedResources := core.ResourceList{}
-	tempAvailableResources := make(core.ResourceList, len(p.availableResources))
-
-	// Copy current state of availableResources to temporary storage
-	for key, availableQty := range p.availableResources {
-		tempAvailableResources[key] = availableQty
-	}
+	// Clone current state of availableResources to temporary storage
+	tempAvailableResources := maps.Clone(p.availableResources)
 
 	// First pass: check availability without modifying actual available resources
 	for key, requiredQty := range requiredResources {
