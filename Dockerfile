@@ -33,7 +33,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # Install irictl-machine
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
-    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on go install github.com/ironcore-dev/ironcore/irictl-machine/cmd/irictl-machine@main
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on go install github.com/ironcore-dev/ironcore/irictl-machine/cmd/irictl-machine@1ee4dbcb5f9296aba10d90f5cbe3a4ab00e3b6c6
 
 # Since we're leveraging apt to pull in dependencies, we use `gcr.io/distroless/base` because it includes glibc.
 FROM gcr.io/distroless/base-debian11 AS distroless-base
