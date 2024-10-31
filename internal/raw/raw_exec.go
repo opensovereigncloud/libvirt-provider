@@ -15,7 +15,7 @@ import (
 
 type Exec struct{}
 
-const filePerm = 0660
+const permFile = 0660
 
 func (Exec) Create(filename string, opts ...CreateOption) error {
 	o := &CreateOptions{}
@@ -42,7 +42,7 @@ func (Exec) Create(filename string, opts ...CreateOption) error {
 }
 
 func createEmptyFileWithSeek(log logr.Logger, filename string, seek int64) error {
-	dstFile, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, filePerm)
+	dstFile, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, permFile)
 	if err != nil {
 		return fmt.Errorf("failed opening destination file: %w", err)
 	}
@@ -75,7 +75,7 @@ func copyFile(log logr.Logger, src, dst string) error {
 		}
 	}()
 
-	dstFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, filePerm)
+	dstFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, permFile)
 	if err != nil {
 		return fmt.Errorf("failed opening destination file: %w", err)
 	}

@@ -45,7 +45,7 @@ import (
 const (
 	MachineFinalizer                = "machine"
 	permFile                        = 0660
-	permFileIgnition                = 0600
+	permFileIgnition                = 0640
 	rootFSAlias                     = "ua-rootfs"
 	libvirtDomainXMLIgnitionKeyName = "opt/com.coreos/config"
 	networkInterfaceAliasPrefix     = "ua-networkinterface-"
