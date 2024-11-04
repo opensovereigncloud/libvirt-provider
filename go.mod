@@ -26,21 +26,14 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/sync v0.8.0
-	google.golang.org/grpc v1.65.0
-	k8s.io/api v0.30.3
-	k8s.io/apimachinery v0.30.3
-	k8s.io/client-go v0.30.3
-	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
-	libvirt.org/go/libvirtxml v1.10005.0
-	sigs.k8s.io/controller-runtime v0.18.4
-)
-
-require (
-	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
-	github.com/go-playground/locales v0.14.1 // indirect
-	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/leodido/go-urn v1.4.0 // indirect
-	golang.org/x/crypto v0.26.0 // indirect
+	google.golang.org/grpc v1.67.1
+	k8s.io/api v0.31.2
+	k8s.io/apimachinery v0.31.2
+	k8s.io/client-go v0.31.2
+	k8s.io/kubectl v0.31.2
+	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6
+	libvirt.org/go/libvirtxml v1.10009.0
+	sigs.k8s.io/controller-runtime v0.19.1
 )
 
 require (
