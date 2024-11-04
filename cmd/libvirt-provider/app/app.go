@@ -72,8 +72,6 @@ type Options struct {
 	PathSupportedMachineClasses string
 	ResyncIntervalVolumeSize    time.Duration
 
-	EnableHugepages bool
-
 	GuestAgent GuestAgentOption
 
 	Libvirt   LibvirtOptions
