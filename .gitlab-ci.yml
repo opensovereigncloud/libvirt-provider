@@ -5,7 +5,7 @@ stages:
 
 variables:
   CI_LINTER_IMG: "mtr.devops.telekom.de/osc/common/pipeline-community/osc-gitlab-runner-linter:alpine-latest-0.8"
-  GO_BUILD_IMG: "mtr.devops.telekom.de/osc/common/pipeline-community/osc-go-builder:latest"
+  GO_BUILD_IMG: "mtr.devops.telekom.de/sourav_sahu/my-images:libvirt-provider-golang-1.23.2-alpine-3.20.3-2"
   PODMAN_IMG: "${OSC_HOST}/osc/onmetal/tools/releaser:v1.0.10"
 
 workflow:
@@ -90,14 +90,12 @@ go-lint:
     - docker
     - pes
     - osc
-  image: "${GO_BUILD_IMG}"
+  image:
+    name: "${GO_BUILD_IMG}"
+    entrypoint: ["/bin/ash", "-c"]
   script:
     - |
       apk update
-      apk add ceph-dev=18.2.2-r0
-      apk add librados18=18.2.2-r0
-      apk add librbd18=18.2.2-r0
-      apk add linux-headers=6.5-r0
       make lint
 
 unit-tests:
@@ -106,14 +104,12 @@ unit-tests:
     - docker
     - pes
     - osc
-  image: "${GO_BUILD_IMG}"
+  image:
+    name: "${GO_BUILD_IMG}"
+    entrypoint: ["/bin/ash", "-c"]
   script:
     - |
       apk update
-      apk add ceph-dev=18.2.2-r0
-      apk add librados18=18.2.2-r0
-      apk add librbd18=18.2.2-r0
-      apk add linux-headers=6.5-r0
       make test
 
 build:
