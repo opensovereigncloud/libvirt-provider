@@ -64,7 +64,7 @@ func (s *Server) getIRIMachineSpec(machine *api.Machine) (*iri.MachineSpec, erro
 }
 
 func (s *Server) getIRIVolumeSpec(machine *api.Machine) []*iri.Volume {
-	var volumes []*iri.Volume
+	volumes := make([]*iri.Volume, 0, len(machine.Spec.Volumes))
 	for _, volume := range machine.Spec.Volumes {
 		var emptyDisk *iri.EmptyDisk
 		if volume.EmptyDisk != nil {
@@ -96,7 +96,7 @@ func (s *Server) getIRIVolumeSpec(machine *api.Machine) []*iri.Volume {
 }
 
 func (s *Server) getIRINICSpec(machine *api.Machine) []*iri.NetworkInterface {
-	var nics []*iri.NetworkInterface
+	nics := make([]*iri.NetworkInterface, 0, len(machine.Spec.NetworkInterfaces))
 	for _, nic := range machine.Spec.NetworkInterfaces {
 		nics = append(nics, &iri.NetworkInterface{
 			Name:       nic.Name,
@@ -110,7 +110,7 @@ func (s *Server) getIRINICSpec(machine *api.Machine) []*iri.NetworkInterface {
 }
 
 func (s *Server) getIRIVolumeStatus(machine *api.Machine) ([]*iri.VolumeStatus, error) {
-	var volumes []*iri.VolumeStatus
+	volumes := make([]*iri.VolumeStatus, 0, len(machine.Status.VolumeStatus))
 	for _, volume := range machine.Status.VolumeStatus {
 		state, err := s.getIRIVolumeState(volume.State)
 		if err != nil {
@@ -128,7 +128,7 @@ func (s *Server) getIRIVolumeStatus(machine *api.Machine) ([]*iri.VolumeStatus, 
 }
 
 func (s *Server) getIRINICStatus(machine *api.Machine) ([]*iri.NetworkInterfaceStatus, error) {
-	var nics []*iri.NetworkInterfaceStatus
+	nics := make([]*iri.NetworkInterfaceStatus, 0, len(machine.Status.NetworkInterfaceStatus))
 	for _, nic := range machine.Status.NetworkInterfaceStatus {
 		state, err := s.getIRINICState(nic.State)
 		if err != nil {
