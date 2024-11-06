@@ -9,6 +9,7 @@ import (
 	"math"
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
+	"github.com/ironcore-dev/libvirt-provider/api"
 	"github.com/shirou/gopsutil/v3/mem"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -55,7 +56,7 @@ func (m *Memory) Init(ctx context.Context) (sets.Set[core.ResourceName], error) 
 	return sets.New(core.ResourceMemory), nil
 }
 
-func (m *Memory) Allocate(requiredResources core.ResourceList) (core.ResourceList, error) {
+func (m *Memory) Allocate(_ *api.Machine, requiredResources core.ResourceList) (core.ResourceList, error) {
 	mem, ok := requiredResources[core.ResourceMemory]
 	if !ok {
 		return nil, nil
@@ -72,7 +73,7 @@ func (m *Memory) Allocate(requiredResources core.ResourceList) (core.ResourceLis
 	return core.ResourceList{core.ResourceMemory: mem}, nil
 }
 
-func (m *Memory) Deallocate(requiredResources core.ResourceList) []core.ResourceName {
+func (m *Memory) Deallocate(_ *api.Machine, requiredResources core.ResourceList) []core.ResourceName {
 	mem, ok := requiredResources[core.ResourceMemory]
 	if !ok {
 		return nil
