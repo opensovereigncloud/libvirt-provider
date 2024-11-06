@@ -117,7 +117,7 @@ func (p *plugin) GetSize(ctx context.Context, spec *api.VolumeSpec) (int64, erro
 	}
 	defer ioCtx.Destroy()
 
-	image, err := rbd.OpenImage(ioCtx, imageName, rbd.NoSnapshot)
+	image, err := rbd.OpenImageReadOnly(ioCtx, imageName, rbd.NoSnapshot)
 	if err != nil {
 		return 0, fmt.Errorf("failed to open image: %w", err)
 	}

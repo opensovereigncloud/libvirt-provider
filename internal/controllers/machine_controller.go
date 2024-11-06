@@ -224,6 +224,10 @@ func (r *MachineReconciler) Start(ctx context.Context) error {
 }
 
 func (r *MachineReconciler) startCheckAndEnqueueVolumeResize(ctx context.Context, log logr.Logger) {
+	if r.resyncIntervalVolumeSize == 0 {
+		return
+	}
+
 	wait.UntilWithContext(ctx, func(ctx context.Context) {
 		log.V(1).Info("starting volume resize loop")
 		machines, err := r.machines.List(ctx)
