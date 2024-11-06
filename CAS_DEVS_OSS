@@ -1,0 +1,13 @@
+team: iaas
+assignees:
+  - "sourav.sahu"
+  - "lukas.koszegy"
+cveLabels:
+  - "type::3-cve"
+  - "stream::onMetal"
+  - "Component: Virtualization"
+  - "why::Security"
+  - "squad::Virtualization"
+dueDays: 13
+cve:
+  - repository: osc/upstream/ironcore-dev/libvirt-provider
