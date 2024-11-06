@@ -298,6 +298,7 @@ func Run(ctx context.Context, opts Options) error {
 		NewFunc:        func() *api.Machine { return &api.Machine{} },
 		CreateStrategy: strategy.MachineStrategy,
 		Dir:            providerHost.MachineStoreDir(),
+		Logger:         log,
 	})
 	if err != nil {
 		setupLog.Error(err, "failed to initialize machine store")
