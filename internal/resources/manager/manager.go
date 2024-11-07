@@ -249,9 +249,13 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 				return fmt.Errorf("failed to find source for resource %s: %w", key, ErrResourceUnsupported)
 			}
 
-			_, err := s.Allocate(machine, requiredResources)
+			allocated, err := s.Allocate(machine, requiredResources)
 			if err != nil {
 				return err
+			}
+
+			for allocatedResource := range allocated {
+				delete(requiredResources, allocatedResource)
 			}
 		}
 	}
