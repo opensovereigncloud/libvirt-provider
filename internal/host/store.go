@@ -14,12 +14,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
 	utilssync "github.com/ironcore-dev/libvirt-provider/internal/sync"
 	"github.com/ironcore-dev/libvirt-provider/internal/utils"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/sets"
+	kjson "sigs.k8s.io/json"
 )
 
 const perm = 0777
@@ -30,6 +33,7 @@ type Options[E api.Object] struct {
 	Dir            string
 	NewFunc        func() E
 	CreateStrategy CreateStrategy[E]
+	Logger         logr.Logger
 }
 
 func NewStore[E api.Object](opts Options[E]) (*Store[E], error) {
@@ -50,6 +54,7 @@ func NewStore[E api.Object](opts Options[E]) (*Store[E], error) {
 		createStrategy: opts.CreateStrategy,
 
 		watches: sets.New[*watch[E]](),
+		log:     opts.Logger.WithName("store"),
 	}, nil
 }
 
@@ -63,6 +68,7 @@ type Store[E api.Object] struct {
 
 	watchesMu sync.RWMutex
 	watches   sets.Set[*watch[E]]
+	log       logr.Logger
 }
 
 type CreateStrategy[E api.Object] interface {
@@ -253,7 +259,8 @@ func (s *Store[E]) CleanupSwapFiles() []error {
 }
 
 func (s *Store[E]) get(id string) (E, error) {
-	file, err := os.ReadFile(filepath.Join(s.dir, id))
+	filePath := filepath.Join(s.dir, id)
+	fd, err := os.OpenFile(filePath, os.O_RDONLY, 0)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return utils.Zero[E](), fmt.Errorf("failed to read file: %w", err)
@@ -261,30 +268,40 @@ func (s *Store[E]) get(id string) (E, error) {
 
 		return utils.Zero[E](), fmt.Errorf("object with id %q %w", id, store.ErrNotFound)
 	}
+	defer osutils.CloseWithErrorLogging(fd, fmt.Sprintf("failed to close file %s", filePath), &s.log)
 
 	obj := s.newFunc()
-	if err := json.Unmarshal(file, &obj); err != nil {
-		return utils.Zero[E](), fmt.Errorf("failed to unmarshal object from file %s: %w", id, err)
+	err = kjson.NewDecoderCaseSensitivePreserveInts(fd).Decode(&obj)
+	if err != nil {
+		return utils.Zero[E](), fmt.Errorf("failed to decode object from file %s: %w", id, err)
 	}
 
-	return obj, err
+	return obj, nil
 }
 
 func (s *Store[E]) set(obj E) (E, error) {
-	data, err := json.Marshal(obj)
-	if err != nil {
-		return utils.Zero[E](), fmt.Errorf("failed to marshal obj: %w", err)
-	}
-
 	filePath := filepath.Join(s.dir, obj.GetID())
 	swpFilePath := filePath + suffixSwpExtension
-	if err := os.WriteFile(swpFilePath, data, 0600); err != nil {
-		return utils.Zero[E](), nil
+	fd, err := os.OpenFile(swpFilePath, os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return utils.Zero[E](), fmt.Errorf("failed to open file: %w", err)
+	}
+
+	defer osutils.CloseWithErrorLogging(fd, fmt.Sprintf("file %s cannot be closed properly", swpFilePath), &s.log)
+
+	err = json.NewEncoder(fd).Encode(obj)
+	if err != nil {
+		return utils.Zero[E](), fmt.Errorf("failed to encode obj: %w", err)
+	}
+
+	err = fd.Sync()
+	if err != nil {
+		return utils.Zero[E](), fmt.Errorf("failed to sync file: %w", err)
 	}
 
 	err = os.Rename(swpFilePath, filePath)
 	if err != nil {
-		return utils.Zero[E](), nil
+		return utils.Zero[E](), err
 	}
 
 	return obj, nil
