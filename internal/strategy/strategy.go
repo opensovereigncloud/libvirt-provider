@@ -12,5 +12,5 @@ var MachineStrategy = machineStrategy{}
 type machineStrategy struct{}
 
 func (machineStrategy) PrepareForCreate(obj *api.Machine) {
-	obj.Status = api.MachineStatus{State: api.MachineStatePending}
+	obj.Status.State = api.MachineStatePending
 }

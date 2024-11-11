@@ -111,10 +111,6 @@ func GetSource(name string, options sources.Options) (Source, error) {
 	}
 }
 
-func GetPCIManager() PCIManager {
-	return mng.getPCIManager()
-}
-
 func GetSourcesAvailable() []string {
 	return []string{sources.SourceCPU, sources.SourceMemory, sources.SourceHugepages, sgx.SourceSGX}
 }

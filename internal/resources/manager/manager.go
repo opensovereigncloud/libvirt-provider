@@ -68,8 +68,6 @@ type resourceManager struct {
 	// sources is register of all added sources
 	sources map[string]Source
 
-	pciManager PCIManager
-
 	registredResources map[core.ResourceName]Source
 
 	// mx allow change internal state only one gouroutines
@@ -227,14 +225,6 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 			}
 
 			r.registredResources[value] = s
-		}
-
-		if s.GetName() == sources.SourcePCI {
-			var ok bool
-			r.pciManager, ok = s.(PCIManager)
-			if !ok {
-				return fmt.Errorf("failed to convert PCI source to PCIManager interface")
-			}
 		}
 	}
 
@@ -566,12 +556,6 @@ func (r *resourceManager) reset() {
 	r.machineclassesFile = ""
 	r.initialized = false
 	r.registredResources = map[core.ResourceName]Source{}
-	r.pciManager = &DummyPCIManager{}
-}
-
-// this is very hacky and bad
-func (r *resourceManager) getPCIManager() PCIManager {
-	return r.pciManager
 }
 
 func removeSeparatorFromEnd(in string) string {

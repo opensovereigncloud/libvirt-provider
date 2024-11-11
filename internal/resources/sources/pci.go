@@ -100,10 +100,15 @@ func (p *PCI) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
 	for key := range p.availableResources {
 		supportedResources.Insert(key)
 	}
+
+	fmt.Println("=========== During initialise ======================")
+	fmt.Printf("%+v \n", p.devices)
+	fmt.Println("=================================")
+
 	return supportedResources, nil
 }
 
-func (p *PCI) Allocate(_ *api.Machine, requiredResources core.ResourceList) (core.ResourceList, error) {
+func (p *PCI) Allocate(machine *api.Machine, requiredResources core.ResourceList) (core.ResourceList, error) {
 	allocatedResources := core.ResourceList{}
 	// Clone current state of availableResources to temporary storage
 	tempAvailableResources := maps.Clone(p.availableResources)
@@ -129,11 +134,28 @@ func (p *PCI) Allocate(_ *api.Machine, requiredResources core.ResourceList) (cor
 	// Second pass: update actual available resources
 	p.availableResources = tempAvailableResources
 
+	allocatedPCIDevices, err := p.allocatePCIAddress(requiredResources)
+	if err != nil {
+		return nil, fmt.Errorf("PCI address allocation failed: %w", err)
+	}
+
+	machine.Status.PCIDevices = append(machine.Status.PCIDevices, allocatedPCIDevices...)
+
+	fmt.Println("============ After Allocation =====================")
+	fmt.Printf("%+v \n", p.devices)
+	fmt.Println("=================================")
+
 	return allocatedResources, nil
 }
 
-func (p *PCI) Deallocate(_ *api.Machine, requiredResources core.ResourceList) []core.ResourceName {
+func (p *PCI) Deallocate(machine *api.Machine, requiredResources core.ResourceList) []core.ResourceName {
 	deallocatedResources := []core.ResourceName{}
+
+	err := p.deallocatePCIAddress(machine.Status.PCIDevices)
+	if err != nil {
+		p.log.Error(err, "failed to deallocate PCI addresses")
+	}
+	machine.Status.PCIDevices = nil
 
 	for key, quantity := range requiredResources {
 		if availableQty, exists := p.availableResources[key]; exists {
@@ -142,6 +164,9 @@ func (p *PCI) Deallocate(_ *api.Machine, requiredResources core.ResourceList) []
 			deallocatedResources = append(deallocatedResources, key)
 		}
 	}
+	fmt.Println("============ After de-allocation =====================")
+	fmt.Printf("%+v \n", p.devices)
+	fmt.Println("=================================")
 	return deallocatedResources
 }
 
@@ -149,7 +174,7 @@ func (p *PCI) GetAvailableResources() core.ResourceList {
 	return p.availableResources.DeepCopy()
 }
 
-func (p *PCI) AllocatePCIAddress(resources core.ResourceList) ([]api.PCIDevice, error) {
+func (p *PCI) allocatePCIAddress(resources core.ResourceList) ([]api.PCIDevice, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -171,7 +196,7 @@ func (p *PCI) AllocatePCIAddress(resources core.ResourceList) ([]api.PCIDevice, 
 	return domainAddrs, nil
 }
 
-func (p *PCI) DeallocatePCIAddress(devices []api.PCIDevice) error {
+func (p *PCI) deallocatePCIAddress(devices []api.PCIDevice) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
