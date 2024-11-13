@@ -145,7 +145,7 @@ check_dependabot_commits:
     - docker
     - pes
     - osc
-  image: 
+  image:
     name: $synchronizeImage
     entrypoint: ["/bin/bash", "-c"]
   variables:
@@ -216,7 +216,7 @@ check_dependabot_commits:
           local commit_message="$3"
 
           branch_name="sync-$commit_hash"
-         
+
           if gitlab -o json project-branch list --project-id="$PROJECT_ID" --get-all | \
             jq --arg branch_name "$branch_name" 'map(select(.name == $branch_name)) | length > 0' | grep -q true; then
               gitlab --timeout="$GITLAB_TIMEOUT" project-branch delete --project-id="$PROJECT_ID" --name="$branch_name" >/dev/null
