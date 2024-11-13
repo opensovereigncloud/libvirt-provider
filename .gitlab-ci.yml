@@ -3,11 +3,13 @@ stages:
   - test
   - build
   - post-processing
+  - check_and_create_mr
 
 variables:
   CI_LINTER_IMG: "mtr.devops.telekom.de/osc/common/pipeline-community/osc-gitlab-runner-linter:alpine-latest-0.8"
   GO_BUILD_IMG: "mtr.devops.telekom.de/osc/onmetal/container-images/go:libvirt-provider-go-1.23.2-alpine-3.20.3"
   PODMAN_IMG: "${OSC_HOST}/osc/onmetal/tools/releaser:v1.0.10"
+  synchronizeImage: mtr.devops.telekom.de/osc/upstream/cloner/gitlab:v4.4.0-alpine
 
 workflow:
   rules:
@@ -136,3 +138,117 @@ include:
       image-list-type: 'none'
       version: 'stable'
       stage: 'post-processing'
+
+check_dependabot_commits:
+  stage: check_and_create_mr
+  tags:
+    - docker
+    - pes
+    - osc
+  image: 
+    name: $synchronizeImage
+    entrypoint: ["/bin/bash", "-c"]
+  variables:
+    PYTHON_GITLAB_CFG: "$GITLAB_CFG"
+    GIT_STRATEGY: clone
+    GIT_DEPTH: 0
+    AUTHOR_ID: 85862
+    PROJECT_ID: 238349
+    GITLAB_TIMEOUT: 10
+  before_script:
+  - echo "Setting up Git configuration..."
+  - git config --global user.email "users.noreply.gitlab.com"
+  - git config --global user.name "sync user"
+  - git remote set-url origin https://oauth2:${CI_PUSH_TOKEN}@gitlab.devops.telekom.de/cas-devs/osc/upstream/ironcore-dev/libvirt-provider.git
+  script:
+    - |
+      set -e
+      echo "Switching to the main branch..."
+      git checkout main >/dev/null 2>&1
+
+      bash << 'EOF'
+      commits=$(git log --since="7 days ago" --pretty=format:"%H %ae %ad %s")
+
+      should_process_commit() {
+          local commit_hash="$1"
+          local commit_message="$2"
+          local commit_date="$3"
+          branch_name="sync-$commit_hash"
+
+          if gitlab -o json project-merge-request list --project-id="$PROJECT_ID" --state=opened --author-id="$AUTHOR_ID" | \
+            jq --arg commit_message "$commit_message" 'map(select(.title == $commit_message)) | length > 0' | grep -q true; then
+              echo -e "\033[32mMerge request with title '$commit_message' already exists. Skipping...\033[0m"
+              return 1
+          fi
+
+          if git log --pretty=format:"%s %ad" --date=format:'%Y-%m-%d %H:%M:%S' | grep -F "$commit_message $commit_date"; then
+              echo -e "\033[32mCommit message '$commit_message' with date '$commit_date' already exists in the repo. Skipping...\033[0m"
+              return 1
+          fi
+
+          return 0
+      }
+
+      handle_dependabot_commit() {
+          local commit_hash="$1"
+          local commit_date="$2"
+          local commit_message="$3"
+
+          branch_name="sync-$commit_hash"
+
+          if gitlab -o json project-branch list --project-id="$PROJECT_ID" --get-all | \
+            jq --arg branch_name "$branch_name" 'map(select(.name == $branch_name)) | length > 0' | grep -q true; then
+              gitlab --timeout="$GITLAB_TIMEOUT" project-branch delete --project-id="$PROJECT_ID" --name="$branch_name" >/dev/null
+          fi
+
+          git checkout osc/main >/dev/null 2>&1
+
+          git checkout -b "$branch_name" >/dev/null 2>&1
+          git cherry-pick -X theirs $commit_hash >/dev/null 2>&1
+          git push origin "$branch_name" >/dev/null 2>&1
+
+          gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create --project-id="$PROJECT_ID" --source-branch="$branch_name" --target-branch=osc/main --title="$commit_message" --description="merging ${commit_hash} of upstream" --squash=true --remove-source-branch=true >/dev/null
+      }
+
+      handle_non_dependabot_commit() {
+          local commit_hash="$1"
+          local commit_date="$2"
+          local commit_message="$3"
+
+          branch_name="sync-$commit_hash"
+         
+          if gitlab -o json project-branch list --project-id="$PROJECT_ID" --get-all | \
+            jq --arg branch_name "$branch_name" 'map(select(.name == $branch_name)) | length > 0' | grep -q true; then
+              gitlab --timeout="$GITLAB_TIMEOUT" project-branch delete --project-id="$PROJECT_ID" --name="$branch_name" >/dev/null
+          fi
+
+          git checkout osc/main >/dev/null 2>&1
+
+          git checkout -b "$branch_name" >/dev/null 2>&1
+          git push origin "$branch_name" >/dev/null 2>&1
+
+          gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create --project-id="$PROJECT_ID" --source-branch="$branch_name" --target-branch=osc/main --title="$commit_message" --description="Please merge ${commit_hash} of upstream" --squash=true --remove-source-branch=true >/dev/null
+      }
+
+      if [[ -z "$commits" ]]; then
+          echo "No commits found in the last 7 days."
+          exit 0
+      fi
+
+      while IFS= read -r line; do
+          commit_hash=$(echo "$line" | awk '{print $1}')
+          commit_author=$(echo "$line" | awk '{print $2}')
+          commit_date=$(echo "$line" | awk '{print $3, $4, $5, $6}')
+          commit_message=$(echo "$line" | cut -d' ' -f9-)
+
+          if should_process_commit "$commit_hash" "$commit_message" "$commit_date"; then
+              if [[ "$commit_author" =~ "dependabot" ]]; then
+                  handle_dependabot_commit "$commit_hash" "$commit_date" "$commit_message"
+              else
+                  handle_non_dependabot_commit "$commit_hash" "$commit_date" "$commit_message"
+              fi
+          fi
+      done <<< "$commits"
+      EOF
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'schedule'
