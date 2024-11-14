@@ -154,6 +154,7 @@ check-dependabot-commits:
     GIT_DEPTH: 0
     AUTHOR_ID: 85862
     PROJECT_ID: 238349
+    REVIEWER_IDS: "40056,26108"
     GITLAB_TIMEOUT: 10
   before_script:
   - echo "Setting up Git configuration..."
@@ -196,7 +197,7 @@ check-dependabot-commits:
 
           git fetch --all >/dev/null 2>&1
           if git branch -a | grep -q "$branch_name" >/dev/null 2>&1; then
-              gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create --project-id="$PROJECT_ID" --source-branch="$branch_name" --target-branch=osc/main --title="$commit_message" --description="Please merge ${commit_hash} of upstream" --squash=true --remove-source-branch=true >/dev/null
+              gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create --project-id="$PROJECT_ID" --source-branch="$branch_name" --target-branch=osc/main --title="$commit_message" --description="Please merge ${commit_hash} of upstream" --squash=true --remove-source-branch=true --reviewer-ids="$REVIEWER_IDS" >/dev/null
               return 0
           fi
 
@@ -208,7 +209,7 @@ check-dependabot-commits:
           git commit --no-edit >/dev/null 2>&1
           git push origin "$branch_name" >/dev/null 2>&1
 
-          gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create --project-id="$PROJECT_ID" --source-branch="$branch_name" --target-branch=osc/main --title="$commit_message" --description="merging ${commit_hash} of upstream" --squash=true --remove-source-branch=true >/dev/null
+          gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create --project-id="$PROJECT_ID" --source-branch="$branch_name" --target-branch=osc/main --title="$commit_message" --description="Please merge ${commit_hash} of upstream" --squash=true --remove-source-branch=true --reviewer-ids="$REVIEWER_IDS" >/dev/null
       }
 
       if [[ -z "$commits" ]]; then
