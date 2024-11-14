@@ -3,7 +3,7 @@ stages:
   - test
   - build
   - post-processing
-  - check_and_create_mr
+  - check-and-create-mr
 
 variables:
   CI_LINTER_IMG: "mtr.devops.telekom.de/osc/common/pipeline-community/osc-gitlab-runner-linter:alpine-latest-0.8"
@@ -139,8 +139,8 @@ include:
       version: 'stable'
       stage: 'post-processing'
 
-check_dependabot_commits:
-  stage: check_and_create_mr
+check-dependabot-commits:
+  stage: check-and-create-mr
   tags:
     - docker
     - pes
@@ -163,11 +163,10 @@ check_dependabot_commits:
   script:
     - |
       set -e
-      echo "Switching to the main branch..."
       git checkout main >/dev/null 2>&1
 
       bash << 'EOF'
-      commits=$(git log --since="7 days ago" --pretty=format:"%H %ae %ad %s")
+      commits=$(git log --since="7 days ago" --pretty=format:"%H %cd %s" --date="format:%a %b %d %H:%M:%S")
 
       should_process_commit() {
           local commit_hash="$1"
@@ -175,59 +174,41 @@ check_dependabot_commits:
           local commit_date="$3"
           branch_name="sync-$commit_hash"
 
-          if gitlab -o json project-merge-request list --project-id="$PROJECT_ID" --state=opened --author-id="$AUTHOR_ID" | \
-            jq --arg commit_message "$commit_message" 'map(select(.title == $commit_message)) | length > 0' | grep -q true; then
-              echo -e "\033[32mMerge request with title '$commit_message' already exists. Skipping...\033[0m"
+          if git log --pretty=format:"%s %ad" --date=format:'%Y-%m-%d %H:%M:%S' | grep -F "$commit_message $commit_date"; then
+              echo -e "\033[32mCommit message '$commit_message' with date '$commit_date' already exists in the repo. Skipping...\033[0m"
               return 1
           fi
 
-          if git log --pretty=format:"%s %ad" --date=format:'%Y-%m-%d %H:%M:%S' | grep -F "$commit_message $commit_date"; then
-              echo -e "\033[32mCommit message '$commit_message' with date '$commit_date' already exists in the repo. Skipping...\033[0m"
+          if gitlab -o json project-merge-request list --project-id="$PROJECT_ID" --state=opened --author-id="$AUTHOR_ID" | \
+            jq -e --arg commit_message "$commit_message" 'map(select(.title == $commit_message)) | length > 0'; then
+              echo -e "\033[32mMerge request with title '$commit_message' already exists. Skipping...\033[0m"
               return 1
           fi
 
           return 0
       }
 
-      handle_dependabot_commit() {
+      handle_commit() {
           local commit_hash="$1"
-          local commit_date="$2"
-          local commit_message="$3"
+          local commit_message="$2"
 
           branch_name="sync-$commit_hash"
 
-          if gitlab -o json project-branch list --project-id="$PROJECT_ID" --get-all | \
-            jq --arg branch_name "$branch_name" 'map(select(.name == $branch_name)) | length > 0' | grep -q true; then
-              gitlab --timeout="$GITLAB_TIMEOUT" project-branch delete --project-id="$PROJECT_ID" --name="$branch_name" >/dev/null
+          git fetch --all >/dev/null 2>&1
+          if git branch -a | grep -q "$branch_name" >/dev/null 2>&1; then
+              gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create --project-id="$PROJECT_ID" --source-branch="$branch_name" --target-branch=osc/main --title="$commit_message" --description="Please merge ${commit_hash} of upstream" --squash=true --remove-source-branch=true >/dev/null
+              return 0
           fi
 
           git checkout osc/main >/dev/null 2>&1
 
           git checkout -b "$branch_name" >/dev/null 2>&1
-          git cherry-pick -X theirs $commit_hash >/dev/null 2>&1
+          git cherry-pick $commit_hash >/dev/null 2>&1
+          git add . >/dev/null 2>&1
+          git commit --no-edit >/dev/null 2>&1
           git push origin "$branch_name" >/dev/null 2>&1
 
           gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create --project-id="$PROJECT_ID" --source-branch="$branch_name" --target-branch=osc/main --title="$commit_message" --description="merging ${commit_hash} of upstream" --squash=true --remove-source-branch=true >/dev/null
-      }
-
-      handle_non_dependabot_commit() {
-          local commit_hash="$1"
-          local commit_date="$2"
-          local commit_message="$3"
-
-          branch_name="sync-$commit_hash"
-
-          if gitlab -o json project-branch list --project-id="$PROJECT_ID" --get-all | \
-            jq --arg branch_name "$branch_name" 'map(select(.name == $branch_name)) | length > 0' | grep -q true; then
-              gitlab --timeout="$GITLAB_TIMEOUT" project-branch delete --project-id="$PROJECT_ID" --name="$branch_name" >/dev/null
-          fi
-
-          git checkout osc/main >/dev/null 2>&1
-
-          git checkout -b "$branch_name" >/dev/null 2>&1
-          git push origin "$branch_name" >/dev/null 2>&1
-
-          gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create --project-id="$PROJECT_ID" --source-branch="$branch_name" --target-branch=osc/main --title="$commit_message" --description="Please merge ${commit_hash} of upstream" --squash=true --remove-source-branch=true >/dev/null
       }
 
       if [[ -z "$commits" ]]; then
@@ -237,16 +218,11 @@ check_dependabot_commits:
 
       while IFS= read -r line; do
           commit_hash=$(echo "$line" | awk '{print $1}')
-          commit_author=$(echo "$line" | awk '{print $2}')
-          commit_date=$(echo "$line" | awk '{print $3, $4, $5, $6}')
-          commit_message=$(echo "$line" | cut -d' ' -f9-)
+          commit_date=$(echo "$line" | awk '{print $2, $3, $4, $5}')
+          commit_message=$(echo "$line" | cut -d' ' -f6-)
 
           if should_process_commit "$commit_hash" "$commit_message" "$commit_date"; then
-              if [[ "$commit_author" =~ "dependabot" ]]; then
-                  handle_dependabot_commit "$commit_hash" "$commit_date" "$commit_message"
-              else
-                  handle_non_dependabot_commit "$commit_hash" "$commit_date" "$commit_message"
-              fi
+                handle_commit "$commit_hash" "$commit_message"
           fi
       done <<< "$commits"
       EOF
