@@ -85,9 +85,7 @@ func (m *Hugepages) Allocate(_ *api.Machine, requiredResources core.ResourceList
 		return nil, nil
 	}
 
-	newMem := *m.availableMemory
-	newMem.Sub(mem)
-	if newMem.Sign() == -1 {
+	if m.availableMemory.Cmp(mem) < 0 {
 		return nil, fmt.Errorf("failed to allocate resource %s: %w", core.ResourceMemory, ErrResourceNotAvailable)
 	}
 
@@ -96,14 +94,12 @@ func (m *Hugepages) Allocate(_ *api.Machine, requiredResources core.ResourceList
 		return nil, fmt.Errorf("failed to allocate resource %s: %w", ResourceHugepages, ErrResourceMissing)
 	}
 
-	newHugepages := *m.availableHugePages
-	newHugepages.Sub(hugepages)
-	if newHugepages.Sign() == -1 {
+	if m.availableHugePages.Cmp(hugepages) < 0 {
 		return nil, fmt.Errorf("failed to allocate resource %s: %w", ResourceHugepages, ErrResourceNotAvailable)
 	}
 
-	m.availableMemory = &newMem
-	m.availableHugePages = &newHugepages
+	m.availableMemory.Sub(mem)
+	m.availableHugePages.Sub(hugepages)
 
 	return core.ResourceList{core.ResourceMemory: mem, ResourceHugepages: hugepages}, nil
 }

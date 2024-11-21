@@ -62,14 +62,11 @@ func (m *Memory) Allocate(_ *api.Machine, requiredResources core.ResourceList) (
 		return nil, nil
 	}
 
-	newMem := *m.availableMemory
-	newMem.Sub(mem)
-
-	if newMem.Sign() == -1 {
+	if m.availableMemory.Cmp(mem) < 0 {
 		return nil, fmt.Errorf("failed to allocate resource %s: %w", core.ResourceMemory, ErrResourceNotAvailable)
 	}
 
-	m.availableMemory = &newMem
+	m.availableMemory.Sub(mem)
 	return core.ResourceList{core.ResourceMemory: mem}, nil
 }
 
