@@ -6,14 +6,21 @@ toolchain go1.22.6
 
 require (
 	github.com/blang/semver/v4 v4.0.0
+<<<<<<< HEAD
 	github.com/ceph/go-ceph v0.28.0
 	github.com/containerd/containerd v1.7.20
 	github.com/digitalocean/go-libvirt v0.0.0-20221205150000-2939327a8519
 	github.com/docker/go-units v0.5.0
+=======
+	github.com/ceph/go-ceph v0.30.0
+	github.com/containerd/containerd v1.7.24
+	github.com/digitalocean/go-libvirt v0.0.0-20241112162257-c54891ad610b
+>>>>>>> aa94733 (Bump dependencies (#442))
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/go-logr/logr v1.4.2
 	github.com/go-playground/validator/v10 v10.22.1
 	github.com/google/uuid v1.6.0
+<<<<<<< HEAD
 	github.com/ironcore-dev/controller-utils v0.9.3
 	github.com/ironcore-dev/ironcore v0.1.3-0.20240806092921-1d97e78bcd62
 	github.com/ironcore-dev/ironcore-image v0.2.1
@@ -21,10 +28,20 @@ require (
 	github.com/moby/term v0.5.0
 	github.com/onsi/ginkgo/v2 v2.20.1
 	github.com/onsi/gomega v1.34.1
+=======
+	github.com/ironcore-dev/controller-utils v0.9.5
+	github.com/ironcore-dev/ironcore v0.2.0
+	github.com/ironcore-dev/ironcore-image v0.2.4
+	github.com/ironcore-dev/ironcore-net v0.2.1
+	github.com/moby/term v0.5.0
+	github.com/onsi/ginkgo/v2 v2.22.0
+	github.com/onsi/gomega v1.35.1
+>>>>>>> aa94733 (Bump dependencies (#442))
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/shirou/gopsutil/v3 v3.24.4
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
+<<<<<<< HEAD
 	golang.org/x/sync v0.8.0
 	google.golang.org/grpc v1.65.0
 	k8s.io/api v0.30.3
@@ -41,6 +58,17 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
+=======
+	golang.org/x/sync v0.9.0
+	google.golang.org/grpc v1.68.0
+	k8s.io/api v0.31.3
+	k8s.io/apimachinery v0.31.3
+	k8s.io/client-go v0.31.3
+	k8s.io/kubectl v0.31.3
+	k8s.io/utils v0.0.0-20241104163129-6fe5fd82f078
+	libvirt.org/go/libvirtxml v1.10009.0
+	sigs.k8s.io/controller-runtime v0.19.2
+>>>>>>> aa94733 (Bump dependencies (#442))
 )
 
 require (
@@ -48,7 +76,11 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+<<<<<<< HEAD
 	github.com/containerd/errdefs v0.1.0 // indirect
+=======
+	github.com/containerd/errdefs v1.0.0 // indirect
+>>>>>>> aa94733 (Bump dependencies (#442))
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/creack/pty v1.1.21 // indirect
@@ -77,8 +109,13 @@ require (
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
+<<<<<<< HEAD
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
+=======
+	github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db // indirect
+	github.com/gorilla/mux v1.8.1 // indirect
+>>>>>>> aa94733 (Bump dependencies (#442))
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -114,6 +151,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go4.org/netipx v0.0.0-20220812043211-3cc044ffd68d // indirect
+<<<<<<< HEAD
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/oauth2 v0.20.0 // indirect
@@ -125,13 +163,33 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
+=======
+	golang.org/x/crypto v0.29.0 // indirect
+	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
+	golang.org/x/net v0.31.0 // indirect
+	golang.org/x/oauth2 v0.23.0 // indirect
+	golang.org/x/sys v0.27.0 // indirect
+	golang.org/x/term v0.26.0 // indirect
+	golang.org/x/text v0.20.0 // indirect
+	golang.org/x/time v0.3.0 // indirect
+	golang.org/x/tools v0.27.0 // indirect
+	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
+	google.golang.org/protobuf v1.35.1 // indirect
+>>>>>>> aa94733 (Bump dependencies (#442))
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.1 // indirect
+<<<<<<< HEAD
 	k8s.io/apiextensions-apiserver v0.30.1 // indirect
 	k8s.io/apiserver v0.30.1 // indirect
 	k8s.io/cli-runtime v0.30.3 // indirect
+=======
+	k8s.io/apiextensions-apiserver v0.31.0 // indirect
+	k8s.io/apiserver v0.31.0 // indirect
+	k8s.io/cli-runtime v0.31.3 // indirect
+>>>>>>> aa94733 (Bump dependencies (#442))
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
 	k8s.io/kubectl v0.30.3
