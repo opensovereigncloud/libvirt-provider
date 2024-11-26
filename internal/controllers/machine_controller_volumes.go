@@ -76,7 +76,7 @@ func getVolumeStatus(machine *api.Machine, volumeID string) *api.VolumeStatus {
 }
 
 func getLastVolumeSize(machine *api.Machine, volumeID string) int64 {
-	if status := getVolumeStatus(machine, volumeID); status != nil && status.Size != 0 {
+	if status := getVolumeStatus(machine, volumeID); status != nil {
 		return status.Size
 	}
 	return 0
@@ -650,9 +650,14 @@ func (r *MachineReconciler) applyVolume(
 		return "", 0, fmt.Errorf("error ensuring volume is attached: %w", err)
 	}
 
+	r.mxResizeVolume.Lock()
+	defer r.mxResizeVolume.Unlock()
+	sizes, ok := r.resizeVolume[machine.ID+volumeID]
+
 	//TODO do epsilon comparison
-	if lastVolumeSize := getLastVolumeSize(machine, volumeID); lastVolumeSize != 0 && providerVolume.Size != lastVolumeSize {
-		log.V(1).Info("Resize volume", "volumeID", volumeID, "lastSize", lastVolumeSize, "volumeSize", providerVolume.Size)
+	if ok {
+		providerVolume.Size = sizes.New
+		log.V(1).Info("Resize volume", "volumeID", volumeID, "lastSize", sizes.Current, "volumeSize", sizes.New)
 		if err := attacher.ResizeVolume(&AttachVolume{
 			Name:   desiredVolume.Name,
 			Device: desiredVolume.Device,
@@ -660,9 +665,10 @@ func (r *MachineReconciler) applyVolume(
 		}); err != nil {
 			return "", 0, fmt.Errorf("failed to resize volume: %w", err)
 		}
+		return volumeID, sizes.New, nil
 	}
 
-	return volumeID, providerVolume.Size, nil
+	return volumeID, getLastVolumeSize(machine, volumeID), nil
 }
 
 func (r *MachineReconciler) listDesiredVolumes(machine *api.Machine) map[string]*api.VolumeSpec {

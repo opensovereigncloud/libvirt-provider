@@ -65,6 +65,11 @@ var (
 	}
 )
 
+type VolumeSizes struct {
+	Current int64
+	New     int64
+}
+
 type MachineReconcilerOptions struct {
 	GuestCapabilities              guest.Capabilities
 	TCMallocLibPath                string
@@ -118,6 +123,7 @@ func NewMachineReconciler(
 		resyncIntervalGarbageCollector: opts.ResyncIntervalGarbageCollector,
 		gcVMGracefulShutdownTimeout:    opts.GCVMGracefulShutdownTimeout,
 		volumeCachePolicy:              opts.VolumeCachePolicy,
+		resizeVolume:                   map[string]VolumeSizes{},
 	}, nil
 }
 
@@ -143,6 +149,9 @@ type MachineReconciler struct {
 
 	gcVMGracefulShutdownTimeout    time.Duration
 	resyncIntervalGarbageCollector time.Duration
+
+	resizeVolume   map[string]VolumeSizes
+	mxResizeVolume sync.Mutex
 
 	volumeCachePolicy string
 }
@@ -258,12 +267,20 @@ func (r *MachineReconciler) startCheckAndEnqueueVolumeResize(ctx context.Context
 					continue
 				}
 
+				r.mxResizeVolume.Lock()
 				if lastVolumeSize := getLastVolumeSize(machine, GetUniqueVolumeName(plugin.Name(), volumeID)); volumeSize != lastVolumeSize {
 					r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "SizeChangedVolume", "Volume size changed %s, lastVolumeSize: %d bytes, volumeSize: %d bytes", volume.Name, lastVolumeSize, volumeSize)
 					log.V(1).Info("Volume size changed", "volumeName", volume.Name, "volumeID", volumeID, "machineID", machine.ID, "lastSize", lastVolumeSize, "volumeSize", volumeSize)
 					shouldEnqueue = true
+					// Temporary optimalization of call rbd
+					_, ok := r.resizeVolume[machine.ID+GetUniqueVolumeName(plugin.Name(), volumeID)]
+					if !ok {
+						r.resizeVolume[machine.ID+GetUniqueVolumeName(plugin.Name(), volumeID)] = VolumeSizes{Current: lastVolumeSize, New: volumeSize}
+					}
+					r.mxResizeVolume.Unlock()
 					break
 				}
+				r.mxResizeVolume.Unlock()
 			}
 
 			if shouldEnqueue {

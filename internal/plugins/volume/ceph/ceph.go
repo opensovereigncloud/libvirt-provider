@@ -65,7 +65,7 @@ func (p *plugin) GetBackingVolumeID(spec *api.VolumeSpec) (string, error) {
 		return "", fmt.Errorf("volume access does not specify handle: %s", handle)
 	}
 
-	return fmt.Sprintf("%s^%s", pluginName, handle), nil
+	return handle, nil
 }
 
 func (p *plugin) CanSupport(spec *api.VolumeSpec) bool {
@@ -138,11 +138,6 @@ func (p *plugin) Apply(ctx context.Context, spec *api.VolumeSpec, machine *api.M
 		}
 	}
 
-	volumeSize, err := p.GetSize(ctx, spec)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get volume size: %w", err)
-	}
-
 	return &volume.Volume{
 		QCow2File: "",
 		RawFile:   "",
@@ -156,7 +151,6 @@ func (p *plugin) Apply(ctx context.Context, spec *api.VolumeSpec, machine *api.M
 			Encryption: cephEncryption,
 		},
 		Handle: volumeData.handle,
-		Size:   volumeSize,
 	}, nil
 }
 
