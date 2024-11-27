@@ -1,9 +1,9 @@
 stages:
+  - check-and-create-mr
   - lint
   - test
   - build
   - post-processing
-  - check-and-create-mr
 
 variables:
   CI_LINTER_IMG: "mtr.devops.telekom.de/osc/common/pipeline-community/osc-gitlab-runner-linter:alpine-latest-0.8"
@@ -147,7 +147,7 @@ check-dependabot-commits:
     - osc
   image:
     name: $synchronizeImage
-    entrypoint: ["/bin/bash", "-c"]
+    entrypoint: [""]
   variables:
     PYTHON_GITLAB_CFG: "$GITLAB_CFG"
     GIT_STRATEGY: clone
@@ -156,76 +156,82 @@ check-dependabot-commits:
     PROJECT_ID: 238349
     REVIEWER_IDS: "40056,26108"
     GITLAB_TIMEOUT: 10
-  before_script:
-  - echo "Setting up Git configuration..."
-  - git config --global user.email "users.noreply.gitlab.com"
-  - git config --global user.name "sync user"
-  - git remote set-url origin https://oauth2:${CI_PUSH_TOKEN}@gitlab.devops.telekom.de/cas-devs/osc/upstream/ironcore-dev/libvirt-provider.git
   script:
     - |
-      set -e
-      git checkout main >/dev/null 2>&1
+      #!/usr/bin/env bash
 
-      bash << 'EOF'
-      commits=$(git log --since="7 days ago" --pretty=format:"%H %cd %s" --date="format:%a %b %d %H:%M:%S")
+      set -euo pipefail
 
-      should_process_commit() {
-          local commit_hash="$1"
-          local commit_message="$2"
-          local commit_date="$3"
-          branch_name="sync-$commit_hash"
+      function should_process_commit() {
+        local commit_hash="$1"
+        local commit_message="$2"
+        local commit_date="$3"
+        local branch_name="sync-$commit_hash"
 
-          if git log --pretty=format:"%s %ad" --date=format:'%Y-%m-%d %H:%M:%S' | grep -F "$commit_message $commit_date"; then
-              echo -e "\033[32mCommit message '$commit_message' with date '$commit_date' already exists in the repo. Skipping...\033[0m"
-              return 1
-          fi
+        if git --no-pager log --pretty=format:"%s %ad%n" --date="format:%Y-%m-%dT%H:%M:%S" | grep -q -F "$commit_message $commit_date"; then
+          echo -e "\033[32mCommit message '$commit_message' with date '$commit_date' already exists in the repo. Skipping...\033[0m"
+          return 1
+        fi
 
-          if gitlab -o json project-merge-request list --project-id="$PROJECT_ID" --state=opened --author-id="$AUTHOR_ID" | \
-            jq -e --arg commit_message "$commit_message" 'map(select(.title == $commit_message)) | length > 0'; then
-              echo -e "\033[32mMerge request with title '$commit_message' already exists. Skipping...\033[0m"
-              return 1
-          fi
+        if gitlab -o json project-merge-request list --project-id="$PROJECT_ID" --state=opened --author-id="$AUTHOR_ID" | \
+          jq -e --arg commit_message "$commit_message" 'map(select(.title == $commit_message)) | length > 0'; then
+            echo -e "\033[32mMerge request with title '$commit_message' already exists. Skipping...\033[0m"
+            return 1
+        fi
 
-          return 0
+        return 0
       }
 
-      handle_commit() {
-          local commit_hash="$1"
-          local commit_message="$2"
+      function handle_commit() {
+        local commit_hash="$1"
+        local commit_message="$2"
 
-          branch_name="sync-$commit_hash"
+        local branch_name="sync-$commit_hash"
 
-          git fetch --all >/dev/null 2>&1
-          if git branch -a | grep -q "$branch_name" >/dev/null 2>&1; then
-              gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create --project-id="$PROJECT_ID" --source-branch="$branch_name" --target-branch=osc/main --title="$commit_message" --description="Please merge ${commit_hash} of upstream" --squash=true --remove-source-branch=true --reviewer-ids="$REVIEWER_IDS" >/dev/null
-              return 0
-          fi
 
-          git checkout osc/main >/dev/null 2>&1
-
-          git checkout -b "$branch_name" >/dev/null 2>&1
-          git cherry-pick $commit_hash >/dev/null 2>&1
-          git add . >/dev/null 2>&1
-          git commit --no-edit >/dev/null 2>&1
-          git push origin "$branch_name" >/dev/null 2>&1
-
+        if git branch -a | grep -q "$branch_name"; then
           gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create --project-id="$PROJECT_ID" --source-branch="$branch_name" --target-branch=osc/main --title="$commit_message" --description="Please merge ${commit_hash} of upstream" --squash=true --remove-source-branch=true --reviewer-ids="$REVIEWER_IDS" >/dev/null
+          return 0
+        fi
+
+        git switch osc/main --quiet
+
+        git switch -c "$branch_name" --quiet
+        if ! git cherry-pick "$commit_hash" --ff --quiet &>/dev/null; then
+          # add conflicted changes
+          git add .
+          git cherry-pick --continue
+        fi
+        git push origin "$branch_name" --quiet
+
+        gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create --project-id="$PROJECT_ID" --source-branch="$branch_name" --target-branch=osc/main --title="$commit_message" --description="Please merge ${commit_hash} of upstream" --squash=true --remove-source-branch=true --reviewer-ids="$REVIEWER_IDS" >/dev/null
       }
 
-      if [[ -z "$commits" ]]; then
-          echo "No commits found in the last 7 days."
-          exit 0
+      echo "Setting up Git configuration..."
+      git config --global user.email "users.noreply.gitlab.com"
+      git config --global user.name "sync user"
+      git remote set-url origin https://oauth2:${CI_PUSH_TOKEN}@gitlab.devops.telekom.de/cas-devs/osc/upstream/ironcore-dev/libvirt-provider.git
+      git fetch --all --quiet
+
+      git switch main --quiet
+
+      git --no-pager log --since="7 days ago"  --pretty="format:%H %cd %s" --date="format:%Y-%m-%dT%H:%M:%S"
+      mapfile -t commits < <(git --no-pager log --since="7 days ago"  --pretty="format:%H %cd %s" --date="format:%Y-%m-%dT%H:%M:%S")
+
+      commits_count=${#commits[@]}
+      if [ $commits_count -eq 0 ]; then
+        echo "No commits found in the last 7 days."
+        exit 0
       fi
 
-      while IFS= read -r line; do
-          commit_hash=$(echo "$line" | awk '{print $1}')
-          commit_date=$(echo "$line" | awk '{print $2, $3, $4, $5}')
-          commit_message=$(echo "$line" | cut -d' ' -f6-)
+      # iterate over array with @ didn't work well
+      for (( i=0; i<commits_count; i++ )); do
+        commit=${commits[${i}]}
+        commit_hash=$(echo "$commit" | cut -d' ' -f1)
+        commit_date=$(echo "$commit" | cut -d' ' -f2)
+        commit_message=$(echo "$commit" | cut -d' ' -f3-)
 
-          if should_process_commit "$commit_hash" "$commit_message" "$commit_date"; then
-                handle_commit "$commit_hash" "$commit_message"
-          fi
-      done <<< "$commits"
-      EOF
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'schedule'
+        if should_process_commit "$commit_hash" "$commit_message" "$commit_date"; then
+          handle_commit "$commit_hash" "$commit_message"
+        fi
+      done
