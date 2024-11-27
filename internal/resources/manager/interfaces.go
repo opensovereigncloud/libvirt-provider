@@ -31,11 +31,6 @@ type Source interface {
 	CalculateMachineClassQuantity(core.ResourceName, *resource.Quantity) int64
 }
 
-type PCIManager interface {
-	AllocatePCIAddress(core.ResourceList) ([]api.PCIDevice, error)
-	DeallocatePCIAddress([]api.PCIDevice) error
-}
-
 type NumaScheduler interface {
 	Pin(cores uint, machine *api.Machine) error
 	Unpin(machine *api.Machine) error

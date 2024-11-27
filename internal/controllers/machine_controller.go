@@ -118,7 +118,6 @@ func NewMachineReconciler(
 		resyncIntervalGarbageCollector: opts.ResyncIntervalGarbageCollector,
 		gcVMGracefulShutdownTimeout:    opts.GCVMGracefulShutdownTimeout,
 		volumeCachePolicy:              opts.VolumeCachePolicy,
-		pciManager:                     manager.GetPCIManager(),
 	}, nil
 }
 
@@ -146,8 +145,6 @@ type MachineReconciler struct {
 	resyncIntervalGarbageCollector time.Duration
 
 	volumeCachePolicy string
-
-	pciManager manager.PCIManager
 }
 
 func (r *MachineReconciler) Start(ctx context.Context) error {
@@ -345,9 +342,6 @@ func (r *MachineReconciler) processMachineDeletion(ctx context.Context, log logr
 		return fmt.Errorf("failed to delete machine: %w", err)
 	}
 	log.V(1).Info("Deleted machine")
-
-	// error cannot occure here
-	_ = r.pciManager.DeallocatePCIAddress(machine.Status.PCIDevices)
 
 	machine.Status.State = api.MachineStateTerminated
 	machine, err = r.machines.Update(ctx, machine)
@@ -892,12 +886,7 @@ func (r *MachineReconciler) setGuestAgent(machine *api.Machine, domainDesc *libv
 }
 
 func (r *MachineReconciler) setPCIDevices(machine *api.Machine, domain *libvirtxml.Domain) error {
-	devices, err := r.pciManager.AllocatePCIAddress(machine.Spec.Resources)
-	if err != nil {
-		return err
-	}
-
-	machine.Status.PCIDevices = devices
+	devices := machine.Status.PCIDevices
 	for index := range devices {
 		domain.Devices.Hostdevs = append(domain.Devices.Hostdevs, libvirtxml.DomainHostdev{
 			Managed:   "yes",

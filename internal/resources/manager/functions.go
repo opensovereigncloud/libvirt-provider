@@ -77,14 +77,14 @@ func GetMachineClassStatus() []*iri.MachineClassStatus {
 // Before Initialize you can call SetMachineClasses, SetLogger, AddSource functions.
 // It will calculate available resources during start of app.
 // After Initialize you can call Allocate and Deallocate functions.
-func Initialize(ctx context.Context, listMachines func(context.Context) ([]*api.Machine, error)) error {
+func Initialize(ctx context.Context, listMachines func(context.Context) ([]*api.Machine, error)) ([]*api.Machine, error) {
 	if listMachines == nil {
-		return ErrManagerListFuncInvalid
+		return nil, ErrManagerListFuncInvalid
 	}
 
 	machines, err := listMachines(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return mng.initialize(ctx, machines)
@@ -109,10 +109,6 @@ func GetSource(name string, options sources.Options) (Source, error) {
 	default:
 		return nil, fmt.Errorf("unsupported source %s", name)
 	}
-}
-
-func GetPCIManager() PCIManager {
-	return mng.getPCIManager()
 }
 
 func GetSourcesAvailable() []string {

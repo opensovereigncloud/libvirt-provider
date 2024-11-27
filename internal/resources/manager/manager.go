@@ -68,8 +68,6 @@ type resourceManager struct {
 	// sources is register of all added sources
 	sources map[string]Source
 
-	pciManager PCIManager
-
 	registredResources map[core.ResourceName]Source
 
 	// mx allow change internal state only one gouroutines
@@ -191,16 +189,16 @@ MAIN:
 	return nil
 }
 
-func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machine) error {
+func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machine) ([]*api.Machine, error) {
 	r.mx.Lock()
 	defer r.mx.Unlock()
 
 	if len(r.sources) == 0 {
-		return ErrManagerSourcesMissing
+		return nil, ErrManagerSourcesMissing
 	}
 
 	if r.initialized {
-		return ErrManagerAlreadyInitialized
+		return nil, ErrManagerAlreadyInitialized
 	}
 
 	// reinit after error isn't possible
@@ -217,24 +215,16 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 	for _, s := range r.sources {
 		resources, err := s.Init(r.ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		for _, value := range resources.UnsortedList() {
 			conflictedSource, ok := r.registredResources[value]
 			if ok {
-				return fmt.Errorf("%w: sources %s and %s mnaged same resource %s", ErrCommonResources, s.GetName(), conflictedSource.GetName(), value)
+				return nil, fmt.Errorf("%w: sources %s and %s mnaged same resource %s", ErrCommonResources, s.GetName(), conflictedSource.GetName(), value)
 			}
 
 			r.registredResources[value] = s
-		}
-
-		if s.GetName() == sources.SourcePCI {
-			var ok bool
-			r.pciManager, ok = s.(PCIManager)
-			if !ok {
-				return fmt.Errorf("failed to convert PCI source to PCIManager interface")
-			}
 		}
 	}
 
@@ -246,12 +236,12 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 		for key := range requiredResources {
 			s, ok := r.registredResources[key]
 			if !ok {
-				return fmt.Errorf("failed to find source for resource %s: %w", key, ErrResourceUnsupported)
+				return nil, fmt.Errorf("failed to find source for resource %s: %w", key, ErrResourceUnsupported)
 			}
 
 			allocatedResources, err := s.Allocate(machine, requiredResources)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			for allocated := range allocatedResources {
@@ -262,7 +252,7 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 
 	err := r.initMachineClasses()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if r.maxVMsLimit != 0 {
@@ -272,7 +262,7 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 	r.log.Info("Machine classes availibility: " + r.getMachineClassAvailibilityAsString())
 	r.operationError = nil
 
-	return nil
+	return machines, nil
 }
 
 func (r *resourceManager) allocate(machine *api.Machine, requiredResources core.ResourceList) error {
@@ -570,12 +560,6 @@ func (r *resourceManager) reset() {
 	r.machineclassesFile = ""
 	r.initialized = false
 	r.registredResources = map[core.ResourceName]Source{}
-	r.pciManager = &DummyPCIManager{}
-}
-
-// this is very hacky and bad
-func (r *resourceManager) getPCIManager() PCIManager {
-	return r.pciManager
 }
 
 func removeSeparatorFromEnd(in string) string {

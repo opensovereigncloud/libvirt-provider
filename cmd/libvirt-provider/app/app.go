@@ -678,5 +678,21 @@ func initResourceManager(ctx context.Context, opts sources.Options, machineStore
 		return err
 	}
 
-	return manager.Initialize(ctx, machineStore.List)
+	machines, err := manager.Initialize(ctx, machineStore.List)
+	if err != nil {
+		return err
+	}
+
+	return updateMachinePCIStatus(ctx, machineStore, machines)
+}
+
+// updateMachinePCIStatus updates the PCI devices of machines on the store.
+// This is to support dynamic change of pci addresses after restart of host machine.
+func updateMachinePCIStatus(ctx context.Context, machineStore *host.Store[*api.Machine], machines []*api.Machine) error {
+	for _, machine := range machines {
+		if _, err := machineStore.Update(ctx, machine); err != nil {
+			return fmt.Errorf("failed to update machine: %w", err)
+		}
+	}
+	return nil
 }
