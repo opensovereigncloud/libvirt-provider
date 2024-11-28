@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -102,9 +103,11 @@ func (p *PCI) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
 func (p *PCI) Allocate(machine *api.Machine, requiredResources core.ResourceList) (core.ResourceList, error) {
 	allocatedResources := core.ResourceList{}
 	var allocatedPCIDevices []api.PCIDevice
+	tempAvailableResources := maps.Clone(p.devices)
 
+	// First pass: Check availability without modifying actual available resources
 	for resourceName, requiredQty := range requiredResources {
-		availableDevices, exists := p.devices[resourceName]
+		availableDevices, exists := tempAvailableResources[resourceName]
 		if !exists {
 			continue
 		}
@@ -113,16 +116,19 @@ func (p *PCI) Allocate(machine *api.Machine, requiredResources core.ResourceList
 			return nil, fmt.Errorf("failed to allocate resource %s: %w", resourceName, ErrResourceNotAvailable)
 		}
 
+		tempAvailableResources[resourceName] = availableDevices[requiredQty.Value():]
+		allocatedResources[resourceName] = requiredQty
+
 		for i := int64(0); i < requiredQty.Value(); i++ {
 			allocatedPCIDevices = append(allocatedPCIDevices, api.PCIDevice{
 				Addr: *availableDevices[i],
 				Name: resourceName,
 			})
 		}
-
-		p.devices[resourceName] = availableDevices[requiredQty.Value():]
-		allocatedResources[resourceName] = requiredQty
 	}
+
+	// Second pass: Update the actual available resources after confirming allocation
+	p.devices = tempAvailableResources
 
 	machine.Status.PCIDevices = allocatedPCIDevices
 
@@ -135,14 +141,11 @@ func (p *PCI) Deallocate(machine *api.Machine, requiredResources core.ResourceLi
 	for _, device := range machine.Status.PCIDevices {
 		if addrs, ok := p.devices[device.Name]; ok {
 			p.devices[device.Name] = append(addrs, &device.Addr)
+			deallocatedResources = append(deallocatedResources, device.Name)
 		}
 	}
 
 	machine.Status.PCIDevices = nil
-
-	for resourceName := range requiredResources {
-		deallocatedResources = append(deallocatedResources, resourceName)
-	}
 
 	return deallocatedResources
 }
