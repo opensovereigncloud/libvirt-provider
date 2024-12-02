@@ -116,15 +116,15 @@ func (p *PCI) Allocate(machine *api.Machine, requiredResources core.ResourceList
 			return nil, fmt.Errorf("failed to allocate resource %s: %w", resourceName, ErrResourceNotAvailable)
 		}
 
-		tempAvailableResources[resourceName] = availableDevices[requiredQty.Value():]
-		allocatedResources[resourceName] = requiredQty
-
 		for i := int64(0); i < requiredQty.Value(); i++ {
 			allocatedPCIDevices = append(allocatedPCIDevices, api.PCIDevice{
 				Addr: *availableDevices[i],
 				Name: resourceName,
 			})
 		}
+
+		tempAvailableResources[resourceName] = availableDevices[requiredQty.Value():]
+		allocatedResources[resourceName] = requiredQty
 	}
 
 	// Second pass: Update the actual available resources after confirming allocation
