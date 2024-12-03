@@ -57,18 +57,16 @@ type Device struct {
 
 // PCI manages the allocation and deallocation of PCI devices and their resources.
 type PCI struct {
-	deviceFilePath     string
-	devices            map[core.ResourceName][]*api.PCIAddress
-	availableResources core.ResourceList
-	log                logr.Logger
+	deviceFilePath string
+	devices        map[core.ResourceName][]*api.PCIAddress
+	log            logr.Logger
 }
 
 func NewSourcePCI(options Options) *PCI {
 	return &PCI{
-		deviceFilePath:     options.PCIDevicesFile,
-		devices:            map[core.ResourceName][]*api.PCIAddress{},
-		availableResources: core.ResourceList{},
-		log:                options.log.WithName("source-pci"),
+		deviceFilePath: options.PCIDevicesFile,
+		devices:        map[core.ResourceName][]*api.PCIAddress{},
+		log:            options.log.WithName("source-pci"),
 	}
 }
 
@@ -82,8 +80,8 @@ func (p *PCI) Modify(_ core.ResourceList) error {
 }
 
 func (p *PCI) CalculateMachineClassQuantity(resource core.ResourceName, quantity *resource.Quantity) int64 {
-	if availableQuantity, exists := p.availableResources[resource]; exists {
-		return int64(math.Floor(float64(availableQuantity.Value()) / float64(quantity.Value())))
+	if availableQuantity := len(p.devices[resource]); availableQuantity > 0 {
+		return int64(math.Floor(float64(availableQuantity) / float64(quantity.Value())))
 	}
 	return 0
 }
@@ -94,8 +92,8 @@ func (p *PCI) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
 		return nil, err
 	}
 
-	supportedResources := make(sets.Set[core.ResourceName], len(p.availableResources))
-	for key := range p.availableResources {
+	supportedResources := make(sets.Set[core.ResourceName], len(p.devices))
+	for key := range p.devices {
 		supportedResources.Insert(key)
 	}
 
@@ -104,34 +102,33 @@ func (p *PCI) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
 
 func (p *PCI) Allocate(machine *api.Machine, requiredResources core.ResourceList) (core.ResourceList, error) {
 	allocatedResources := core.ResourceList{}
-	// Clone current state of availableResources to temporary storage
-	tempAvailableResources := maps.Clone(p.availableResources)
+	var allocatedPCIDevices []api.PCIDevice
+	tempAvailableResources := maps.Clone(p.devices)
 
-	// First pass: check availability without modifying actual available resources
-	for key, requiredQty := range requiredResources {
-		availableQty, exists := tempAvailableResources[key]
+	// First pass: Check availability without modifying actual available resources
+	for resourceName, requiredQty := range requiredResources {
+		availableDevices, exists := tempAvailableResources[resourceName]
 		if !exists {
 			continue
 		}
-		newQty := availableQty
-		newQty.Sub(requiredQty)
 
-		if newQty.Sign() == -1 {
-			return nil, fmt.Errorf("failed to allocate resource %s: %w", key, ErrResourceNotAvailable)
+		if int64(len(availableDevices)) < requiredQty.Value() {
+			return nil, fmt.Errorf("failed to allocate resource %s: %w", resourceName, ErrResourceNotAvailable)
 		}
 
-		// Update temporary resources and add to allocated resources
-		tempAvailableResources[key] = newQty
-		allocatedResources[key] = requiredQty
+		for i := int64(0); i < requiredQty.Value(); i++ {
+			allocatedPCIDevices = append(allocatedPCIDevices, api.PCIDevice{
+				Addr: *availableDevices[i],
+				Name: resourceName,
+			})
+		}
+
+		tempAvailableResources[resourceName] = availableDevices[requiredQty.Value():]
+		allocatedResources[resourceName] = requiredQty
 	}
 
-	// Second pass: update actual available resources
-	p.availableResources = tempAvailableResources
-
-	allocatedPCIDevices, err := p.allocatePCIAddress(requiredResources)
-	if err != nil {
-		return nil, fmt.Errorf("PCI address allocation failed: %w", err)
-	}
+	// Second pass: Update the actual available resources after confirming allocation
+	p.devices = tempAvailableResources
 
 	machine.Status.PCIDevices = allocatedPCIDevices
 
@@ -141,56 +138,24 @@ func (p *PCI) Allocate(machine *api.Machine, requiredResources core.ResourceList
 func (p *PCI) Deallocate(machine *api.Machine, requiredResources core.ResourceList) []core.ResourceName {
 	deallocatedResources := []core.ResourceName{}
 
-	err := p.deallocatePCIAddress(machine.Status.PCIDevices)
-	if err != nil {
-		p.log.Error(err, "failed to deallocate PCI addresses")
-	}
-	machine.Status.PCIDevices = nil
-
-	for key, quantity := range requiredResources {
-		if availableQty, exists := p.availableResources[key]; exists {
-			availableQty.Add(quantity)
-			p.availableResources[key] = availableQty
-			deallocatedResources = append(deallocatedResources, key)
+	for _, device := range machine.Status.PCIDevices {
+		if addrs, ok := p.devices[device.Name]; ok {
+			p.devices[device.Name] = append(addrs, &device.Addr)
+			deallocatedResources = append(deallocatedResources, device.Name)
 		}
 	}
+
+	machine.Status.PCIDevices = nil
+
 	return deallocatedResources
 }
 
 func (p *PCI) GetAvailableResources() core.ResourceList {
-	return p.availableResources.DeepCopy()
-}
-
-func (p *PCI) allocatePCIAddress(resources core.ResourceList) ([]api.PCIDevice, error) {
-	var domainAddrs []api.PCIDevice
-
+	availableResources := make(core.ResourceList, len(p.devices))
 	for resourceName, addrs := range p.devices {
-		if requiredQty, exists := resources[resourceName]; exists {
-			if int64(len(addrs)) < requiredQty.Value() {
-				return nil, fmt.Errorf("not enough PCI addresses for device %s", resourceName)
-			}
-
-			for i := int64(0); i < requiredQty.Value(); i++ {
-				domainAddrs = append(domainAddrs, api.PCIDevice{Addr: *addrs[i], Name: resourceName})
-			}
-			// Break the reference by creating a copy of the subslice
-			p.devices[resourceName] = append(addrs[:0:0], addrs[requiredQty.Value():]...)
-		}
+		availableResources[resourceName] = *resource.NewQuantity(int64(len(addrs)), resource.DecimalSI)
 	}
-	return domainAddrs, nil
-}
-
-func (p *PCI) deallocatePCIAddress(devices []api.PCIDevice) error {
-	for _, device := range devices {
-		addrs, ok := p.devices[device.Name]
-		if !ok {
-			continue
-		}
-		addressToAdd := &device.Addr
-		p.devices[device.Name] = append(addrs, addressToAdd)
-	}
-
-	return nil
+	return availableResources
 }
 
 func (p *PCI) loadSupportedDevices() (map[HexID]*Vendor, error) {
@@ -273,10 +238,6 @@ func (p *PCI) processPCIDevice(supportedDevices map[HexID]*Vendor, deviceFolder 
 	}
 
 	resourceName := core.ResourceName(fmt.Sprintf("%s.%s/%s", device.Type, vendor.Name, device.Name))
-	quantity := p.availableResources[resourceName]
-	quantity.Add(*resource.NewQuantity(1, resource.DecimalSI))
-	p.availableResources[resourceName] = quantity
-
 	p.devices[resourceName] = append(p.devices[resourceName], pciAddr)
 	return nil
 }
