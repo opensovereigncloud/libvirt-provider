@@ -64,13 +64,11 @@ func (c *CPU) Allocate(_ *api.Machine, requiredResources core.ResourceList) (cor
 		return nil, nil
 	}
 
-	newCPU := *c.availableCPU
-	newCPU.Sub(cpu)
-	if newCPU.Sign() == -1 {
+	if c.availableCPU.Cmp(cpu) < 0 {
 		return nil, fmt.Errorf("failed to allocate %s: %w", core.ResourceCPU, ErrResourceNotAvailable)
 	}
 
-	c.availableCPU = &newCPU
+	c.availableCPU.Sub(cpu)
 	return core.ResourceList{core.ResourceCPU: cpu}, nil
 }
 
