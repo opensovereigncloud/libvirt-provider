@@ -11,6 +11,13 @@ variables:
   PODMAN_IMG: "${OSC_HOST}/osc/onmetal/tools/releaser:v1.0.10"
   synchronizeImage: mtr.devops.telekom.de/osc/upstream/synchronization/gitlab:v4.4.0-alpine
 
+default:
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - job_execution_timeout
+
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
@@ -25,6 +32,7 @@ file-lint:
     - docker
     - pes
     - osc
+    - ffm
   image: "${CI_LINTER_IMG}"
   script:
     - if [[ ${PIPELINE_DEBUG} == 1 ]]; then debug_flag="-x"; fi
@@ -48,6 +56,7 @@ yaml-lint:
     - docker
     - pes
     - osc
+    - ffm
   image: "${CI_LINTER_IMG}"
   script:
     - |
@@ -70,6 +79,7 @@ markdown-lint:
     - docker
     - pes
     - osc
+    - ffm
   image: "${CI_LINTER_IMG}"
   script:
     - |
@@ -93,6 +103,7 @@ go-lint:
     - docker
     - pes
     - osc
+    - ffm
   image:
     name: "${GO_BUILD_IMG}"
     entrypoint: ["/bin/ash", "-c"]
@@ -107,6 +118,7 @@ unit-tests:
     - docker
     - pes
     - osc
+    - ffm
   image:
     name: "${GO_BUILD_IMG}"
     entrypoint: ["/bin/ash", "-c"]
@@ -145,6 +157,7 @@ check-dependabot-commits:
     - docker
     - pes
     - osc
+    - ffm
   image:
     name: $synchronizeImage
     entrypoint: [""]
