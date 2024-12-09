@@ -9,7 +9,7 @@ variables:
   CI_LINTER_IMG: "mtr.devops.telekom.de/osc/common/pipeline-community/osc-gitlab-runner-linter:alpine-latest-0.8"
   GO_BUILD_IMG: "mtr.devops.telekom.de/osc/onmetal/container-images/go:libvirt-provider-go-1.23.2-alpine-3.20.3"
   PODMAN_IMG: "${OSC_HOST}/osc/onmetal/tools/releaser:v1.0.10"
-  synchronizeImage: mtr.devops.telekom.de/osc/upstream/synchronization/gitlab:v4.4.0-alpine
+  synchronizeImage: mtr.devops.telekom.de/osc/upstream/synchronization/gitlab:v5.1.0-alpine
 
 default:
   retry:
