@@ -13,6 +13,7 @@ require (
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/uuid v1.6.0
+	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.1
 	github.com/ironcore-dev/controller-utils v0.9.5
 	github.com/ironcore-dev/ironcore v0.2.0
 	github.com/ironcore-dev/ironcore-image v0.2.4
@@ -42,6 +43,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	golang.org/x/crypto v0.31.0 // indirect

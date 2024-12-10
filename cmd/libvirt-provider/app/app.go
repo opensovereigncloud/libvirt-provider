@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	grpcprometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/ironcore-dev/ironcore-image/oci/remote"
 	"github.com/ironcore-dev/ironcore/broker/common"
 	commongrpc "github.com/ironcore-dev/ironcore/broker/common/grpc"
@@ -43,6 +44,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
 	"github.com/ironcore-dev/libvirt-provider/internal/server"
 	"github.com/ironcore-dev/libvirt-provider/internal/strategy"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -467,10 +469,24 @@ func runGRPCServer(ctx context.Context, setupLog logr.Logger, log logr.Logger, s
 		return fmt.Errorf("error cleaning up socket: %w", err)
 	}
 
+	grpcMetrics := grpcprometheus.NewServerMetrics(
+		grpcprometheus.WithServerCounterOptions(grpcprometheus.WithConstLabels(prometheus.Labels{"server": "iri"})),
+		grpcprometheus.WithServerHandlingTimeHistogram(
+			// i am not sure, if this buckets are correct
+			grpcprometheus.WithHistogramBuckets([]float64{0.01, 0.1, 0.5, 1}),
+		),
+	)
+
+	err := prometheus.Register(grpcMetrics)
+	if err != nil {
+		return fmt.Errorf("failed to register iri server metrics: %w", err)
+	}
+
 	grpcSrv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			commongrpc.InjectLogger(log.WithName("iri-server")),
 			commongrpc.LogRequest,
+			grpcMetrics.UnaryServerInterceptor(),
 		),
 	)
 	iri.RegisterMachineRuntimeServer(grpcSrv, srv)
