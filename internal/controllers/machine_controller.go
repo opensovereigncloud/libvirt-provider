@@ -989,8 +989,9 @@ func (r *MachineReconciler) setDomainImage(
 		},
 		Device: "disk",
 		Driver: &libvirtxml.DomainDiskDriver{
-			Name: "qemu",
-			Type: "raw",
+			Name:  "qemu",
+			Type:  "raw",
+			Cache: "none",
 		},
 		Source: &libvirtxml.DomainDiskSource{
 			File: &libvirtxml.DomainDiskSourceFile{

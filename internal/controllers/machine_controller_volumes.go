@@ -727,8 +727,9 @@ func (a *libvirtVolumeAttacher) providerVolumeToLibvirt(computeVolumeName string
 	switch {
 	case vol.QCow2File != "":
 		disk.Driver = &libvirtxml.DomainDiskDriver{
-			Name: "qemu",
-			Type: "qcow2",
+			Name:  "qemu",
+			Type:  "qcow2",
+			Cache: "none",
 		}
 		disk.Source = &libvirtxml.DomainDiskSource{
 			File: &libvirtxml.DomainDiskSourceFile{
@@ -738,8 +739,9 @@ func (a *libvirtVolumeAttacher) providerVolumeToLibvirt(computeVolumeName string
 		return disk, nil, nil, nil, nil, nil
 	case vol.RawFile != "":
 		disk.Driver = &libvirtxml.DomainDiskDriver{
-			Name: "qemu",
-			Type: "raw",
+			Name:  "qemu",
+			Type:  "raw",
+			Cache: "none",
 		}
 		disk.Source = &libvirtxml.DomainDiskSource{
 			File: &libvirtxml.DomainDiskSourceFile{
