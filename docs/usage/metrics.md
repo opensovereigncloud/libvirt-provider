@@ -2,7 +2,7 @@
 
 Document describes metrics related with libvirt-provider or libvirt daemon.
 
-**Last update:** 2024-12-04T13:53:18+01:00
+**Last update:** 2024-12-13T13:15:04+00:00
 
 ## libvirt-provider metrics
 
@@ -64,6 +64,91 @@ It contains list of metrics exposed by libvirt-provider.
 | grpc_server_msg_received_total                |                counter                 |        | Total number of RPC stream messages received on the server.                                                                                                                                                                          |
 | grpc_server_msg_sent_total                    |                counter                 |        | Total number of gRPC stream messages sent by the server.                                                                                                                                                                             |
 | grpc_server_started_total                     |                counter                 |        | Total number of RPCs started on the server.                                                                                                                                                                                          |
+
+## prometheus-libvirt-exporter
+
+- [Github repo](https://github.com/inovex/prometheus-libvirt-exporter)
+- [Latest used version](https://github.com/inovex/prometheus-libvirt-exporter/tree/v1.6.0)
+
+The prometheus-libvit-exporter exposes metrics from libvirt daemon in prometheus metrics format.
+
+| Metric                                                | Type    | Description                                                                                   |
+| ----------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------- |
+| go_gc_duration_seconds                                | summary | A summary of the pause duration of garbage collection cycles.                                 |
+| go_goroutines                                         | gauge   | Number of goroutines that currently exist.                                                    |
+| go_info                                               | gauge   | Information about the Go environment.                                                         |
+| go_memstats_alloc_bytes                               | gauge   | Number of bytes allocated and still in use.                                                   |
+| go_memstats_alloc_bytes_total                         | counter | Total number of bytes allocated, even if freed.                                               |
+| go_memstats_buck_hash_sys_bytes                       | gauge   | Number of bytes used by the profiling bucket hash table.                                      |
+| go_memstats_frees_total                               | counter | Total number of frees.                                                                        |
+| go_memstats_gc_sys_bytes                              | gauge   | Number of bytes used for garbage collection system metadata.                                  |
+| go_memstats_heap_alloc_bytes                          | gauge   | Number of heap bytes allocated and still in use.                                              |
+| go_memstats_heap_idle_bytes                           | gauge   | Number of heap bytes waiting to be used.                                                      |
+| go_memstats_heap_inuse_bytes                          | gauge   | Number of heap bytes that are in use.                                                         |
+| go_memstats_heap_objects                              | gauge   | Number of allocated objects.                                                                  |
+| go_memstats_heap_released_bytes                       | gauge   | Number of heap bytes released to OS.                                                          |
+| go_memstats_heap_sys_bytes                            | gauge   | Number of heap bytes obtained from system.                                                    |
+| go_memstats_last_gc_time_seconds                      | gauge   | Number of seconds since 1970 of last garbage collection.                                      |
+| go_memstats_lookups_total                             | counter | Total number of pointer lookups.                                                              |
+| go_memstats_mallocs_total                             | counter | Total number of mallocs.                                                                      |
+| go_memstats_mcache_inuse_bytes                        | gauge   | Number of bytes in use by mcache structures.                                                  |
+| go_memstats_mcache_sys_bytes                          | gauge   | Number of bytes used for mcache structures obtained from system.                              |
+| go_memstats_mspan_inuse_bytes                         | gauge   | Number of bytes in use by mspan structures.                                                   |
+| go_memstats_mspan_sys_bytes                           | gauge   | Number of bytes used for mspan structures obtained from system.                               |
+| go_memstats_next_gc_bytes                             | gauge   | Number of heap bytes when next garbage collection will take place.                            |
+| go_memstats_other_sys_bytes                           | gauge   | Number of bytes used for other system allocations.                                            |
+| go_memstats_stack_inuse_bytes                         | gauge   | Number of bytes in use by the stack allocator.                                                |
+| go_memstats_stack_sys_bytes                           | gauge   | Number of bytes obtained from system for stack allocator.                                     |
+| go_memstats_sys_bytes                                 | gauge   | Number of bytes obtained from system.                                                         |
+| go_threads                                            | gauge   | Number of OS threads created.                                                                 |
+| libvirt_domain_block_stats_info                       | gauge   | Metadata information on block devices.                                                        |
+| libvirt_domain_block_stats_read_bytes_total           | counter | Number of bytes read from a block device, in bytes.                                           |
+| libvirt_domain_block_stats_read_requests_total        | counter | Number of read requests from a block device.                                                  |
+| libvirt_domain_block_stats_write_bytes_total          | counter | Number of bytes written from a block device, in bytes.                                        |
+| libvirt_domain_block_stats_write_requests_total       | counter | Number of write requests from a block device.                                                 |
+| libvirt_domain_info                                   | gauge   | Metadata labels for the domain.                                                               |
+| libvirt_domain_info_cpu_time_seconds_total            | counter | Amount of CPU time used by the domain, in seconds.                                            |
+| libvirt_domain_info_maximum_memory_bytes              | gauge   | Maximum allowed memory of the domain, in bytes.                                               |
+| libvirt_domain_info_memory_usage_bytes                | gauge   | Memory usage of the domain, in bytes.                                                         |
+| libvirt_domain_info_state                             | gauge   | Code of the domain state                                                                      |
+| libvirt_domain_info_virtual_cpus                      | gauge   | Number of virtual CPUs for the domain.                                                        |
+| libvirt_domain_interface_stats_info                   | gauge   | Metadata on network interfaces.                                                               |
+| libvirt_domain_interface_stats_receive_bytes_total    | counter | Number of bytes received on a network interface, in bytes.                                    |
+| libvirt_domain_interface_stats_receive_drops_total    | counter | Number of packet receive drops on a network interface.                                        |
+| libvirt_domain_interface_stats_receive_errors_total   | counter | Number of packet receive errors on a network interface.                                       |
+| libvirt_domain_interface_stats_receive_packets_total  | counter | Number of packets received on a network interface.                                            |
+| libvirt_domain_interface_stats_transmit_bytes_total   | counter | Number of bytes transmitted on a network interface, in bytes.                                 |
+| libvirt_domain_interface_stats_transmit_drops_total   | counter | Number of packet transmit drops on a network interface.                                       |
+| libvirt_domain_interface_stats_transmit_errors_total  | counter | Number of packet transmit errors on a network interface.                                      |
+| libvirt_domain_interface_stats_transmit_packets_total | counter | Number of packets transmitted on a network interface.                                         |
+| libvirt_domain_memory_stats_available_bytes           | gauge   | Memory available to the domain                                                                |
+| libvirt_domain_memory_stats_rss_bytes                 | gauge   | Resident Set Size of the process running the domain                                           |
+| libvirt_domain_memory_stats_swap_in_bytes             | gauge   | Memory swapped in for this domain(the total amount of data read from swap space)              |
+| libvirt_domain_memory_stats_swap_out_bytes            | gauge   | Memory swapped out for this domain (the total amount of memory written out to swap space)     |
+| libvirt_domain_memory_stats_unused_bytes              | gauge   | Memory unused by the domain                                                                   |
+| libvirt_domain_memory_stats_usable_bytes              | gauge   | Memory usable by the domain (corresponds to 'Available' in /proc/meminfo)                     |
+| libvirt_domain_openstack_info                         | gauge   | OpenStack Metadata labels for the domain.                                                     |
+| libvirt_domain_vcpu_current                           | gauge   | Number of current online vCPUs.                                                               |
+| libvirt_domain_vcpu_delay_seconds_total               | counter | Time the vCPU spent waiting in the queue instead of running. Exposed to the VM as steal time. |
+| libvirt_domain_vcpu_maximum                           | gauge   | Number of maximum online vCPUs.                                                               |
+| libvirt_domain_vcpu_state                             | gauge   | State of the vCPU.                                                                            |
+| libvirt_domain_vcpu_time_seconds_total                | counter | Time spent by the virtual CPU.                                                                |
+| libvirt_domain_vcpu_wait_seconds_total                | counter | Time the vCPU wants to run, but the host scheduler has something else running ahead of it.    |
+| libvirt_domains                                       | gauge   | Number of domains                                                                             |
+| libvirt_storage_pool_allocation_bytes                 | gauge   | Current allocation bytes of the storage pool.                                                 |
+| libvirt_storage_pool_available_bytes                  | gauge   | Remaining free space of the storage pool in bytes.                                            |
+| libvirt_storage_pool_capacity_bytes                   | gauge   | Size of the storage pool in logical bytes.                                                    |
+| libvirt_storage_pool_state                            | gauge   | State of the storage pool.                                                                    |
+| libvirt_up                                            | gauge   | Whether scraping libvirt's metrics was successful.                                            |
+| process_cpu_seconds_total                             | counter | Total user and system CPU time spent in seconds.                                              |
+| process_max_fds                                       | gauge   | Maximum number of open file descriptors.                                                      |
+| process_open_fds                                      | gauge   | Number of open file descriptors.                                                              |
+| process_resident_memory_bytes                         | gauge   | Resident memory size in bytes.                                                                |
+| process_start_time_seconds                            | gauge   | Start time of the process since unix epoch in seconds.                                        |
+| process_virtual_memory_bytes                          | gauge   | Virtual memory size in bytes.                                                                 |
+| process_virtual_memory_max_bytes                      | gauge   | Maximum amount of virtual memory available in bytes.                                          |
+| promhttp_metric_handler_requests_in_flight            | gauge   | Current number of scrapes being served.                                                       |
+| promhttp_metric_handler_requests_total                | counter | Total number of scrapes by HTTP status code.                                                  |
 
 ## Useful links
 
