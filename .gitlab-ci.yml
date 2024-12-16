@@ -12,6 +12,10 @@ variables:
   synchronizeImage: mtr.devops.telekom.de/osc/upstream/synchronization/gitlab:v5.1.0-alpine
 
 default:
+  tags:
+    - docker
+    - pes
+    - osc
   retry:
     max: 2
     when:
@@ -28,11 +32,6 @@ file-lint:
   needs: []
   variables:
     FILES_LINT_CONFIG: './.linter-config/file-lint.conf'
-  tags:
-    - docker
-    - pes
-    - osc
-    - ffm
   image: "${CI_LINTER_IMG}"
   script:
     - if [[ ${PIPELINE_DEBUG} == 1 ]]; then debug_flag="-x"; fi
@@ -52,11 +51,6 @@ yaml-lint:
   needs: []
   variables:
     YAML_LINT_CONFIG: './.linter-config/yamllint.yaml'
-  tags:
-    - docker
-    - pes
-    - osc
-    - ffm
   image: "${CI_LINTER_IMG}"
   script:
     - |
@@ -75,11 +69,6 @@ markdown-lint:
   variables:
     MARKDOWN_LINT_CONFIG: './.linter-config/mdlrc'
     MARKDOWN_LINT_IGNORE_CONFIG: "./.linter-config/.markdownlintignore"
-  tags:
-    - docker
-    - pes
-    - osc
-    - ffm
   image: "${CI_LINTER_IMG}"
   script:
     - |
@@ -99,11 +88,6 @@ markdown-lint:
 go-lint:
   stage: lint
   needs: []
-  tags:
-    - docker
-    - pes
-    - osc
-    - ffm
   image:
     name: "${GO_BUILD_IMG}"
     entrypoint: ["/bin/ash", "-c"]
@@ -114,11 +98,6 @@ go-lint:
 
 unit-tests:
   stage: test
-  tags:
-    - docker
-    - pes
-    - osc
-    - ffm
   image:
     name: "${GO_BUILD_IMG}"
     entrypoint: ["/bin/ash", "-c"]
@@ -144,20 +123,18 @@ build:
       echo 'unqualified-search-registries = ["docker.io"]' > /etc/containers/registries.conf
       CONTAINER_TOOL='podman --remote --url "unix:///run/podman/podman.sock"' CONTAINER_BUILDARGS="--platform linux/amd64 --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64" make docker-build
 
+# Skipping post-processing for the MRs because the pipeline fails when the scheduled upstream-synchronization pipeline creates MRs.
 include:
   - component: 'gitlab.devops.telekom.de/cas-devs/osc/common/pipeline-community/components/mtr/configure-repo@stable'
     inputs:
       image-list-type: 'none'
       version: 'stable'
       stage: 'post-processing'
+    rules:
+      - if: $CI_PIPELINE_SOURCE != 'merge_request_event' && $CI_PIPELINE_SOURCE != 'schedule'
 
 check-dependabot-commits:
   stage: check-and-create-mr
-  tags:
-    - docker
-    - pes
-    - osc
-    - ffm
   image:
     name: $synchronizeImage
     entrypoint: [""]
