@@ -158,13 +158,11 @@ check-dependabot-commits:
       }
 
       function should_process_commit() {
-        local commit_hash="$1"
-        local commit_message="$2"
-        local commit_date="$3"
-        local branch_name="sync-$commit_hash"
+        local commit_message="$1"
 
-        if git --no-pager log --pretty=format:"%s %ad%n" --date="format:%Y-%m-%dT%H:%M:%S" | grep -q -F "$commit_message $commit_date"; then
-          echo -e "\033[32mCommit message '$commit_message' with date '$commit_date' already exists in the repo. Skipping...\033[0m"
+        # Keeping the -q, its not satisfying the if condition and ultimately the pipeline is failing. Hence, using /dev/null 2>&1 here.
+        if git --no-pager log --pretty=format:"%s%n" | grep -F "$commit_message" > /dev/null 2>&1; then
+          echo -e "\033[32mCommit message '$commit_message' already exists in the repo. Skipping...\033[0m"
           return 1
         fi
 
@@ -224,7 +222,7 @@ check-dependabot-commits:
 
       git switch main --quiet
 
-      mapfile -t commits < <(git --no-pager log --since="7 days ago"  --pretty="format:%H %cd %s" --date="format:%Y-%m-%dT%H:%M:%S")
+      mapfile -t commits < <(git --no-pager log --since="7 days ago"  --pretty="format:%H %s")
 
       commits_count=${#commits[@]}
       if [ $commits_count -eq 0 ]; then
@@ -236,12 +234,11 @@ check-dependabot-commits:
 
       for commit in "${commits[@]}"; do
           commit_hash=$(echo "$commit" | cut -d' ' -f1)
-          commit_date=$(echo "$commit" | cut -d' ' -f2)
-          commit_message=$(echo "$commit" | cut -d' ' -f3-)
+          commit_message=$(echo "$commit" | cut -d' ' -f2-)
 
           git switch osc/main --quiet
 
-          if should_process_commit "$commit_hash" "$commit_message" "$commit_date"; then
+          if should_process_commit "$commit_message"; then
               handle_commit "$commit_hash" "$commit_message"
           fi
       done
