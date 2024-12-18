@@ -153,8 +153,7 @@ check-dependabot-commits:
       set -euo pipefail
 
       function fetch_open_merge_requests() {
-          echo "Fetching open merge requests..."
-          gitlab -o json project-merge-request list --project-id="$PROJECT_ID" --state=opened --author-id="$AUTHOR_ID" | jq -r 'map(.title) | .[]'
+          gitlab -o json project-merge-request list --project-id="$PROJECT_ID" --state=opened --author-id="$AUTHOR_ID" | jq -er 'map(.title) | .[]'
       }
 
       function should_process_commit() {
@@ -178,11 +177,14 @@ check-dependabot-commits:
           local branch_name="$1"
           local commit_message="$2"
           local commit_hash="$3"
+
+          local mr_title="[$current_date] Sync Commit #$series_number: $commit_message"
+
           gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create \
               --project-id="$PROJECT_ID" \
               --source-branch="${branch_name}" \
               --target-branch=osc/main \
-              --title="$commit_message" \
+              --title="${mr_title}" \
               --description="Please merge ${commit_hash} of upstream" \
               --squash=true \
               --remove-source-branch=true \
@@ -231,7 +233,9 @@ check-dependabot-commits:
       fi
 
       existing_mrs=$(fetch_open_merge_requests)
+      readonly current_date=$(date +"%d-%m-%Y")
 
+      new_commits=()
       for commit in "${commits[@]}"; do
           commit_hash=$(echo "$commit" | cut -d' ' -f1)
           commit_message=$(echo "$commit" | cut -d' ' -f2-)
@@ -239,8 +243,24 @@ check-dependabot-commits:
           git switch osc/main --quiet
 
           if should_process_commit "$commit_message"; then
-              handle_commit "$commit_hash" "$commit_message"
+              new_commits+=("$commit")
           fi
+      done
+
+      new_commits_count=${#new_commits[@]}
+      if [ $new_commits_count -eq 0 ]; then
+          echo "No new commits to create merge requests for."
+          exit 0
+      fi
+
+      series_number=$new_commits_count
+
+      for commit in "${new_commits[@]}"; do
+          commit_hash=$(echo "$commit" | cut -d' ' -f1)
+          commit_message=$(echo "$commit" | cut -d' ' -f2-)
+
+          handle_commit "$commit_hash" "$commit_message"
+          ((series_number--))
       done
   rules:
     - if: $CI_PIPELINE_SOURCE == 'schedule'
