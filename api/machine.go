@@ -4,7 +4,6 @@
 package api
 
 import (
-	"net"
 	"time"
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
@@ -111,7 +110,6 @@ type NetworkInterfaceStatus struct {
 	Name   string                `json:"name"`
 	Handle string                `json:"handle"`
 	State  NetworkInterfaceState `json:"state"`
-	IPs    []net.IP              `json:"ips"`
 }
 
 type NetworkInterfaceState string
