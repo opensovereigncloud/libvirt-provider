@@ -153,7 +153,9 @@ check-dependabot-commits:
       set -euo pipefail
 
       function fetch_open_merge_requests() {
-          gitlab -o json project-merge-request list --project-id="$PROJECT_ID" --state=opened --author-id="$AUTHOR_ID" | jq -er 'map(.title) | .[]'
+          # Using `-r` with jq instead of `-er` to avoid pipeline failures when no existing merge requests are found.
+          # This ensures the function returns an empty string in such cases instead.
+          gitlab -o json project-merge-request list --project-id="$PROJECT_ID" --state=opened --author-id="$AUTHOR_ID" | jq -r 'map(.title) | .[]'
       }
 
       function should_process_commit() {
