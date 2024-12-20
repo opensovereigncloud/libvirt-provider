@@ -121,7 +121,10 @@ clean-docs: ## Remove all local mkdocs Docker images (cleanup).
 ##@ Build
 
 .PHONY: build
-build: manifests generate fmt vet add-license lint ## Build the binary
+build: manifests generate fmt vet add-license lint build-only ## Build the binary
+
+.PHONY: build-only
+build-only: manifests generate fmt ## Build the binary without lint
 	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CGO_ENABLED=$(CGO_ENABLED) go build -o $(LIBVIRT_PROVIDER_BIN) $(LIBVIRT_PROVIDER_BIN_SOURCE)
 
 .PHONY: run

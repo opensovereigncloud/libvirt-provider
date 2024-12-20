@@ -8,8 +8,7 @@ stages:
 variables:
   CI_LINTER_IMG: "mtr.devops.telekom.de/osc/common/pipeline-community/osc-gitlab-runner-linter:alpine-latest-0.8"
   GO_BUILD_IMG: "mtr.devops.telekom.de/osc/onmetal/container-images/go:libvirt-provider-go-1.23.2-alpine-3.20.3"
-  PODMAN_IMG: "${OSC_HOST}/osc/onmetal/tools/releaser:v2.0.0"
-  synchronizeImage: mtr.devops.telekom.de/osc/upstream/synchronization/gitlab:v5.1.0-alpine
+  SYNCHRONIZATION_GITLAB_IMAGE: mtr.devops.telekom.de/osc/upstream/synchronization/gitlab:v5.1.0-alpine
 
 default:
   tags:
@@ -93,9 +92,7 @@ go-lint:
     name: "${GO_BUILD_IMG}"
     entrypoint: ["/bin/ash", "-c"]
   script:
-    - |
-      apk update
-      make lint
+    - make lint
 
 unit-tests:
   stage: test
@@ -103,26 +100,15 @@ unit-tests:
     name: "${GO_BUILD_IMG}"
     entrypoint: ["/bin/ash", "-c"]
   script:
-    - |
-      apk update
-      make test
+    - make test
 
 build:
   stage: build
-  tags:
-    - podman-node
-  image: "${PODMAN_IMG}"
+  image:
+    name: "${GO_BUILD_IMG}"
+    entrypoint: ["/bin/ash", "-c"]
   script:
-    - |
-      apt-get update
-      apt-get install -y \
-        librados2 \
-        librbd1 \
-        librados-dev \
-        librbd-dev \
-        make
-      echo 'unqualified-search-registries = ["docker.io"]' > /etc/containers/registries.conf
-      CONTAINER_TOOL='podman --remote --url "unix:///run/podman/podman.sock"' CONTAINER_BUILDARGS="--platform linux/amd64 --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64" make docker-build
+    - make build-only
 
 # Skipping post-processing for the MRs because the pipeline fails when the scheduled upstream-synchronization pipeline creates MRs.
 include:
@@ -137,7 +123,7 @@ include:
 check-dependabot-commits:
   stage: check-and-create-mr
   image:
-    name: $synchronizeImage
+    name: $SYNCHRONIZATION_GITLAB_IMAGE
     entrypoint: [""]
   variables:
     PYTHON_GITLAB_CFG: "$GITLAB_CFG"
