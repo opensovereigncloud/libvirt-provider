@@ -21,6 +21,7 @@ default:
     when:
       - runner_system_failure
       - job_execution_timeout
+      - script_failure
 
 workflow:
   rules:
