@@ -100,4 +100,5 @@ type Object interface {
 	SetGeneration(generation int64)
 	SetFinalizers(finalizers []string)
 	IncrementResourceVersion()
+	GetState() string
 }

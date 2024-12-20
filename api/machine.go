@@ -17,6 +17,14 @@ type Machine struct {
 	Status MachineStatus `json:"status"`
 }
 
+func (m *Machine) GetState() string {
+	if m.Status.State != "" {
+		return string(m.Status.State)
+	}
+
+	return string(MachineStatePending)
+}
+
 type MachineSpec struct {
 	Power PowerState `json:"power"`
 

@@ -421,6 +421,7 @@ func (r *MachineReconciler) processMachineDeletion(ctx context.Context, log logr
 	if _, err := r.machines.Update(ctx, machine); store.IgnoreErrNotFound(err) != nil {
 		return fmt.Errorf("failed to update machine metadata: %w", err)
 	}
+
 	r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "CompletedDeletion", "Deletion completed")
 	log.V(1).Info("Removed Finalizer. Deletion completed")
 
@@ -438,6 +439,7 @@ func (r *MachineReconciler) deleteMachine(ctx context.Context, log logr.Logger, 
 		if _, err := r.machines.Update(ctx, machine); err != nil {
 			return false, fmt.Errorf("failed to update ShutdownAt and State: %w", err)
 		}
+
 		log.V(1).Info("Updated ShutdownAt and State", "ShutdownAt", machine.Spec.ShutdownAt, "State", machine.Status.State)
 	}
 
@@ -463,6 +465,7 @@ func (r *MachineReconciler) destroyDomain(log logr.Logger, machine *api.Machine,
 	r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "DestroyedDomain", "Domain Destroyed")
 
 	log.V(1).Info("Destroyed domain")
+	metrics.MachinesDestroyed.Inc()
 	return nil
 }
 

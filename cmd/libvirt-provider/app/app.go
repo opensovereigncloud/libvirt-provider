@@ -33,6 +33,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/libvirt/guest"
 	libvirtutils "github.com/ironcore-dev/libvirt-provider/internal/libvirt/utils"
 	"github.com/ironcore-dev/libvirt-provider/internal/mcr"
+	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/networkinterfaceplugin"
 	"github.com/ironcore-dev/libvirt-provider/internal/oci"
 	volumeplugin "github.com/ironcore-dev/libvirt-provider/internal/plugins/volume"
@@ -315,6 +316,12 @@ func Run(ctx context.Context, opts Options) error {
 		}
 
 		return fmt.Errorf("failed to cleanup machine store")
+	}
+
+	err = initMetrics(ctx, machineStore.List)
+	if err != nil {
+		setupLog.Error(err, "failed to initialize metrics")
+		return err
 	}
 
 	err = initResourceManager(ctx, opts.ResourceManagerOptions, machineStore, opts.PathSupportedMachineClasses)
@@ -711,4 +718,14 @@ func updateMachinePCIStatus(ctx context.Context, machineStore *host.Store[*api.M
 		}
 	}
 	return nil
+}
+
+func initMetrics(ctx context.Context, listMachines func(context.Context) ([]*api.Machine, error)) error {
+	machines, err := listMachines(ctx)
+	if err != nil {
+		return err
+	}
+
+	metrics.InitializeMachineMetrics(machines)
+	return metrics.InitializeMachineClassesMetrics(machines)
 }

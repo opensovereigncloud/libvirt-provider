@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
 	utilssync "github.com/ironcore-dev/libvirt-provider/internal/sync"
@@ -105,6 +106,15 @@ func (s *Store[E]) Create(_ context.Context, obj E) (E, error) {
 		Object: obj,
 	})
 
+	class, ok := obj.GetLabels()[api.ClassLabel]
+	if ok {
+		metrics.MachineClassesMachineCount.WithLabelValues(class).Inc()
+	} else {
+		s.log.Error(fmt.Errorf("failed to get machineclass label for machine %s", obj.GetID()), "machineclass metrics cannot be update properly")
+	}
+
+	metrics.MachinesState.WithLabelValues(string(api.MachineStatePending)).Inc()
+
 	return obj, nil
 }
 
@@ -124,16 +134,26 @@ func (s *Store[E]) Update(_ context.Context, obj E) (E, error) {
 	s.idMu.Lock(obj.GetID())
 	defer s.idMu.Unlock(obj.GetID())
 
-	oldObj, err := s.get(obj.GetID())
-	if err != nil {
-		return utils.Zero[E](), err
-	}
-
 	if obj.GetDeletedAt() != nil && len(obj.GetFinalizers()) == 0 {
 		if err := s.delete(obj.GetID()); err != nil {
 			return utils.Zero[E](), fmt.Errorf("failed to delete object metadata: %w", err)
 		}
+
+		metrics.MachinesState.WithLabelValues(obj.GetState()).Dec()
+
+		class, ok := obj.GetLabels()[api.ClassLabel]
+		if ok {
+			metrics.MachineClassesMachineCount.WithLabelValues(class).Dec()
+		} else {
+			s.log.Error(fmt.Errorf("failed to get machineclass label for machine %s", obj.GetID()), "machineclass metrics cannot be update properly")
+		}
+
 		return obj, nil
+	}
+
+	oldObj, err := s.get(obj.GetID())
+	if err != nil {
+		return utils.Zero[E](), err
 	}
 
 	if oldObj.GetResourceVersion() != obj.GetResourceVersion() {
@@ -149,6 +169,13 @@ func (s *Store[E]) Update(_ context.Context, obj E) (E, error) {
 	obj, err = s.set(obj)
 	if err != nil {
 		return utils.Zero[E](), err
+	}
+
+	previousState := oldObj.GetState()
+	state := obj.GetState()
+	if previousState != state {
+		metrics.MachinesState.WithLabelValues(string(state)).Inc()
+		metrics.MachinesState.WithLabelValues(string(previousState)).Dec()
 	}
 
 	s.enqueue(store.WatchEvent[E]{
@@ -168,10 +195,6 @@ func (s *Store[E]) Delete(_ context.Context, id string) error {
 		return err
 	}
 
-	if len(obj.GetFinalizers()) == 0 {
-		return s.delete(id)
-	}
-
 	if obj.GetDeletedAt() != nil {
 		return nil
 	}
@@ -188,6 +211,8 @@ func (s *Store[E]) Delete(_ context.Context, id string) error {
 		Type:   store.WatchEventTypeDeleted,
 		Object: obj,
 	})
+
+	metrics.MachinesDeleteMarked.Inc()
 
 	return nil
 }
@@ -312,6 +337,7 @@ func (s *Store[E]) delete(id string) error {
 		return fmt.Errorf("failed to delete object from store: %w", err)
 	}
 
+	metrics.MachinesDeleteMarked.Dec()
 	return nil
 }
 

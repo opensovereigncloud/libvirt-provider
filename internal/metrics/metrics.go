@@ -9,6 +9,8 @@ import (
 )
 
 const (
+	namespace = "libvirt_provider"
+
 	subsystemControllerRuntime = "controller_runtime"
 	subsystemOperation         = "operation"
 	subsystemWorkQueue         = "workqueue"
