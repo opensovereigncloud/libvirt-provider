@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-logr/logr"
 	grpcprometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/ironcore-dev/ironcore-image/oci/remote"
@@ -518,9 +519,13 @@ func runGRPCServer(ctx context.Context, setupLog logr.Logger, log logr.Logger, s
 }
 
 func runStreamingServer(ctx context.Context, setupLog, log logr.Logger, srv *server.Server, opts Options) error {
-	httpHandler := console.NewHandler(srv, console.HandlerOptions{
+	httpHandler, err := console.NewHandler(srv, console.HandlerOptions{
 		Log: log.WithName("streaming-server"),
 	})
+	if err != nil {
+		setupLog.Error(err, "failed to create new streaming handler")
+		return err
+	}
 
 	httpSrv := &http.Server{
 		Addr:    opts.StreamingAddress,
@@ -549,12 +554,12 @@ func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServer
 
 	setupLog.Info("Starting metrics server on " + opts.Addr)
 
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
+	router := chi.NewRouter()
+	router.Handle("/metrics", promhttp.Handler())
 
 	srv := http.Server{
 		Addr:    opts.Addr,
-		Handler: mux,
+		Handler: router,
 	}
 
 	var wg sync.WaitGroup
@@ -591,16 +596,24 @@ func runPPROFServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOp
 		return nil
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	httpMetrics, regErr := metrics.NewHTTPMetricsMiddleware("pprof")
+	if regErr != nil {
+		setupLog.Error(regErr, "failed to register metrics collector")
+		return regErr
+	}
+
+	router := chi.NewRouter()
+	router.Use(httpMetrics.Middleware)
+
+	router.Get("/debug/pprof/", pprof.Index)
+	router.Get("/debug/pprof/cmdline", pprof.Cmdline)
+	router.Get("/debug/pprof/profile", pprof.Profile)
+	router.Get("/debug/pprof/symbol", pprof.Symbol)
+	router.Get("/debug/pprof/trace", pprof.Trace)
 
 	srv := http.Server{
 		Addr:    opts.Addr,
-		Handler: mux,
+		Handler: router,
 	}
 
 	setupLog.Info("Starting pprof server on " + opts.Addr)
@@ -634,12 +647,19 @@ func runPPROFServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOp
 }
 
 func runHealthCheckServer(ctx context.Context, setupLog logr.Logger, healthCheck healthcheck.HealthCheck, opts HTTPServerOptions) error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", healthCheck.HealthCheckHandler)
+	httpMetrics, regErr := metrics.NewHTTPMetricsMiddleware("healthcheck")
+	if regErr != nil {
+		setupLog.Error(regErr, "failed to register metrics collector")
+		return regErr
+	}
 
+	router := chi.NewRouter()
+	router.Use(httpMetrics.Middleware)
+
+	router.Get("/healthz", healthCheck.HealthCheckHandler)
 	srv := http.Server{
 		Addr:    opts.Addr,
-		Handler: mux,
+		Handler: router,
 	}
 
 	var wg sync.WaitGroup

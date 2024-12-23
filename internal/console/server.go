@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-logr/logr"
 	utilshttp "github.com/ironcore-dev/ironcore/utils/http"
+	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/server"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -25,20 +26,26 @@ func setHandlerOptionsDefaults(opts *HandlerOptions) {
 	}
 }
 
-func NewHandler(srv *server.Server, opts HandlerOptions) http.Handler {
+func NewHandler(srv *server.Server, opts HandlerOptions) (http.Handler, error) {
 	setHandlerOptionsDefaults(&opts)
 
-	r := chi.NewRouter()
+	httpMetrics, regErr := metrics.NewHTTPMetricsMiddleware("streaming")
+	if regErr != nil {
+		return nil, regErr
+	}
 
-	r.Use(utilshttp.InjectLogger(opts.Log))
-	r.Use(utilshttp.LogRequest)
+	router := chi.NewRouter()
+
+	router.Use(utilshttp.InjectLogger(opts.Log))
+	router.Use(utilshttp.LogRequest)
+	router.Use(httpMetrics.Middleware)
 
 	for _, method := range []string{http.MethodHead, http.MethodGet, http.MethodPost} {
-		r.MethodFunc(method, "/exec/{token}", func(w http.ResponseWriter, req *http.Request) {
+		router.MethodFunc(method, "/exec/{token}", func(w http.ResponseWriter, req *http.Request) {
 			token := chi.URLParam(req, "token")
 			srv.ServeExec(w, req, token)
 		})
 	}
 
-	return r
+	return router, nil
 }

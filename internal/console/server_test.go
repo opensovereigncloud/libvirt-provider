@@ -23,19 +23,21 @@ func TestHandler(t *testing.T) {
 	RunSpecs(t, "HTTP Handler Suite")
 }
 
-var _ = Describe("HTTP Handler", func() {
+var _ = Describe("HTTP Handler", Ordered, func() {
 	var (
 		server *libvirtserver.Server
 		router http.Handler
 	)
-	BeforeEach(func() {
+
+	BeforeAll(func() {
 		var err error
 		server, err = libvirtserver.New(libvirtserver.Options{
 			BaseURL:    baseURL,
 			GuestAgent: api.GuestAgentNone,
 		})
 		Expect(err).ShouldNot(HaveOccurred())
-		router = NewHandler(server, HandlerOptions{})
+		router, err = NewHandler(server, HandlerOptions{})
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 	Describe("NewHandler", func() {
 		Context("when handling a GET request for unknown token", func() {

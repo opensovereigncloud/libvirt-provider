@@ -2,7 +2,7 @@
 
 Document describes metrics related with libvirt-provider or libvirt daemon.
 
-**Last update:** 2024-12-13T13:15:04+00:00
+**Last update:** 2024-12-20T11:10:07+00:00
 
 ## libvirt-provider metrics
 
@@ -64,10 +64,12 @@ It contains list of metrics exposed by libvirt-provider.
 | grpc_server_msg_received_total                |                counter                 |        | Total number of RPC stream messages received on the server.                                                                                                                                                                          |
 | grpc_server_msg_sent_total                    |                counter                 |        | Total number of gRPC stream messages sent by the server.                                                                                                                                                                             |
 | grpc_server_started_total                     |                counter                 |        | Total number of RPCs started on the server.                                                                                                                                                                                          |
-| libvirt_provider_machineclasses_machine_count |                 gauge                  |   ✅    | Current count of machines with spefic machine class.                                                                                                                                                                                 |
-| libvirt_provider_machines_delete_marked       |                 gauge                  |   ✅    | Current count of manage machines mark for deletion.                                                                                                                                                                                  |
-| libvirt_provider_machines_destroyed_total     |                counter                 |   ✅    | Total count of machines which weren't shutdown gracefully.                                                                                                                                                                           |
-| libvirt_provider_machines_state               |                 gauge                  |   ✅    | Current count of manage machines in specific state.                                                                                                                                                                                  |
+| libvirtprovider_machineclasses_machine_count |                 gauge                  |   ✅    | Current count of machines with spefic machine class.                                                                                                                                                                                 |
+| libvirtprovider_machines_delete_marked       |                 gauge                  |   ✅    | Current count of manage machines mark for deletion.                                                                                                                                                                                  |
+| libvirtprovider_machines_destroyed_total     |                counter                 |   ✅    | Total count of machines which weren't shutdown gracefully.                                                                                                                                                                           |
+| libvirtprovider_machines_state               |                 gauge                  |   ✅    | Current count of manage machines in specific state.                                                                                                                                                                                  |
+| libvirtprovider_httpserver_<`serverName`>_request_duration_seconds               |                 histogram (.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10)                  |   ✅    | Histogram of HTTP request durations in seconds.                                                                                                                                                                                  |
+| libvirtprovider_httpserver_<`serverName`>_requests_total               |                 counter                  |   ✅    | Total number of HTTP requests.                                                                                                                                                                                  |
 
 ## prometheus-libvirt-exporter
 
