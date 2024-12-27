@@ -88,7 +88,7 @@ type Options struct {
 
 	MachineEventStore machineevent.EventStoreOptions
 
-	VolumeCachePolicy string
+	VolumeCachePolicyCeph string
 }
 
 type HTTPServerOptions struct {
@@ -162,7 +162,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&o.MachineEventStore.MachineEventResyncInterval, "machine-event-resync-interval", 1*time.Minute, "Interval for resynchronizing the machine events.")
 
 	// Volume cache policy option
-	fs.StringVar(&o.VolumeCachePolicy, "volume-cache-policy", "none",
+	fs.StringVar(&o.VolumeCachePolicyCeph, "volume-cache-policy-ceph", "none",
 		`Policy to use when creating a remote disk. (one of 'none', 'writeback', 'writethrough', 'directsync', 'unsafe').
 Note: The available options may depend on the hypervisor and libvirt version in use.
 Please refer to the official documentation for more details: https://libvirt.org/formatdomain.html#hard-drives-floppy-disks-cdroms.`)
@@ -365,7 +365,7 @@ func Run(ctx context.Context, opts Options) error {
 			ResyncIntervalVolumeSize:       opts.ResyncIntervalVolumeSize,
 			ResyncIntervalGarbageCollector: opts.ResyncIntervalGarbageCollector,
 			GCVMGracefulShutdownTimeout:    opts.GCVMGracefulShutdownTimeout,
-			VolumeCachePolicy:              opts.VolumeCachePolicy,
+			VolumeCachePolicyCeph:          opts.VolumeCachePolicyCeph,
 		},
 	)
 	if err != nil {

@@ -84,7 +84,7 @@ type MachineReconcilerOptions struct {
 	ResyncIntervalVolumeSize       time.Duration
 	ResyncIntervalGarbageCollector time.Duration
 	GCVMGracefulShutdownTimeout    time.Duration
-	VolumeCachePolicy              string
+	VolumeCachePolicyCeph          string
 }
 
 func NewMachineReconciler(
@@ -125,7 +125,7 @@ func NewMachineReconciler(
 		resyncIntervalVolumeSize:                opts.ResyncIntervalVolumeSize,
 		resyncIntervalGarbageCollector:          opts.ResyncIntervalGarbageCollector,
 		gcVMGracefulShutdownTimeout:             opts.GCVMGracefulShutdownTimeout,
-		volumeCachePolicy:                       opts.VolumeCachePolicy,
+		volumeCachePolicyCeph:                   opts.VolumeCachePolicyCeph,
 		metricsReconcileDuration:                metrics.ControllerRuntimeReconcileDuration.WithLabelValues(MachineReconcilerName),
 		metricsControllerRuntimeActiveWorker:    metrics.ControllerRuntimeActiveWorker.WithLabelValues(MachineReconcilerName),
 		metricsControllerRuntimeReconcileErrors: metrics.ControllerRuntimeReconcileErrors.WithLabelValues(MachineReconcilerName),
@@ -155,7 +155,7 @@ type MachineReconciler struct {
 	gcVMGracefulShutdownTimeout    time.Duration
 	resyncIntervalGarbageCollector time.Duration
 
-	volumeCachePolicy string
+	volumeCachePolicyCeph string
 
 	metricsReconcileDuration                prometheus.Observer
 	metricsControllerRuntimeActiveWorker    prometheus.Gauge
@@ -609,7 +609,7 @@ func (r *MachineReconciler) updateDomain(
 		return nil, nil, fmt.Errorf("error getting domain description: %w", err)
 	}
 
-	attacher, err := NewLibvirtVolumeAttacher(domainDesc, NewRunningDomainExecutor(r.libvirt, machine.ID), r.volumeCachePolicy)
+	attacher, err := NewLibvirtVolumeAttacher(domainDesc, NewRunningDomainExecutor(r.libvirt, machine.ID), r.volumeCachePolicyCeph)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error construction volume attacher: %w", err)
 	}
@@ -801,7 +801,7 @@ func (r *MachineReconciler) domainFor(
 		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "NoIgnitionData", "Machine does not have ignition data")
 	}
 
-	attacher, err := NewLibvirtVolumeAttacher(domainDesc, NewCreateDomainExecutor(r.libvirt), r.volumeCachePolicy)
+	attacher, err := NewLibvirtVolumeAttacher(domainDesc, NewCreateDomainExecutor(r.libvirt), r.volumeCachePolicyCeph)
 	if err != nil {
 		return nil, nil, nil, err
 	}
