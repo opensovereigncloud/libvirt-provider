@@ -94,7 +94,7 @@ func (c *SGX) Allocate(_ *api.Machine, requiredResources core.ResourceList) (cor
 
 		quantity.Sub(*requiredQuantity)
 		c.availableResources[key] = quantity
-		return core.ResourceList{key: *requiredQuantity}, nil
+		return core.ResourceList{key: *requiredQuantity, ResourceMemorySGX: *requiredQuantity}, nil
 	}
 
 	requiredSGXMem, ok := requiredResources[ResourceMemorySGX]
@@ -110,7 +110,7 @@ func (c *SGX) Allocate(_ *api.Machine, requiredResources core.ResourceList) (cor
 	}
 
 	c.availableResources[zone] = quantity
-	return core.ResourceList{zone: requiredSGXMem}, nil
+	return core.ResourceList{zone: requiredSGXMem, ResourceMemorySGX: requiredSGXMem}, nil
 }
 
 func (c *SGX) Deallocate(_ *api.Machine, deallocateResources core.ResourceList) []core.ResourceName {
@@ -123,7 +123,7 @@ func (c *SGX) Deallocate(_ *api.Machine, deallocateResources core.ResourceList) 
 	quantity.Add(*requiredQuantity)
 	c.availableResources[key] = quantity
 
-	return []core.ResourceName{key}
+	return []core.ResourceName{key, ResourceMemorySGX}
 }
 
 func (c *SGX) GetAvailableResources() core.ResourceList {

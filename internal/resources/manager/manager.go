@@ -303,10 +303,11 @@ func (r *resourceManager) allocate(machine *api.Machine, requiredResources core.
 		}
 	}
 
-	machine.Spec.Resources = totalAllocatedRes
 	if len(requiredResources) > 0 {
 		return fmt.Errorf("failed to allocate all resources: %v", requiredResources)
 	}
+
+	machine.Spec.Resources = totalAllocatedRes
 
 	if r.numaScheduler != nil {
 		cpuQuantity := requiredResources[core.ResourceCPU]
