@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/go-logr/logr"
+	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -47,11 +48,7 @@ func createEmptyFileWithSeek(log logr.Logger, filename string, seek int64) error
 		return fmt.Errorf("failed opening destination file: %w", err)
 	}
 
-	defer func() {
-		if err := dstFile.Close(); err != nil {
-			log.Error(err, "error closing file in createEmptyFileWithSeek")
-		}
-	}()
+	defer osutils.CloseWithErrorLogging(dstFile, fmt.Sprintf("error closing file in createEmptyFileWithSeek. Path: %s", dstFile.Name()), &log)
 
 	if _, err = dstFile.Seek(seek, io.SeekStart); err != nil {
 		return fmt.Errorf("failed seeking destination file: %w", err)
@@ -69,22 +66,13 @@ func copyFile(log logr.Logger, src, dst string) error {
 	if err != nil {
 		return fmt.Errorf("failed opening source file: %w", err)
 	}
-	defer func() {
-		if err := srcFile.Close(); err != nil {
-			log.Error(err, "error closing source file in copyFile", "path", src)
-		}
-	}()
+	defer osutils.CloseWithErrorLogging(srcFile, fmt.Sprintf("error closing file. Path: %s", srcFile.Name()), &log)
 
 	dstFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, filePerm)
 	if err != nil {
 		return fmt.Errorf("failed opening destination file: %w", err)
 	}
-
-	defer func() {
-		if err := dstFile.Close(); err != nil {
-			log.Error(err, "error closing destination file in copyFile")
-		}
-	}()
+	defer osutils.CloseWithErrorLogging(dstFile, fmt.Sprintf("error closing file. Path: %s", dstFile.Name()), &log)
 
 	if _, err = io.Copy(dstFile, srcFile); err != nil {
 		return fmt.Errorf("failed to copy data from source file to destination file: %w", err)

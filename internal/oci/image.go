@@ -19,6 +19,7 @@ import (
 	"github.com/ironcore-dev/ironcore-image/oci/remote"
 	"github.com/ironcore-dev/ironcore-image/oci/store"
 	"github.com/ironcore-dev/ironcore-image/utils/sets"
+	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	ocispecv1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -68,7 +69,7 @@ func readImageConfig(ctx context.Context, img image.Image) (*ironcoreimage.Confi
 	if err != nil {
 		return nil, fmt.Errorf("error getting config content: %w", err)
 	}
-	defer func() { _ = rc.Close() }()
+	defer osutils.CloseWithErrorLogging(rc, "error closing config content", nil)
 
 	config := &ironcoreimage.Config{}
 	if err := json.NewDecoder(rc).Decode(config); err != nil {

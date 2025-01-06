@@ -19,6 +19,7 @@ import (
 	remotecommandserver "github.com/ironcore-dev/ironcore/poollet/machinepoollet/iri/streaming/remotecommand"
 	"github.com/ironcore-dev/libvirt-provider/api"
 	libvirtutils "github.com/ironcore-dev/libvirt-provider/internal/libvirt/utils"
+	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
 	"github.com/moby/term"
 	"google.golang.org/grpc/codes"
@@ -167,7 +168,8 @@ func (e executorExec) Exec(ctx context.Context, in io.Reader, out io.WriteCloser
 			n, err := inputReader.Read(buf)
 			if err != nil {
 				if _, ok := err.(term.EscapeError); ok {
-					f.Close() // This is to close the writer, allowing io.Copy to exit the loop.
+					// This is to close the writer, allowing io.Copy to exit the loop.
+					osutils.CloseWithErrorLogging(f, fmt.Sprintf("error closing tty file in Exec. Path: %s", f.Name()), &log)
 					log.Info("Closed reading the terminal. Escape sequence received")
 					return
 				}

@@ -19,6 +19,7 @@ import (
 	"github.com/go-logr/logr"
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -165,12 +166,7 @@ func (c *SGX) getNumaTotalBytes(node string) (int64, error) {
 		return 0, err
 	}
 
-	defer func() {
-		defErr := fd.Close()
-		if defErr != nil {
-			c.log.Error(defErr, "cannot close file %s", fd.Name())
-		}
-	}()
+	osutils.CloseWithErrorLogging(fd, fmt.Sprintf("error closing node directory file in getNumaTotalBytes. Path: %s", fd.Name()), &c.log)
 
 	// additional protection for reading corrupted files
 	reader := io.LimitReader(fd, maxCharacters)

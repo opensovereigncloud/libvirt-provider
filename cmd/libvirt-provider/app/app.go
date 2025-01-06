@@ -37,6 +37,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/networkinterfaceplugin"
 	"github.com/ironcore-dev/libvirt-provider/internal/oci"
+	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	volumeplugin "github.com/ironcore-dev/libvirt-provider/internal/plugins/volume"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/volume/ceph"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/volume/emptydisk"
@@ -535,7 +536,7 @@ func runStreamingServer(ctx context.Context, setupLog, log logr.Logger, srv *ser
 	go func() {
 		<-ctx.Done()
 		setupLog.Info("Shutting down streaming server")
-		_ = httpSrv.Close()
+		osutils.CloseWithErrorLogging(httpSrv, "error closing http streaming server", &log)
 		setupLog.Info("Streaming server is shutdown")
 	}()
 

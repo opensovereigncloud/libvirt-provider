@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/go-logr/logr"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 func checkStatExists(filename string, check func(stat os.FileInfo) error) (bool, error) {
@@ -62,7 +63,7 @@ func CloseWithErrorLogging(resource io.Closer, message string, log *logr.Logger)
 
 		// Initialize a default logger when no logger is provided
 		if log == nil {
-			return
+			log = &ctrl.Log
 		}
 
 		log.Error(err, message)
