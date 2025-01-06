@@ -14,6 +14,7 @@ import (
 	irievent "github.com/ironcore-dev/ironcore/iri/apis/event/v1alpha1"
 	irimeta "github.com/ironcore-dev/ironcore/iri/apis/meta/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -81,9 +82,12 @@ func (es *Store) recordEvent(metadata *irimeta.ObjectMetadata, eventType, reason
 	// Calculate the index where the new event will be inserted
 	index := (es.head + es.count) % es.maxEvents
 
+	metrics.EventsBufferUsageRatio.Set(float64(es.count) / float64(es.maxEvents))
+
 	// If the store is full, log and overwrite the oldest event and move the head
 	if es.count == es.maxEvents {
 		es.log.V(1).Info("Overriding event", "event", es.events[es.head])
+		metrics.EventsOverriddenTotal.Inc()
 		es.head = (es.head + 1) % es.maxEvents
 	} else {
 		es.count++

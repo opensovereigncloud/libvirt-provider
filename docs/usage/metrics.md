@@ -2,7 +2,7 @@
 
 Document describes metrics related with libvirt-provider or libvirt daemon.
 
-**Last update:** 2024-12-20T11:10:07+00:00
+**Last update:** 2024-12-26T011:44:01+00:00
 
 ## libvirt-provider metrics
 
@@ -70,6 +70,9 @@ It contains list of metrics exposed by libvirt-provider.
 | libvirtprovider_machines_state               |                 gauge                  |   ✅    | Current count of manage machines in specific state.                                                                                                                                                                                  |
 | libvirtprovider_httpserver_<`serverName`>_request_duration_seconds               |                 histogram (.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10)                  |   ✅    | Histogram of HTTP request durations in seconds.                                                                                                                                                                                  |
 | libvirtprovider_httpserver_<`serverName`>_requests_total               |                 counter                  |   ✅    | Total number of HTTP requests.                                                                                                                                                                                  |
+| libvirtprovider_iri_events_overrides_total               |                 counter                  |   ✅    | Total number of overridden iri machine events in the circular buffer.                                                                                                                                                                                  |
+| libvirtprovider_iri_events_buffer_usage_ratio               |                 gauge                  |   ✅    | Ratio of current buffer usage of iri events to maximum buffer capacity.                                                                                                                                                                                  |
+| libvirtprovider_libvirt_events_total               |                 counter                  |   ✅    | Total number of libvirt lifecycle events, categorized by event ID and event type, captured by the libvirt provider.                                                                                                                                                                                  |
 
 ## prometheus-libvirt-exporter
 

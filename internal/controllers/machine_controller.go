@@ -336,6 +336,7 @@ func (r *MachineReconciler) startEnqueueMachineByLibvirtEvent(ctx context.Contex
 				continue
 			}
 
+			metrics.EventsLifecycleCount.WithLabelValues("lifecycle", metrics.GetLibvirtDomainLifecycleEvent(evt.Event)).Inc()
 			log.V(1).Info("requeue machine", "machineID", machine.ID, "lifecycleEventID", evt.Event)
 			r.queue.AddRateLimited(machine.ID)
 		case <-ctx.Done():
