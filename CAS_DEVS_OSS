@@ -4,7 +4,7 @@ assignees:
   - "lukas.koszegy"
 cveLabels:
   - "type::3-cve"
-  - "stream::onMetal"
+  - "stream::infra-development"
   - "Component: Virtualization"
   - "why::Security"
   - "squad::Virtualization"
