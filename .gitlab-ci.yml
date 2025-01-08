@@ -27,7 +27,13 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event' || $CI_PIPELINE_SOURCE == 'schedule'
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\..*/
 
+# Common template to skip jobs during scheduled pipelines
+.skip-on-schedule:
+  rules:
+    - if: $CI_PIPELINE_SOURCE != 'schedule'
+
 file-lint:
+  extends: .skip-on-schedule
   stage: lint
   needs: []
   variables:
@@ -59,11 +65,13 @@ yaml-lint:
       fi
       yamllint -f colored ${cfg} . && echo "Linting was successful."
   rules:
-    - exists:
-        - "**/*.yaml"
-        - "**/*.yml"
+  - if: '$CI_PIPELINE_SOURCE != "schedule"'
+    exists:
+      - "**/*.yaml"
+      - "**/*.yml"
 
 markdown-lint:
+  extends: .skip-on-schedule
   stage: lint
   needs: []
   variables:
@@ -82,10 +90,12 @@ markdown-lint:
       { find -iname '*.md' -type f \
         | xargs markdownlint ${cfg}; } && echo "Linting was successful."
   rules:
-    - exists:
-        - "**/*.md"
+  - if: '$CI_PIPELINE_SOURCE != "schedule"'
+    exists:
+      - "**/*.md"
 
 go-lint:
+  extends: .skip-on-schedule
   stage: lint
   needs: []
   image:
@@ -95,6 +105,7 @@ go-lint:
     - make lint
 
 unit-tests:
+  extends: .skip-on-schedule
   stage: test
   image:
     name: "${GO_BUILD_IMG}"
@@ -103,6 +114,7 @@ unit-tests:
     - make test
 
 build:
+  extends: .skip-on-schedule
   stage: build
   image:
     name: "${GO_BUILD_IMG}"
