@@ -166,13 +166,13 @@ func (c *SGX) getNumaTotalBytes(node string) (int64, error) {
 		return 0, err
 	}
 
-	osutils.CloseWithErrorLogging(fd, fmt.Sprintf("error closing node directory file in getNumaTotalBytes. Path: %s", fd.Name()), &c.log)
+	defer osutils.CloseWithErrorLogging(fd, fmt.Sprintf("error closing node directory file in getNumaTotalBytes. Path: %s", fd.Name()), &c.log)
 
 	// additional protection for reading corrupted files
 	reader := io.LimitReader(fd, maxCharacters)
 	content, err := io.ReadAll(reader)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 
 	content = bytes.TrimSpace(content)
