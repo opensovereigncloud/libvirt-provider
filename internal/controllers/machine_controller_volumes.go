@@ -137,11 +137,6 @@ func (r *MachineReconciler) attachDetachVolumes(ctx context.Context, log logr.Lo
 		return nil, fmt.Errorf("attach/detach error(s): %v", errs)
 	}
 
-	// sort is required for avoid reconcile loop triggered by different order of volumes.
-	slices.SortStableFunc(volumeStates, func(i, j api.VolumeStatus) int {
-		return strings.Compare(i.Name, j.Name)
-	})
-
 	return volumeStates, nil
 }
 

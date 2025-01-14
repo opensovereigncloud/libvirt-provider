@@ -96,6 +96,8 @@ func (s *Store[E]) Create(_ context.Context, obj E) (E, error) {
 	obj.SetCreatedAt(time.Now())
 	obj.IncrementResourceVersion()
 
+	obj.Unify()
+
 	obj, err = s.set(obj)
 	if err != nil {
 		return utils.Zero[E](), err
@@ -159,6 +161,8 @@ func (s *Store[E]) Update(_ context.Context, obj E) (E, error) {
 	if oldObj.GetResourceVersion() != obj.GetResourceVersion() {
 		return utils.Zero[E](), fmt.Errorf("failed to update object: %w", store.ErrResourceVersionNotLatest)
 	}
+
+	obj.Unify()
 
 	if reflect.DeepEqual(oldObj, obj) {
 		return obj, nil

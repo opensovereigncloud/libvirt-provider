@@ -2,14 +2,14 @@
   {
     "name": "libvirt-provider-dev-extra-huge",
     "capabilities": {
-      "cpu": 2000,
+      "cpu": 2,
       "memory": 16106127361
     }
   },
   {
     "name": "libvirt-provider-dev-t3-small",
     "capabilities": {
-      "cpu": 2000,
+      "cpu": 2,
       "memory": 2147483648,
       "sgx.intel.com/epc": 2147483648
     }
@@ -17,7 +17,7 @@
   {
     "name": "libvirt-provider-dev-x3-xlarge",
     "capabilities": {
-      "cpu": 4000,
+      "cpu": 2,
       "memory": 8589934592
     }
   }

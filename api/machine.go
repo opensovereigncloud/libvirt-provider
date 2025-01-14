@@ -4,6 +4,8 @@
 package api
 
 import (
+	"slices"
+	"strings"
 	"time"
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
@@ -25,6 +27,19 @@ func (m *Machine) GetState() string {
 	return string(MachineStatePending)
 }
 
+// Unify function unify object.
+// It mainly sorts slices according to key.
+// It will avoid triggering the reconciliation loop by different orders of items.
+// Another benefit is better readability of machine in store.
+func (m *Machine) Unify() {
+	m.Spec.SortVolumes()
+	m.Spec.SortNetworkInterfaces()
+
+	m.Status.SortPCIDevices()
+	m.Status.SortVolumes()
+	m.Status.SortNetworkInterfaces()
+}
+
 type MachineSpec struct {
 	Power PowerState `json:"power"`
 
@@ -41,6 +56,25 @@ type MachineSpec struct {
 	GuestAgent GuestAgent `json:"guestAgent"`
 }
 
+func (m *MachineSpec) SortVolumes() {
+	slices.SortStableFunc(m.Volumes, func(x, y *VolumeSpec) int {
+		return strings.Compare(x.Name, y.Name)
+	})
+}
+
+func (m *MachineSpec) SortNetworkInterfaces() {
+	slices.SortStableFunc(m.NetworkInterfaces, func(x, y *NetworkInterfaceSpec) int {
+		return strings.Compare(x.Name, y.Name)
+	})
+
+	for _, inf := range m.NetworkInterfaces {
+		// It is sorted as string, not as IP address.
+		slices.SortStableFunc(inf.Ips, func(x, y string) int {
+			return strings.Compare(x, y)
+		})
+	}
+}
+
 type GuestAgent string
 
 const (
@@ -55,6 +89,29 @@ type MachineStatus struct {
 	ImageRef               string                   `json:"imageRef"`
 	GuestAgentStatus       *GuestAgentStatus        `json:"guestAgentStatus,omitempty"`
 	PCIDevices             []PCIDevice              `json:"pciDevices"`
+}
+
+func (m *MachineStatus) SortPCIDevices() {
+	slices.SortStableFunc(m.PCIDevices, func(x, y PCIDevice) int {
+		resourceCmp := strings.Compare(string(x.Name), string(y.Name))
+		if resourceCmp != 0 {
+			return resourceCmp
+		}
+
+		return x.Addr.Compare(y.Addr)
+	})
+}
+
+func (m *MachineStatus) SortVolumes() {
+	slices.SortStableFunc(m.VolumeStatus, func(x, y VolumeStatus) int {
+		return strings.Compare(x.Name, y.Name)
+	})
+}
+
+func (m *MachineStatus) SortNetworkInterfaces() {
+	slices.SortStableFunc(m.NetworkInterfaceStatus, func(x, y NetworkInterfaceStatus) int {
+		return strings.Compare(x.Name, y.Name)
+	})
 }
 
 type MachineState string
@@ -141,6 +198,38 @@ type PCIAddress struct {
 	Bus      uint
 	Slot     uint
 	Function uint
+}
+
+func (a PCIAddress) Compare(m PCIAddress) int {
+	if a.Domain != m.Domain {
+		if a.Domain > m.Domain {
+			return 1
+		}
+		return -1
+	}
+
+	if a.Bus != m.Bus {
+		if a.Bus > m.Bus {
+			return 1
+		}
+		return -1
+	}
+
+	if a.Slot != m.Slot {
+		if a.Slot > m.Slot {
+			return 1
+		}
+		return -1
+	}
+
+	if a.Function != m.Function {
+		if a.Function > m.Function {
+			return 1
+		}
+		return -1
+	}
+
+	return 0
 }
 
 func (p PCIAddress) GetDomainSubsysPCI() *libvirtxml.DomainHostdevSubsysPCI {

@@ -101,4 +101,5 @@ type Object interface {
 	SetFinalizers(finalizers []string)
 	IncrementResourceVersion()
 	GetState() string
+	Unify()
 }
