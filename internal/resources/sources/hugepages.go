@@ -10,6 +10,7 @@ import (
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/shirou/gopsutil/v3/mem"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -123,6 +124,11 @@ func (m *Hugepages) Deallocate(_ *api.Machine, requiredResources core.ResourceLi
 
 func (m *Hugepages) GetAvailableResources() core.ResourceList {
 	return core.ResourceList{core.ResourceMemory: *m.availableMemory, ResourceHugepages: *m.availableHugePages}
+}
+
+func (m *Hugepages) SetResourcesMetric(metric *prometheus.GaugeVec) {
+	metric.WithLabelValues(m.GetName(), string(ResourceHugepages)).Set(float64(m.availableHugePages.Value()))
+	metric.WithLabelValues(m.GetName(), GetMetricsResourceName(string(core.ResourceMemory), ResourceMemoryUnit)).Set(float64(m.availableMemory.Value()))
 }
 
 func calculateAvailableHugepages(totalHugepages, blockedHugepages uint64) (uint64, error) {

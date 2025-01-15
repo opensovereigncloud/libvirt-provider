@@ -10,6 +10,7 @@ import (
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/shirou/gopsutil/v3/mem"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -47,7 +48,7 @@ func (m *Memory) Init(ctx context.Context) (sets.Set[core.ResourceName], error) 
 		return nil, fmt.Errorf("failed to get host memory information: %w", err)
 	}
 
-	availableMemory, err := calculateAvailableMemory(MemorySize(hostMem.Total), m.reservedMemorySize)
+	availableMemory, err := m.calculateAvailableMemory(MemorySize(hostMem.Total), m.reservedMemorySize)
 	if err != nil {
 		return nil, err
 	}
@@ -67,6 +68,7 @@ func (m *Memory) Allocate(_ *api.Machine, requiredResources core.ResourceList) (
 	}
 
 	m.availableMemory.Sub(mem)
+
 	return core.ResourceList{core.ResourceMemory: mem}, nil
 }
 
@@ -77,6 +79,7 @@ func (m *Memory) Deallocate(_ *api.Machine, requiredResources core.ResourceList)
 	}
 
 	m.availableMemory.Add(mem)
+
 	return []core.ResourceName{core.ResourceMemory}
 }
 
@@ -84,7 +87,11 @@ func (m *Memory) GetAvailableResources() core.ResourceList {
 	return core.ResourceList{core.ResourceMemory: *m.availableMemory}
 }
 
-func calculateAvailableMemory(totalMemory, reservedMemory MemorySize) (*resource.Quantity, error) {
+func (m *Memory) SetResourcesMetric(metric *prometheus.GaugeVec) {
+	metric.WithLabelValues(m.GetName(), GetMetricsResourceName(string(core.ResourceMemory), ResourceMemoryUnit)).Set(float64(m.availableMemory.Value()))
+}
+
+func (m *Memory) calculateAvailableMemory(totalMemory, reservedMemory MemorySize) (*resource.Quantity, error) {
 	if reservedMemory > totalMemory {
 		return nil, fmt.Errorf("reservedMemorySize cannot be greater than totalMemory: %v", resource.NewQuantity(int64(totalMemory), resource.BinarySI))
 	}

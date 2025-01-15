@@ -18,7 +18,9 @@ import (
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
+	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
@@ -162,6 +164,7 @@ MAIN:
 		for key := range class.Capabilities {
 			_, ok := r.registredResources[key]
 			if !ok {
+				metrics.MachineClassesSkipped.Inc()
 				r.log.Error(fmt.Errorf("missing source for resource %s: %w", key, ErrResourceUnsupported), fmt.Sprintf("machine class %s will be ignore", class.Name))
 				continue MAIN
 			}
@@ -207,16 +210,24 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 	r.ctx = ctx
 
 	totalExistingVMCount := uint64(len(machines))
-	if r.maxVMsLimit != 0 && totalExistingVMCount >= r.maxVMsLimit {
-		r.log.Info("VM limit is already reached", "Limit", r.maxVMsLimit, "Existing count", totalExistingVMCount)
-	}
 	r.availableVMSlots = int64(r.maxVMsLimit - totalExistingVMCount)
+
+	if r.maxVMsLimit != 0 {
+		metrics.VMSlotsAvailable.Set(float64(r.availableVMSlots))
+
+		if totalExistingVMCount >= r.maxVMsLimit {
+			r.log.Info("VM limit is already reached", "Limit", r.maxVMsLimit, "Existing count", totalExistingVMCount)
+		}
+	} else {
+		metrics.VMSlotsAvailable.Set(math.Inf(1))
+	}
 
 	for _, s := range r.sources {
 		resources, err := s.Init(r.ctx)
 		if err != nil {
 			return nil, err
 		}
+		s.SetResourcesMetric(metrics.ResourcesTotal)
 
 		for _, value := range resources.UnsortedList() {
 			conflictedSource, ok := r.registredResources[value]
@@ -229,6 +240,13 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 	}
 
 	r.log.Info("Initialized resources: " + r.convertResourcesToString(r.getAvailableResources()))
+
+	err := r.initMachineClasses()
+	if err != nil {
+		return nil, err
+	}
+
+	r.setMachineClassMetrics(metrics.MachinesTotal)
 
 	// Allocating resources for pre-existing machines in store
 	for _, machine := range machines {
@@ -244,16 +262,17 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 				return nil, err
 			}
 
+			s.SetResourcesMetric(metrics.ResourcesAvailable)
+
 			for allocated := range allocatedResources {
 				delete(requiredResources, allocated)
 			}
 		}
 	}
 
-	err := r.initMachineClasses()
-	if err != nil {
-		return nil, err
-	}
+	// error cannot ocurre here
+	_ = r.updateMachineClassAvailable()
+	r.setMachineClassMetrics(metrics.MachinesAvailable)
 
 	if r.maxVMsLimit != 0 {
 		r.log.Info("Available VM slots:" + r.getAvailableVMSlotsAsString())
@@ -295,6 +314,8 @@ func (r *resourceManager) allocate(machine *api.Machine, requiredResources core.
 			return err
 		}
 
+		s.SetResourcesMetric(metrics.ResourcesAvailable)
+
 		maps.Copy(totalAllocatedRes, allocatedRes)
 
 		// Avoid double allocation when one source manages more resources
@@ -319,8 +340,13 @@ func (r *resourceManager) allocate(machine *api.Machine, requiredResources core.
 
 	r.availableVMSlots -= 1
 
+	if r.maxVMsLimit != 0 {
+		metrics.VMSlotsAvailable.Set(float64(r.availableVMSlots))
+	}
+
 	// error cannot ocurre here
 	_ = r.updateMachineClassAvailable()
+	r.setMachineClassMetrics(metrics.MachinesAvailable)
 
 	r.printAvailableResources("allocation")
 
@@ -350,6 +376,8 @@ func (r *resourceManager) deallocate(machine *api.Machine, deallocateResources c
 		s := r.registredResources[key]
 		resourceNames := s.Deallocate(machine, deallocateResources)
 
+		s.SetResourcesMetric(metrics.ResourcesAvailable)
+
 		for _, resource := range resourceNames {
 			delete(deallocateResources, resource)
 			delete(machine.Spec.Resources, resource)
@@ -358,8 +386,13 @@ func (r *resourceManager) deallocate(machine *api.Machine, deallocateResources c
 
 	r.availableVMSlots += 1
 
+	if r.maxVMsLimit != 0 {
+		metrics.VMSlotsAvailable.Set(float64(r.availableVMSlots))
+	}
+
 	// error cannot occure here
 	_ = r.updateMachineClassAvailable()
+	r.setMachineClassMetrics(metrics.MachinesAvailable)
 
 	r.printAvailableResources("deallocation")
 
@@ -371,6 +404,8 @@ func (r *resourceManager) deallocateUnassignResources(machine *api.Machine, reso
 		// if resource is allocated, source has to exist
 		s := r.registredResources[key]
 		_ = s.Deallocate(machine, resources)
+
+		s.SetResourcesMetric(metrics.ResourcesAvailable)
 	}
 }
 
@@ -520,6 +555,12 @@ func (r *resourceManager) getMachineClassAvailibilityAsString() string {
 	}
 
 	return removeSeparatorFromEnd(result)
+}
+
+func (r *resourceManager) setMachineClassMetrics(metric *prometheus.GaugeVec) {
+	for _, class := range r.machineClasses {
+		metric.WithLabelValues(class.Name).Set(float64(class.available))
+	}
 }
 
 func (r *resourceManager) getAvailableVMSlotsAsString() string {

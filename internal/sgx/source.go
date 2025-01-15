@@ -21,6 +21,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/api"
 	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
+	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -63,7 +64,7 @@ func (c *SGX) Init(_ context.Context) (sets.Set[core.ResourceName], error) {
 }
 
 func (c *SGX) GetName() string {
-	return "sgx"
+	return SourceSGX
 }
 
 func (c *SGX) Modify(resources core.ResourceList) error {
@@ -204,6 +205,12 @@ func (c *SGX) getSupportedResources() sets.Set[core.ResourceName] {
 	}
 
 	return resources
+}
+
+func (c *SGX) SetResourcesMetric(metric *prometheus.GaugeVec) {
+	for numaZoneResourceName, quantity := range c.availableResources {
+		metric.WithLabelValues(c.GetName(), sources.GetMetricsResourceName(string(numaZoneResourceName), sources.ResourceMemoryUnit)).Set(float64(quantity.Value()))
+	}
 }
 
 func FindSGXNumaResource(resources core.ResourceList) (core.ResourceName, *resource.Quantity, bool) {

@@ -3,10 +3,16 @@
 
 package sources
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 const (
 	QuantityCountIgnore = -1
+
+	ResourceMemoryUnit = "bytes"
+	resourceCPUUnit    = "cores"
 )
 
 var (
@@ -15,3 +21,7 @@ var (
 
 	ErrSourceResourceUnsupport = errors.New("unsupported resource in source")
 )
+
+func GetMetricsResourceName(resourceName, unit string) string {
+	return fmt.Sprintf("%s_%s", resourceName, unit)
+}

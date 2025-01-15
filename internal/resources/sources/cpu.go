@@ -14,9 +14,12 @@ import (
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
-const SourceCPU string = "cpu"
+const (
+	SourceCPU string = "cpu"
+)
 
 type CPU struct {
 	overcommitVCPU float64
@@ -52,8 +55,8 @@ func (c *CPU) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
 	}
 
 	// Convert the calculated CPU quantity to an int64 to ensure that it represents a whole number of CPUs.
-	cpuQuantity := int64(float64(hostCPUSum) * c.overcommitVCPU)
-	c.availableCPU = resource.NewQuantity(cpuQuantity, resource.DecimalSI)
+	cpuQuantity := float64(hostCPUSum) * c.overcommitVCPU
+	c.availableCPU = resource.NewQuantity(int64(cpuQuantity), resource.DecimalSI)
 
 	return sets.New(core.ResourceCPU), nil
 }
@@ -69,6 +72,7 @@ func (c *CPU) Allocate(_ *api.Machine, requiredResources core.ResourceList) (cor
 	}
 
 	c.availableCPU.Sub(cpu)
+
 	return core.ResourceList{core.ResourceCPU: cpu}, nil
 }
 
@@ -79,9 +83,14 @@ func (c *CPU) Deallocate(_ *api.Machine, requiredResources core.ResourceList) []
 	}
 
 	c.availableCPU.Add(cpu)
+
 	return []core.ResourceName{core.ResourceCPU}
 }
 
 func (c *CPU) GetAvailableResources() core.ResourceList {
 	return core.ResourceList{core.ResourceCPU: *c.availableCPU}
+}
+
+func (c *CPU) SetResourcesMetric(metric *prometheus.GaugeVec) {
+	metric.WithLabelValues(c.GetName(), GetMetricsResourceName(string(core.ResourceCPU), resourceCPUUnit)).Set(float64(c.availableCPU.Value()))
 }

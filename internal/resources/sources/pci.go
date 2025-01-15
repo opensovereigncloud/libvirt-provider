@@ -20,6 +20,7 @@ import (
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
 	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
+	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -156,6 +157,12 @@ func (p *PCI) GetAvailableResources() core.ResourceList {
 		availableResources[resourceName] = *resource.NewQuantity(int64(len(addrs)), resource.DecimalSI)
 	}
 	return availableResources
+}
+
+func (p *PCI) SetResourcesMetric(metric *prometheus.GaugeVec) {
+	for resourceName, addrs := range p.devices {
+		metric.WithLabelValues(p.GetName(), string(resourceName)).Set(float64(len(addrs)))
+	}
 }
 
 func (p *PCI) loadSupportedDevices() (map[HexID]*Vendor, error) {

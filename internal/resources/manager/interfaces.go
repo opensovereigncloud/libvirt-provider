@@ -8,6 +8,7 @@ import (
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -29,6 +30,8 @@ type Source interface {
 	GetAvailableResources() core.ResourceList
 	// Calculate allocatable quantity of machines classes for specific resource
 	CalculateMachineClassQuantity(core.ResourceName, *resource.Quantity) int64
+	// Sets the total/available resources metric
+	SetResourcesMetric(*prometheus.GaugeVec)
 }
 
 type NumaScheduler interface {
