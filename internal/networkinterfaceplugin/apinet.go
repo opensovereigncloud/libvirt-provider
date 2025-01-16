@@ -30,6 +30,7 @@ func init() {
 type apinetOptions struct {
 	APInetNodeName   string
 	ApinetKubeconfig string
+	APInetCleanup    bool
 }
 
 func (o *apinetOptions) PluginName() string {
@@ -39,6 +40,7 @@ func (o *apinetOptions) PluginName() string {
 func (o *apinetOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.APInetNodeName, "apinet-node-name", "", "APInet node name")
 	fs.StringVar(&o.ApinetKubeconfig, "apinet-kubeconfig", "", "Path to the kubeconfig file for the apinet-cluster.")
+	fs.BoolVar(&o.APInetCleanup, "apinet-cleanup", false, "Cleanup orphan apinet interfaces during startup.")
 }
 
 func (o *apinetOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, func(), error) {
@@ -67,7 +69,7 @@ func (o *apinetOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugi
 		return nil, nil, fmt.Errorf("failed to initialize api-net client: %w", err)
 	}
 
-	return apinet.NewPlugin(o.APInetNodeName, apinetClient), nil, nil
+	return apinet.NewPlugin(o.APInetNodeName, apinetClient, o.APInetCleanup), nil, nil
 }
 
 func init() {

@@ -24,6 +24,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -37,18 +39,22 @@ const (
 	perm         = 0777
 	filePerm     = 0666
 	pluginAPInet = "apinet"
+
+	labelLibvirtProviderHostname = "libvirt-provider/hostname"
 )
 
 type Plugin struct {
-	nodeName     string
-	host         providerhost.Host
-	apinetClient client.Client
+	nodeName      string
+	host          providerhost.Host
+	apinetClient  client.Client
+	enableCleanup bool
 }
 
-func NewPlugin(nodeName string, client client.Client) providernetworkinterface.Plugin {
+func NewPlugin(nodeName string, client client.Client, cleanup bool) providernetworkinterface.Plugin {
 	return &Plugin{
-		nodeName:     nodeName,
-		apinetClient: client,
+		nodeName:      nodeName,
+		apinetClient:  client,
+		enableCleanup: cleanup,
 	}
 }
 
@@ -56,9 +62,80 @@ func GetAPInetPlugin() *Plugin {
 	return &Plugin{}
 }
 
-func (p *Plugin) Init(host providerhost.Host) error {
+func (p *Plugin) Init(ctx context.Context, host providerhost.Host) error {
 	p.host = host
-	return nil
+	return p.cleanup(ctx)
+}
+
+func (p *Plugin) cleanup(ctx context.Context) error {
+	if !p.enableCleanup {
+		return nil
+	}
+
+	log := ctrl.Log.WithName("apinet")
+	log.Info("starting apinet cleanup")
+	selector, err := labels.ValidatedSelectorFromSet(p.getLibvirtProviderLabel())
+	if err != nil {
+		return fmt.Errorf("failed to create selector for list nics: %w", err)
+	}
+	nicsList := apinetv1alpha1.NetworkInterfaceList{}
+	err = p.apinetClient.List(ctx, &nicsList, &client.ListOptions{Namespace: metav1.NamespaceAll, LabelSelector: selector})
+	if err != nil {
+		return err
+	}
+
+	if len(nicsList.Items) == 0 {
+		return nil
+	}
+
+	nicNames, err := p.loadInterfaces()
+	if err != nil {
+		return err
+	}
+
+	log.V(1).Info(fmt.Sprintf("totally loaded local/remote nics: %d/%d", len(nicNames), len(nicsList.Items)))
+
+	var deleteErrs error
+	for _, nic := range nicsList.Items {
+		if nicNames.Has(nic.GetName()) {
+			continue
+		}
+
+		log.Info("deleting nic " + nic.GetNamespace() + "/" + nic.GetName())
+		err = p.apinetClient.Delete(ctx, &nic)
+		if err != nil {
+			deleteErrs = errors.Join(deleteErrs, fmt.Errorf("failed to delete nic %s/%s: %w", nic.GetNamespace(), nic.GetName(), err))
+		}
+	}
+
+	return deleteErrs
+}
+
+func (p *Plugin) loadInterfaces() (sets.Set[string], error) {
+	nicsNames := sets.New[string]()
+	machineDirs, err := os.ReadDir(p.host.MachinesDir())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load machines dir: %w", err)
+	}
+
+	for _, machineDir := range machineDirs {
+		if !machineDir.IsDir() {
+			continue
+		}
+
+		infDirs, err := os.ReadDir(p.host.MachineNetworkInterfacesDir(machineDir.Name()))
+		if err != nil {
+			return nil, fmt.Errorf("failed to load interfaces for machine %s: %w", machineDir.Name(), err)
+		}
+
+		for _, infDir := range infDirs {
+			if infDir.IsDir() {
+				nicsNames.Insert(p.APInetNicName(machineDir.Name(), infDir.Name()))
+			}
+		}
+	}
+
+	return nicsNames, nil
 }
 
 func ironcoreIPsToAPInetIPs(ips []string) []apinet.IP {
@@ -131,6 +208,7 @@ func (p *Plugin) Apply(ctx context.Context, spec *api.NetworkInterfaceSpec, mach
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: apinetNamespace,
 			Name:      p.APInetNicName(machine.ID, spec.Name),
+			Labels:    p.getLibvirtProviderLabel(),
 		},
 		Spec: apinetv1alpha1.NetworkInterfaceSpec{
 			NetworkRef: corev1.LocalObjectReference{
@@ -293,4 +371,8 @@ func (p *Plugin) Delete(ctx context.Context, computeNicName string, machineID st
 
 func (p *Plugin) Name() string {
 	return pluginAPInet
+}
+
+func (p *Plugin) getLibvirtProviderLabel() map[string]string {
+	return map[string]string{labelLibvirtProviderHostname: p.nodeName}
 }

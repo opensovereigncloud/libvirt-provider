@@ -25,7 +25,7 @@ func NewPlugin() providernetworkinterface.Plugin {
 	return &plugin{}
 }
 
-func (p *plugin) Init(host providerhost.Host) error {
+func (p *plugin) Init(_ context.Context, host providerhost.Host) error {
 	p.host = host
 	return nil
 }
