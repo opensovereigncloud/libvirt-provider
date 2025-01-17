@@ -47,6 +47,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
 	"github.com/ironcore-dev/libvirt-provider/internal/server"
 	"github.com/ironcore-dev/libvirt-provider/internal/strategy"
+	"github.com/ironcore-dev/libvirt-provider/internal/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
@@ -189,12 +190,21 @@ func Command() *cobra.Command {
 			ctrl.SetLogger(logger)
 			cmd.SetContext(ctrl.LoggerInto(cmd.Context(), ctrl.Log))
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			//flag parsing is done therefore we can silence the usage message
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					utils.LogPanic(ctrl.Log, r, "RunE")
+					err = errors.Join(err, fmt.Errorf("%v", r))
+				}
+			}()
+			// flag parsing is done therefore we can silence the usage message
 			cmd.SilenceUsage = true
-			//error logging is done in the main
+			// error logging is done in the main
 			cmd.SilenceErrors = true
-			return Run(cmd.Context(), opts)
+
+			err = Run(cmd.Context(), opts)
+
+			return
 		},
 	}
 
@@ -472,7 +482,7 @@ func Run(ctx context.Context, opts Options) error {
 	return g.Wait()
 }
 
-func runGRPCServer(ctx context.Context, setupLog logr.Logger, log logr.Logger, srv *server.Server, opts Options) error {
+func runGRPCServer(ctx context.Context, setupLog, log logr.Logger, srv *server.Server, opts Options) error {
 	setupLog.V(1).Info("Cleaning up any previous socket")
 	if err := common.CleanupSocketIfExists(opts.Address); err != nil {
 		return fmt.Errorf("error cleaning up socket: %w", err)
@@ -491,13 +501,17 @@ func runGRPCServer(ctx context.Context, setupLog logr.Logger, log logr.Logger, s
 		return fmt.Errorf("failed to register iri server metrics: %w", err)
 	}
 
+	iriLog := log.WithName("iri-server")
+
 	grpcSrv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			commongrpc.InjectLogger(log.WithName("iri-server")),
+			commongrpc.InjectLogger(iriLog),
 			commongrpc.LogRequest,
 			grpcMetrics.UnaryServerInterceptor(),
+			utils.RecoveryInterceptor(iriLog, "interceptor"),
 		),
 	)
+
 	iri.RegisterMachineRuntimeServer(grpcSrv, srv)
 
 	setupLog.V(1).Info("Start listening on unix socket", "Address", opts.Address)
@@ -508,6 +522,7 @@ func runGRPCServer(ctx context.Context, setupLog logr.Logger, log logr.Logger, s
 
 	setupLog.Info("Starting grpc server", "Address", l.Addr().String())
 	go func() {
+		defer utils.Recover(iriLog, "shutdown")
 		<-ctx.Done()
 		setupLog.Info("Shutting down grpc server")
 		grpcSrv.GracefulStop()
@@ -520,8 +535,10 @@ func runGRPCServer(ctx context.Context, setupLog logr.Logger, log logr.Logger, s
 }
 
 func runStreamingServer(ctx context.Context, setupLog, log logr.Logger, srv *server.Server, opts Options) error {
+	serverLog := log.WithName("streaming-server")
+
 	httpHandler, err := console.NewHandler(srv, console.HandlerOptions{
-		Log: log.WithName("streaming-server"),
+		Log: serverLog,
 	})
 	if err != nil {
 		setupLog.Error(err, "failed to create new streaming handler")
@@ -534,6 +551,7 @@ func runStreamingServer(ctx context.Context, setupLog, log logr.Logger, srv *ser
 	}
 
 	go func() {
+		defer utils.Recover(serverLog, "shutdown")
 		<-ctx.Done()
 		setupLog.Info("Shutting down streaming server")
 		osutils.CloseWithErrorLogging(httpSrv, "error closing http streaming server", &log)
@@ -555,7 +573,10 @@ func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServer
 
 	setupLog.Info("Starting metrics server on " + opts.Addr)
 
+	serverLog := ctrl.Log.WithName("metrics-server")
+
 	router := chi.NewRouter()
+	router.Use(utils.RecoveryMiddleware(serverLog, "middleware"))
 	router.Handle("/metrics", promhttp.Handler())
 
 	srv := http.Server{
@@ -566,11 +587,15 @@ func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServer
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
+		defer utils.Recover(serverLog, "shutdown")
 		defer wg.Done()
+
 		<-ctx.Done()
 		setupLog.Info("Shutting down metrics server")
+
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), opts.GracefulTimeout)
 		defer cancel()
+
 		locErr := srv.Shutdown(shutdownCtx)
 		if locErr != nil {
 			setupLog.Error(locErr, "metrics server wasn't shutdown properly")
@@ -597,6 +622,8 @@ func runPPROFServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOp
 		return nil
 	}
 
+	serverLog := ctrl.Log.WithName("pprof-server")
+
 	httpMetrics, regErr := metrics.NewHTTPMetricsMiddleware("pprof")
 	if regErr != nil {
 		setupLog.Error(regErr, "failed to register metrics collector")
@@ -605,6 +632,7 @@ func runPPROFServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOp
 
 	router := chi.NewRouter()
 	router.Use(httpMetrics.Middleware)
+	router.Use(utils.RecoveryMiddleware(serverLog, "middleware"))
 
 	router.Get("/debug/pprof/", pprof.Index)
 	router.Get("/debug/pprof/cmdline", pprof.Cmdline)
@@ -622,11 +650,15 @@ func runPPROFServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOp
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
+		defer utils.Recover(serverLog, "shutdown")
 		defer wg.Done()
+
 		<-ctx.Done()
 		setupLog.Info("Shutting down pprof server")
+
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), opts.GracefulTimeout)
 		defer cancel()
+
 		locErr := srv.Shutdown(shutdownCtx)
 		if locErr != nil {
 			setupLog.Error(locErr, "pprof server wasn't shutdown properly")
@@ -648,6 +680,8 @@ func runPPROFServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOp
 }
 
 func runHealthCheckServer(ctx context.Context, setupLog logr.Logger, healthCheck healthcheck.HealthCheck, opts HTTPServerOptions) error {
+	serverLog := ctrl.Log.WithName("healthcheck-server")
+
 	httpMetrics, regErr := metrics.NewHTTPMetricsMiddleware("healthcheck")
 	if regErr != nil {
 		setupLog.Error(regErr, "failed to register metrics collector")
@@ -656,6 +690,7 @@ func runHealthCheckServer(ctx context.Context, setupLog logr.Logger, healthCheck
 
 	router := chi.NewRouter()
 	router.Use(httpMetrics.Middleware)
+	router.Use(utils.RecoveryMiddleware(serverLog, "middleware"))
 
 	router.Get("/healthz", healthCheck.HealthCheckHandler)
 	srv := http.Server{
@@ -666,11 +701,15 @@ func runHealthCheckServer(ctx context.Context, setupLog logr.Logger, healthCheck
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
+		defer utils.Recover(serverLog, "shutdown")
 		defer wg.Done()
+
 		<-ctx.Done()
 		setupLog.Info("Shutting down health check server")
+
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), opts.GracefulTimeout)
 		defer cancel()
+
 		locErr := srv.Shutdown(shutdownCtx)
 		if locErr != nil {
 			setupLog.Error(locErr, "health check server wasn't shutdown properly")

@@ -2,7 +2,7 @@
 
 Document describes metrics related with libvirt-provider or libvirt daemon.
 
-**Last update:** 2025-01-09T011:07:23+00:00
+**Last update:** 2025-01-16T07:21:22+00:00
 
 ## libvirt-provider metrics
 
@@ -79,6 +79,7 @@ It contains list of metrics exposed by libvirt-provider.
 | libvirtprovider_iri_events_overrides_total               |                 counter                  |   ✅    | Total number of overridden iri machine events in the circular buffer.                                                                                                                                                                                  |
 | libvirtprovider_iri_events_buffer_usage_ratio               |                 gauge                  |   ✅    | Ratio of current buffer usage of iri events to maximum buffer capacity.                                                                                                                                                                                  |
 | libvirtprovider_libvirt_events_total               |                 counter                  |   ✅    | Total number of libvirt lifecycle events, categorized by event ID and event type, captured by the libvirt provider.                                                                                                                                                                                  |
+| libvirtprovider_panics_recovered_total               |                 counter                  |   ✅    | Total count of panics which were recovered.                                                                                                                                                                                  |
 
 ## prometheus-libvirt-exporter
 

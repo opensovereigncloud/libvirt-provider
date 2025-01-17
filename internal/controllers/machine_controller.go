@@ -256,6 +256,8 @@ func (r *MachineReconciler) startCheckAndEnqueueVolumeResize(ctx context.Context
 			opsDuration.Observe(float64(time.Since(startTime).Milliseconds()) / 1000)
 		}()
 
+		defer utils.Recover(log, "startCheckAndEnqueueVolumeResize")
+
 		machines, err := r.machines.List(ctx)
 		if err != nil {
 			opsErrors.Inc()
@@ -320,6 +322,8 @@ func (r *MachineReconciler) startEnqueueMachineByLibvirtEvent(ctx context.Contex
 	log.Info("Subscribing to libvirt lifecycle events")
 
 	for {
+		defer utils.Recover(log, "startEnqueueMachineByLibvirtEvent")
+
 		select {
 		case evt, ok := <-lifecycleEvents:
 			if !ok {
@@ -359,6 +363,8 @@ func (r *MachineReconciler) startGarbageCollector(ctx context.Context) {
 		defer func() {
 			opsDuration.Observe(float64(time.Since(startTime).Milliseconds()) / 1000)
 		}()
+
+		defer utils.Recover(r.log, "startGarbageCollector")
 
 		machines, err := r.machines.List(ctx)
 		if err != nil {
@@ -491,6 +497,8 @@ func (r *MachineReconciler) shutdownMachine(log logr.Logger, machine *api.Machin
 }
 
 func (r *MachineReconciler) processNextWorkItem(ctx context.Context, log logr.Logger) bool {
+	defer utils.Recover(r.log, "processNextWorkItem")
+
 	id, shutdown := r.queue.Get()
 	if shutdown {
 		return false
