@@ -26,8 +26,9 @@ import (
 	kjson "sigs.k8s.io/json"
 )
 
-const perm = 0777
-const suffixSwpExtension = ".swp"
+const (
+	suffixSwpExtension = ".swp"
+)
 
 type Options[E api.Object] struct {
 	//TODO
@@ -42,7 +43,7 @@ func NewStore[E api.Object](opts Options[E]) (*Store[E], error) {
 		return nil, fmt.Errorf("must specify opts.NewFunc")
 	}
 
-	if err := os.MkdirAll(opts.Dir, perm); err != nil {
+	if err := os.MkdirAll(opts.Dir, permFolderForLibvirtProvider); err != nil {
 		return nil, fmt.Errorf("error creating store directory: %w", err)
 	}
 
@@ -311,7 +312,7 @@ func (s *Store[E]) get(id string) (E, error) {
 func (s *Store[E]) set(obj E) (E, error) {
 	filePath := filepath.Join(s.dir, obj.GetID())
 	swpFilePath := filePath + suffixSwpExtension
-	fd, err := os.OpenFile(swpFilePath, os.O_CREATE|os.O_WRONLY, 0600)
+	fd, err := os.OpenFile(swpFilePath, os.O_CREATE|os.O_WRONLY, permFile)
 	if err != nil {
 		return utils.Zero[E](), fmt.Errorf("failed to open file: %w", err)
 	}

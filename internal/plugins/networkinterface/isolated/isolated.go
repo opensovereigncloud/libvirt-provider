@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	perm           = 0777
+	permFolder     = 0700
 	pluginIsolated = "isolated"
 )
 
@@ -31,7 +31,7 @@ func (p *plugin) Init(_ context.Context, host providerhost.Host) error {
 }
 
 func (p *plugin) Apply(ctx context.Context, spec *api.NetworkInterfaceSpec, machine *api.Machine) (*providernetworkinterface.NetworkInterface, error) {
-	if err := os.MkdirAll(p.host.MachineNetworkInterfaceDir(machine.ID, spec.Name), perm); err != nil {
+	if err := os.MkdirAll(p.host.MachineNetworkInterfaceDir(machine.ID, spec.Name), permFolder); err != nil {
 		return nil, err
 	}
 

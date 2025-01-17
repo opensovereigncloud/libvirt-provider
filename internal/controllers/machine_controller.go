@@ -45,8 +45,10 @@ import (
 )
 
 const (
-	MachineFinalizer                = "machine"
-	filePerm                        = 0666
+	MachineFinalizer = "machine"
+	permFile         = 0660
+	// libvirt daemon can overtake ownership
+	permFileIgnition                = 0660
 	rootFSAlias                     = "ua-rootfs"
 	libvirtDomainXMLIgnitionKeyName = "opt/com.coreos/config"
 	networkInterfaceAliasPrefix     = "ua-networkinterface-"
@@ -979,7 +981,7 @@ func (r *MachineReconciler) setDomainImage(
 		if err := r.raw.Create(rootFSFile, raw.WithSourceFile(img.RootFS.Path)); err != nil {
 			return fmt.Errorf("error creating root fs disk: %w", err)
 		}
-		if err := os.Chmod(rootFSFile, filePerm); err != nil {
+		if err := os.Chmod(rootFSFile, permFile); err != nil {
 			return fmt.Errorf("error changing root fs disk mode: %w", err)
 		}
 	}
@@ -1016,7 +1018,7 @@ func (r *MachineReconciler) setDomainIgnition(machine *api.Machine, domain *libv
 	ignitionData := machine.Spec.Ignition
 
 	ignPath := r.host.MachineIgnitionFile(machine.ID)
-	if err := os.WriteFile(ignPath, ignitionData, filePerm); err != nil {
+	if err := os.WriteFile(ignPath, ignitionData, permFileIgnition); err != nil {
 		return err
 	}
 
