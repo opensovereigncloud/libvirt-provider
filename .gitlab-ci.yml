@@ -151,10 +151,19 @@ check-dependabot-commits:
 
       set -euo pipefail
 
-      function fetch_open_merge_requests() {
-          # Using `-r` with jq instead of `-er` to avoid pipeline failures when no existing merge requests are found.
-          # This ensures the function returns an empty string in such cases instead.
-          gitlab -o json project-merge-request list --project-id="$PROJECT_ID" --state=opened --author-id="$AUTHOR_ID" | jq -r 'map(.title) | .[]'
+      declare -r branch_prefix="sync-"
+      declare -r branch_delimiter="SourceBranch:"
+
+      function fetch_merge_requests() {
+        # Using `-r` with jq instead of `-er` to avoid pipeline failures when no existing merge requests are found.
+        # This ensures the function returns an empty string in such cases instead.
+        gitlab -o json -f title,source_branch,state \
+          project-merge-request list \
+          --project-id="$PROJECT_ID" \
+          --author-id="$AUTHOR_ID" \
+          --updated-after=$(date -d "@$(( $(date +%s) - 14 * 24 * 60 * 60 ))" -Iseconds) \
+          --get-all | \
+          jq -r ".[] | select(.state == (\"opened\", \"closed\")) | .title + \"${branch_delimiter}\" + .state + \":\" + .source_branch"
       }
 
       function should_process_commit() {
@@ -196,10 +205,10 @@ check-dependabot-commits:
         local commit_hash="$1"
         local commit_message="$2"
 
-        local branch_name="sync-$commit_hash"
+        local branch_name="${branch_prefix}${commit_hash}"
 
 
-        if git branch -a | grep -q "$branch_name"; then
+        if git show-ref "$branch_name" --quiet; then
           create_merge_request "$branch_name" "$commit_message" "$commit_hash"
           return 0
         fi
@@ -215,6 +224,14 @@ check-dependabot-commits:
         git push origin "$branch_name" --quiet
 
         create_merge_request "$branch_name" "$commit_message" "$commit_hash"
+      }
+
+      function cleanup_orphan_branch() {
+        local -r branch_name="$1"
+        if git show-ref "$branch_name" --quiet; then
+          echo "cleanup sync branch: ${branch_name}"
+          git push -d origin "${branch_name}"
+        fi
       }
 
       echo "Setting up Git configuration..."
@@ -233,8 +250,8 @@ check-dependabot-commits:
         exit 0
       fi
 
-      existing_mrs=$(fetch_open_merge_requests)
-      readonly current_date=$(date +"%d-%m-%Y")
+      existing_mrs="$(fetch_merge_requests)"
+      readonly current_date=$(date +"%Y-%m-%d")
 
       new_commits=()
       for commit in "${commits[@]}"; do
@@ -262,6 +279,11 @@ check-dependabot-commits:
 
           handle_commit "$commit_hash" "$commit_message"
           ((series_number--))
+      done
+
+      IFS=$'\n'
+      for branch in $(echo "${existing_mrs}" | grep -Eo "${branch_delimiter}closed:${branch_prefix}[a-z0-9]+" | cut -d':' -f 3); do
+        cleanup_orphan_branch "${branch}"
       done
   rules:
     - if: $CI_PIPELINE_SOURCE == 'schedule'
