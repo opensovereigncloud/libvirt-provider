@@ -65,10 +65,10 @@ yaml-lint:
       fi
       yamllint -f colored ${cfg} . && echo "Linting was successful."
   rules:
-  - if: '$CI_PIPELINE_SOURCE != "schedule"'
-    exists:
-      - "**/*.yaml"
-      - "**/*.yml"
+    - if: '$CI_PIPELINE_SOURCE != "schedule"'
+      exists:
+        - "**/*.yaml"
+        - "**/*.yml"
 
 markdown-lint:
   extends: .skip-on-schedule
@@ -90,9 +90,9 @@ markdown-lint:
       { find -iname '*.md' -type f \
         | xargs markdownlint ${cfg}; } && echo "Linting was successful."
   rules:
-  - if: '$CI_PIPELINE_SOURCE != "schedule"'
-    exists:
-      - "**/*.md"
+    - if: '$CI_PIPELINE_SOURCE != "schedule"'
+      exists:
+        - "**/*.md"
 
 go-lint:
   extends: .skip-on-schedule
@@ -176,29 +176,29 @@ check-dependabot-commits:
         fi
 
         if echo "$existing_mrs" | grep -qF "$commit_message"; then
-            echo -e "\033[32mMerge request with title '$commit_message' already exists. Skipping...\033[0m"
-            return 1
+          echo -e "\033[32mMerge request with title '$commit_message' already exists. Skipping...\033[0m"
+          return 1
         fi
 
         return 0
       }
 
       function create_merge_request() {
-          local branch_name="$1"
-          local commit_message="$2"
-          local commit_hash="$3"
+        local branch_name="$1"
+        local commit_message="$2"
+        local commit_hash="$3"
 
-          local mr_title="[$current_date] Sync Commit #$series_number: $commit_message"
+        local mr_title="[$current_date] Sync Commit #$series_number: $commit_message"
 
-          gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create \
-              --project-id="$PROJECT_ID" \
-              --source-branch="${branch_name}" \
-              --target-branch=osc/main \
-              --title="${mr_title}" \
-              --description="Please merge ${commit_hash} of upstream" \
-              --squash=true \
-              --remove-source-branch=true \
-              --reviewer-ids="$REVIEWER_IDS" >/dev/null
+        gitlab --timeout="$GITLAB_TIMEOUT" project-merge-request create \
+          --project-id="$PROJECT_ID" \
+          --source-branch="${branch_name}" \
+          --target-branch=osc/main \
+          --title="${mr_title}" \
+          --description="Please merge ${commit_hash} of upstream" \
+          --squash=true \
+          --remove-source-branch=true \
+          --reviewer-ids="$REVIEWER_IDS" >/dev/null
       }
 
       function handle_commit() {
@@ -206,7 +206,6 @@ check-dependabot-commits:
         local commit_message="$2"
 
         local branch_name="${branch_prefix}${commit_hash}"
-
 
         if git show-ref "$branch_name" --quiet; then
           create_merge_request "$branch_name" "$commit_message" "$commit_hash"
@@ -255,30 +254,30 @@ check-dependabot-commits:
 
       new_commits=()
       for commit in "${commits[@]}"; do
-          commit_hash=$(echo "$commit" | cut -d' ' -f1)
-          commit_message=$(echo "$commit" | cut -d' ' -f2-)
+        commit_hash=$(echo "$commit" | cut -d' ' -f1)
+        commit_message=$(echo "$commit" | cut -d' ' -f2-)
 
-          git switch osc/main --quiet
+        git switch osc/main --quiet
 
-          if should_process_commit "$commit_message"; then
-              new_commits+=("$commit")
-          fi
+        if should_process_commit "$commit_message"; then
+          new_commits+=("$commit")
+        fi
       done
 
       new_commits_count=${#new_commits[@]}
       if [ $new_commits_count -eq 0 ]; then
-          echo "No new commits to create merge requests for."
-          exit 0
+        echo "No new commits to create merge requests for."
+        exit 0
       fi
 
       series_number=$new_commits_count
 
       for commit in "${new_commits[@]}"; do
-          commit_hash=$(echo "$commit" | cut -d' ' -f1)
-          commit_message=$(echo "$commit" | cut -d' ' -f2-)
+        commit_hash=$(echo "$commit" | cut -d' ' -f1)
+        commit_message=$(echo "$commit" | cut -d' ' -f2-)
 
-          handle_commit "$commit_hash" "$commit_message"
-          ((series_number--))
+        handle_commit "$commit_hash" "$commit_message"
+        ((series_number--))
       done
 
       IFS=$'\n'
