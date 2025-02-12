@@ -8,7 +8,7 @@ require (
 	github.com/containerd/containerd v1.7.25
 	github.com/digitalocean/go-libvirt v0.0.0-20241216201552-9fbdb61a21af
 	github.com/docker/go-units v0.5.0
-	github.com/go-chi/chi/v5 v5.2.0
+	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-logr/logr v1.4.2
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/gogo/protobuf v1.3.2
