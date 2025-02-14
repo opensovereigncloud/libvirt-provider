@@ -80,15 +80,15 @@ var _ = BeforeSuite(func() {
 		{
 			"name": "x2-medium",
 			"capabilities": {
-				"cpu": 2000,
+				"cpu": 2,
 				"memory": 2147483648
 			}
 		},
 		{
 			"name": "x3-xlarge",
 			"capabilities": {
-				"cpu": 4000,
-				"memory": 8589934592
+				"cpu": 4,
+				"memory": 4294967296
 			}
 		}
 	]`

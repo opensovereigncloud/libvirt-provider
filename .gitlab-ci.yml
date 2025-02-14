@@ -165,6 +165,24 @@ unit-tests:
   script:
     - make test
 
+e2e-tests:
+  extends: .skip-on-schedule
+  stage: test
+  tags:
+    - infra-development
+    - libvirt
+  script:
+    - bash ./hack/osc-pipeline-setup-e2e-env.sh
+    - |
+      set -e
+
+      export CEPH_MONITORS="[$(ceph config show osd.1 mon_host)]:6789"
+      export CEPH_IMAGE="devpool/test-img"
+      export CEPH_USERNAME="admin"
+      export CEPH_USERKEY="$(ceph auth print-key client.admin)"
+
+      make integration-tests
+
 build:
   extends: .skip-on-schedule
   stage: build
