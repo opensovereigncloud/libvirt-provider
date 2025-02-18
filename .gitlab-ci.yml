@@ -98,8 +98,6 @@ shell-lint:
   extends: .skip-on-schedule
   stage: lint
   needs: []
-  # TODO: we need to delete it after fix issues
-  allow_failure: true
   image:
     name: "mtr.devops.telekom.de/osc/onmetal/container-images/shellcheck:0.10.0-alpine-3.21.2"
     entrypoint:

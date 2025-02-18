@@ -12,7 +12,7 @@ function fetch_merge_requests() {
     project-merge-request list \
     --project-id="$PROJECT_ID" \
     --author-id="$AUTHOR_ID" \
-    --updated-after=$(date -d "@$(($(date +%s) - 14 * 24 * 60 * 60))" -Iseconds) \
+    --updated-after="$(date -d "@$(($(date +%s) - 14 * 24 * 60 * 60))" -Iseconds)" \
     --get-all |
     jq -r ".[] | select(.state == (\"opened\", \"closed\")) | .title + \"${branch_delimiter}\" + .state + \":\" + .source_branch"
 }
@@ -68,7 +68,7 @@ function handle_commit() {
   git switch -c "$branch_name" --quiet
   if ! git cherry-pick "$commit_hash" --ff --quiet &>/dev/null; then
     # add conflicted changes
-    git add $(git diff --name-only --diff-filter=U)
+    git add "$(git diff --name-only --diff-filter=U)"
     git cherry-pick --continue
   fi
   git push origin "$branch_name" --quiet
@@ -87,7 +87,7 @@ function cleanup_orphan_branch() {
 echo "Setting up Git configuration..."
 git config --global user.email "users.noreply.gitlab.com"
 git config --global user.name "sync user"
-git remote set-url origin https://oauth2:${CI_PUSH_TOKEN}@gitlab.devops.telekom.de/cas-devs/osc/upstream/ironcore-dev/libvirt-provider.git
+git remote set-url origin "https://oauth2:${CI_PUSH_TOKEN}@gitlab.devops.telekom.de/cas-devs/osc/upstream/ironcore-dev/libvirt-provider.git"
 git fetch --all --quiet
 
 git switch main --quiet
@@ -95,13 +95,13 @@ git switch main --quiet
 mapfile -t commits < <(git --no-pager log --since="7 days ago" --pretty="format:%H %s")
 
 commits_count=${#commits[@]}
-if [ $commits_count -eq 0 ]; then
+if [[ $commits_count -eq 0 ]]; then
   echo "No commits found in the last 7 days."
   exit 0
 fi
 
 existing_mrs="$(fetch_merge_requests)"
-readonly current_date=$(date +"%Y-%m-%d")
+current_date="$(date +"%Y-%m-%d")"
 
 new_commits=()
 for commit in "${commits[@]}"; do
@@ -116,7 +116,7 @@ for commit in "${commits[@]}"; do
 done
 
 new_commits_count=${#new_commits[@]}
-if [ $new_commits_count -eq 0 ]; then
+if [[ $new_commits_count -eq 0 ]]; then
   echo "No new commits to create merge requests for."
   exit 0
 fi
