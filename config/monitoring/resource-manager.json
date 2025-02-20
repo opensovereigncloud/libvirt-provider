@@ -1,0 +1,622 @@
+{
+    "annotations": {
+        "list": [
+            {
+                "builtIn": 1,
+                "datasource": {
+                    "type": "grafana",
+                    "uid": "-- Grafana --"
+                },
+                "enable": true,
+                "hide": true,
+                "iconColor": "rgba(0, 211, 255, 1)",
+                "name": "Annotations & Alerts",
+                "type": "dashboard"
+            }
+        ]
+    },
+    "description": "Overview of libvirt-provider state per node",
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 1,
+    "id": 45,
+    "links": [],
+    "liveNow": true,
+    "panels": [
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 0
+            },
+            "id": 2,
+            "panels": [],
+            "title": "Resources",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "OSC-Mimir"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineStyle": {
+                            "fill": "solid"
+                        },
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "normal"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "fieldMinMax": false,
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byFrameRefID",
+                            "options": "A"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.fillBelowTo",
+                                "value": "Value"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byRegexp",
+                            "options": ".*_bytes\\s.*"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "bytes"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 24,
+                "x": 0,
+                "y": 1
+            },
+            "id": 1,
+            "options": {
+                "legend": {
+                    "calcs": [
+                        "lastNotNull",
+                        "min",
+                        "max"
+                    ],
+                    "displayMode": "table",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "multi",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "11.3.0",
+            "repeat": "resource",
+            "repeatDirection": "h",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "OSC-Mimir"
+                    },
+                    "editorMode": "code",
+                    "expr": "sum(\r\n    libvirtprovider_resourcemanager_resources_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", resource=\"${resource}\"}\r\n    *\r\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\r\n) by (node, source, resource)\r\n-\r\nsum(\r\n    libvirtprovider_resourcemanager_resources_available{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", resource=\"${resource}\"}\r\n    *\r\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\r\n) by (node, source, resource)",
+                    "hide": false,
+                    "legendFormat": "source {{source}} / {{resource}} allocated",
+                    "range": true,
+                    "refId": "B"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "OSC-Mimir"
+                    },
+                    "editorMode": "code",
+                    "expr": "sum(\r\n    libvirtprovider_resourcemanager_resources_available{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", resource=\"${resource}\"}\r\n    *\r\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\r\n) by (node, source, resource)",
+                    "legendFormat": "source {{source}} / {{resource}} available",
+                    "range": true,
+                    "refId": "A"
+                }
+            ],
+            "title": "$resource",
+            "type": "timeseries"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 9
+            },
+            "id": 3,
+            "panels": [],
+            "title": "Machines",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "OSC-Mimir"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 0
+                            },
+                            {
+                                "color": "#EAB839",
+                                "value": 10
+                            },
+                            {
+                                "color": "green",
+                                "value": 11
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 2,
+                "w": 12,
+                "x": 0,
+                "y": 10
+            },
+            "id": 5,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                    "valueSize": 25
+                },
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "11.3.0",
+            "targets": [
+                {
+                    "editorMode": "code",
+                    "expr": "sum(\n    libvirtprovider_resourcemanager_vm_slot_available_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "A"
+                }
+            ],
+            "title": "VM Slots Available",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "OSC-Mimir"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 2,
+                "w": 12,
+                "x": 12,
+                "y": 10
+            },
+            "id": 6,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                    "valueSize": 25
+                },
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "11.3.0",
+            "targets": [
+                {
+                    "editorMode": "code",
+                    "expr": "sum(\n    libvirtprovider_resourcemanager_machineclasses_skipped_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "A"
+                }
+            ],
+            "title": "Skipped Machineclasses",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "OSC-Mimir"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 14,
+                "w": 24,
+                "x": 0,
+                "y": 12
+            },
+            "id": 4,
+            "maxPerRow": 2,
+            "options": {
+                "legend": {
+                    "calcs": [
+                        "lastNotNull",
+                        "min",
+                        "max"
+                    ],
+                    "displayMode": "table",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "11.3.0",
+            "targets": [
+                {
+                    "editorMode": "code",
+                    "expr": "sum(\n    libvirtprovider_resourcemanager_machines_available{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", machineclass=~\"${machineclass}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, machineclass)",
+                    "legendFormat": "{{machineclass}} available",
+                    "range": true,
+                    "refId": "A"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "OSC-Mimir"
+                    },
+                    "editorMode": "code",
+                    "expr": "sum(\n    libvirtprovider_resourcemanager_machines_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", machineclass=~\"${machineclass}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, machineclass)",
+                    "hide": false,
+                    "instant": false,
+                    "legendFormat": "{{machineclass}} total",
+                    "range": true,
+                    "refId": "B"
+                }
+            ],
+            "title": "Class: $machineclass",
+            "type": "timeseries"
+        }
+    ],
+    "preload": false,
+    "refresh": "",
+    "schemaVersion": 40,
+    "tags": [],
+    "templating": {
+        "list": [
+            {
+                "current": {
+                    "text": "^libvirt-provider-controller-manager-.+",
+                    "value": "^libvirt-provider-controller-manager-.+"
+                },
+                "description": "",
+                "hide": 2,
+                "name": "pods",
+                "query": "^libvirt-provider-controller-manager-.+",
+                "skipUrlSync": true,
+                "type": "constant"
+            },
+            {
+                "current": {
+                    "text": "Mimir",
+                    "value": "OSC-Mimir"
+                },
+                "includeAll": false,
+                "name": "datasource",
+                "options": [],
+                "query": "prometheus",
+                "refresh": 1,
+                "regex": "",
+                "type": "datasource"
+            },
+            {
+                "current": {
+                    "text": "lab",
+                    "value": "lab"
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "${datasource}"
+                },
+                "definition": "label_values(kube_pod_info,__tenant_id__)",
+                "description": "",
+                "label": "tenant",
+                "name": "tenant",
+                "options": [],
+                "query": {
+                    "qryType": 1,
+                    "query": "label_values(kube_pod_info,__tenant_id__)",
+                    "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                },
+                "refresh": 2,
+                "regex": "",
+                "sort": 1,
+                "type": "query"
+            },
+            {
+                "current": {
+                    "text": "prometheus/lab1-dev-migration1-prometheus",
+                    "value": "prometheus/lab1-dev-migration1-prometheus"
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "${datasource}"
+                },
+                "definition": "label_values(kube_pod_info{__tenant_id__=\"$tenant\", pod=~\"$pods\"},cluster)",
+                "label": "cluster",
+                "name": "cluster",
+                "options": [],
+                "query": {
+                    "qryType": 1,
+                    "query": "label_values(kube_pod_info{__tenant_id__=\"$tenant\", pod=~\"$pods\"},cluster)",
+                    "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                },
+                "refresh": 2,
+                "regex": "",
+                "sort": 1,
+                "type": "query"
+            },
+            {
+                "allValue": ".*",
+                "current": {
+                    "text": "All",
+                    "value": "$__all"
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "${datasource}"
+                },
+                "definition": "label_values(kube_pod_info{pod=~\"$pods\", __tenant_id__=\"$tenant\", cluster=\"$cluster\"},node)",
+                "includeAll": true,
+                "multi": true,
+                "name": "nodes",
+                "options": [],
+                "query": {
+                    "qryType": 1,
+                    "query": "label_values(kube_pod_info{pod=~\"$pods\", __tenant_id__=\"$tenant\", cluster=\"$cluster\"},node)",
+                    "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                },
+                "refresh": 2,
+                "regex": "",
+                "type": "query"
+            },
+            {
+                "current": {
+                    "text": "All",
+                    "value": "$__all"
+                },
+                "definition": "label_values(libvirtprovider_resourcemanager_resources_total{namespace=\"libvirt-provider-system\", pod=~\"$pods\", __tenant_id__=\"$tenant\", cluster=\"$cluster\"},source)",
+                "hide": 2,
+                "includeAll": true,
+                "label": "source",
+                "name": "source",
+                "options": [],
+                "query": {
+                    "qryType": 1,
+                    "query": "label_values(libvirtprovider_resourcemanager_resources_total{namespace=\"libvirt-provider-system\", pod=~\"$pods\", __tenant_id__=\"$tenant\", cluster=\"$cluster\"},source)",
+                    "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                },
+                "refresh": 1,
+                "regex": "",
+                "type": "query"
+            },
+            {
+                "current": {
+                    "text": "All",
+                    "value": "$__all"
+                },
+                "definition": "label_values(libvirtprovider_resourcemanager_resources_total{namespace=\"libvirt-provider-system\", cluster=\"$cluster\", __tenant_id__=\"$tenant\", pod=~\"$pods\"},resource)",
+                "hide": 2,
+                "includeAll": true,
+                "label": "resource",
+                "name": "resource",
+                "options": [],
+                "query": {
+                    "qryType": 1,
+                    "query": "label_values(libvirtprovider_resourcemanager_resources_total{namespace=\"libvirt-provider-system\", cluster=\"$cluster\", __tenant_id__=\"$tenant\", pod=~\"$pods\"},resource)",
+                    "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                },
+                "refresh": 1,
+                "regex": "",
+                "type": "query"
+            },
+            {
+                "current": {
+                    "text": [
+                        "vm-dedicated-1-1"
+                    ],
+                    "value": [
+                        "vm-dedicated-1-1"
+                    ]
+                },
+                "definition": "label_values(libvirtprovider_resourcemanager_machines_total{namespace=\"libvirt-provider-system\", __tenant_id__=\"$tenant\", cluster=\"$cluster\", pod=~\"$pods\"},machineclass)",
+                "includeAll": false,
+                "label": "machineclass",
+                "multi": true,
+                "name": "machineclass",
+                "options": [],
+                "query": {
+                    "qryType": 1,
+                    "query": "label_values(libvirtprovider_resourcemanager_machines_total{namespace=\"libvirt-provider-system\", __tenant_id__=\"$tenant\", cluster=\"$cluster\", pod=~\"$pods\"},machineclass)",
+                    "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                },
+                "refresh": 2,
+                "regex": "",
+                "type": "query"
+            }
+        ]
+    },
+    "time": {
+        "from": "now-6h",
+        "to": "now"
+    },
+    "timepicker": {
+        "refresh_intervals": [
+            "15s",
+            "30s",
+            "1m",
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "2h",
+            "1d"
+        ]
+    },
+    "timezone": "browser",
+    "title": "libvirt-provider cluster / resourcemanager",
+    "uid": "aeanh0ldu4jy8f",
+    "version": 81,
+    "weekStart": ""
+}
