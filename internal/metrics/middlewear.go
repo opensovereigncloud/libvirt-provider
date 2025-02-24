@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -24,28 +25,17 @@ func (m *httpMetricsMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		rw := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		rw := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
 		next.ServeHTTP(rw, r)
 
 		duration := time.Since(start).Milliseconds()
 		path := r.URL.Path
 		method := r.Method
-		status := rw.statusCode
 
-		statusCodeStr := strconv.Itoa(status)
+		statusCodeStr := strconv.Itoa(rw.Status())
 
 		m.requestDuration.WithLabelValues(method, path, statusCodeStr).Observe(float64(duration) / 1000)
 		m.totalRequests.WithLabelValues(method, path, statusCodeStr).Inc()
 	})
-}
-
-type statusRecorder struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (r *statusRecorder) WriteHeader(statusCode int) {
-	r.statusCode = statusCode
-	r.ResponseWriter.WriteHeader(statusCode)
 }

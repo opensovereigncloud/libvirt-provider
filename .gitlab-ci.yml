@@ -171,6 +171,12 @@ e2e-tests:
   tags:
     - infra-development
     - libvirt
+  retry:
+    max: 2
+    when:
+      # Script failure doesn't work properly with libvirt executors
+      - runner_system_failure
+      - job_execution_timeout
   script:
     - bash ./hack/osc-pipeline-setup-e2e-env.sh
     - |
