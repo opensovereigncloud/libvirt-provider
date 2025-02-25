@@ -41,8 +41,8 @@ var (
 		},
 	)
 
-	MachineClassesSkipped = prometheus.NewCounter(
-		prometheus.CounterOpts{
+	MachineClassesSkipped = prometheus.NewGauge(
+		prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystemResourceManager,
 			Name:      "machineclasses_skipped_total",
