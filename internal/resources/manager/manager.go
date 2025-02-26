@@ -210,17 +210,8 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 	r.ctx = ctx
 
 	totalExistingVMCount := uint64(len(machines))
-	r.availableVMSlots = int64(r.maxVMsLimit - totalExistingVMCount)
-
-	if r.maxVMsLimit != 0 {
-		metrics.VMSlotsAvailable.Set(float64(r.availableVMSlots))
-
-		if totalExistingVMCount >= r.maxVMsLimit {
-			r.log.Info("VM limit is already reached", "Limit", r.maxVMsLimit, "Existing count", totalExistingVMCount)
-		}
-	} else {
-		metrics.VMSlotsAvailable.Set(math.Inf(1))
-	}
+	// it has to be set on vm limits for proper report total machineclass quantity in metrics
+	r.availableVMSlots = int64(r.maxVMsLimit)
 
 	for _, s := range r.sources {
 		resources, err := s.Init(r.ctx)
@@ -247,6 +238,18 @@ func (r *resourceManager) initialize(ctx context.Context, machines []*api.Machin
 	}
 
 	r.setMachineClassMetrics(metrics.MachinesTotal)
+
+	r.availableVMSlots = int64(r.maxVMsLimit - totalExistingVMCount)
+
+	if r.maxVMsLimit != 0 {
+		metrics.VMSlotsAvailable.Set(float64(r.availableVMSlots))
+
+		if totalExistingVMCount >= r.maxVMsLimit {
+			r.log.Info("VM limit is already reached", "Limit", r.maxVMsLimit, "Existing count", totalExistingVMCount)
+		}
+	} else {
+		metrics.VMSlotsAvailable.Set(math.Inf(1))
+	}
 
 	// Allocating resources for pre-existing machines in store
 	for _, machine := range machines {
