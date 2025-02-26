@@ -11,8 +11,9 @@ import (
 	"maps"
 	"math"
 	"os"
-	"sort"
+	"slices"
 	"strconv"
+	"strings"
 	"sync"
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
@@ -185,8 +186,8 @@ MAIN:
 		}
 	}
 
-	sort.Slice(r.machineClasses, func(i, j int) bool {
-		return r.machineClasses[i].Name < r.machineClasses[j].Name
+	slices.SortFunc(r.machineClasses, func(i, j *MachineClass) int {
+		return strings.Compare(i.Name, j.Name)
 	})
 
 	return nil
@@ -540,8 +541,8 @@ func (r *resourceManager) convertResourcesToString(resources core.ResourceList) 
 		arr = append(arr, res{name: string(key), quantity: quantity})
 	}
 
-	sort.Slice(arr, func(i, j int) bool {
-		return arr[i].name < arr[j].name
+	slices.SortFunc(arr, func(i, j res) int {
+		return strings.Compare(i.name, j.name)
 	})
 
 	for index := range arr {

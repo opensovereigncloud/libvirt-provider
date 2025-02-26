@@ -5,7 +5,7 @@ package qcow2
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 )
 
 type QCow2 interface {
@@ -83,8 +83,8 @@ func (r *implsRegistry) Available() []string {
 	for name := range r.entries {
 		res = append(res, name)
 	}
-	sort.Slice(res, func(i, j int) bool {
-		return r.entries[res[i]].priority < r.entries[res[j]].priority
+	slices.SortFunc(res, func(i, j string) int {
+		return r.entries[i].priority - r.entries[j].priority
 	})
 	return res
 }

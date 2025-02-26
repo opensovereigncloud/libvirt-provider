@@ -5,7 +5,7 @@ package networkinterfaceplugin
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
 	"github.com/spf13/pflag"
@@ -47,8 +47,8 @@ func (r *TypeOptionsRegistry) PluginNames() []string {
 	for name := range r.nameToPluginOpts {
 		names = append(names, name)
 	}
-	sort.Slice(names, func(i, j int) bool {
-		return r.nameToPluginOpts[names[i]].priority < r.nameToPluginOpts[names[j]].priority
+	slices.SortFunc(names, func(i, j string) int {
+		return r.nameToPluginOpts[i].priority - r.nameToPluginOpts[j].priority
 	})
 	return names
 }
