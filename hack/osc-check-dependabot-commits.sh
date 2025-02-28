@@ -68,7 +68,8 @@ function handle_commit() {
   git switch -c "$branch_name" --quiet
   if ! git cherry-pick "$commit_hash" --ff --quiet &>/dev/null; then
     # add conflicted changes
-    git add "$(git diff --name-only --diff-filter=U)"
+    mapfile -t files < <(git diff --name-only --diff-filter=U)
+    git add -- "${files[@]}"
     git cherry-pick --continue
   fi
   git push origin "$branch_name" --quiet
