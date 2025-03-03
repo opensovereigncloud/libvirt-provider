@@ -53,6 +53,7 @@ file-lint:
     - bash ${debug_flag} file-utf8-bom ${cfg} --path .
 
 yaml-lint:
+  extends: .skip-on-schedule
   stage: lint
   needs: []
   variables:
@@ -64,11 +65,6 @@ yaml-lint:
         cfg="-c ${YAML_LINT_CONFIG}"
       fi
       yamllint -f colored ${cfg} . && echo "Linting was successful."
-  rules:
-    - if: '$CI_PIPELINE_SOURCE != "schedule"'
-      exists:
-        - "**/*.yaml"
-        - "**/*.yml"
 
 markdown-lint:
   extends: .skip-on-schedule
@@ -89,10 +85,6 @@ markdown-lint:
       fi
       { find -iname '*.md' -type f \
         | xargs markdownlint ${cfg}; } && echo "Linting was successful."
-  rules:
-    - if: '$CI_PIPELINE_SOURCE != "schedule"'
-      exists:
-        - "**/*.md"
 
 shell-lint:
   extends: .skip-on-schedule
@@ -142,9 +134,6 @@ shell-lint:
 
       echo "${filelist}" | xargs shellcheck --rcfile .linter-config/shellcheckrc
       echo "[INFO]: Linting was successful."
-  rules:
-    - exists:
-      - "**/*.sh"
 
 go-lint:
   extends: .skip-on-schedule
