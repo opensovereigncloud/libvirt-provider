@@ -102,23 +102,53 @@ var (
 	}, []string{"operation"})
 )
 
-func init() {
-	prometheus.MustRegister(ControllerRuntimeReconcileErrors)
-	prometheus.MustRegister(ControllerRuntimeReconcileDuration)
-	prometheus.MustRegister(ControllerRuntimeMaxConccurrentReconciles)
-	prometheus.MustRegister(ControllerRuntimeActiveWorker)
+func RegisterAllMetrics() error {
+	collectors := []prometheus.Collector{
+		ControllerRuntimeReconcileErrors,
+		ControllerRuntimeReconcileDuration,
+		ControllerRuntimeMaxConccurrentReconciles,
+		ControllerRuntimeActiveWorker,
 
-	prometheus.MustRegister(OperationDuration)
-	prometheus.MustRegister(OperationErrors)
+		OperationDuration,
+		OperationErrors,
 
-	prometheus.MustRegister(workqueueDepth)
-	prometheus.MustRegister(workqueueAdds)
-	prometheus.MustRegister(workqueueLatency)
-	prometheus.MustRegister(workqueueDuration)
-	prometheus.MustRegister(workqueueUnfinished)
-	prometheus.MustRegister(workqueueLongestRunningProcessor)
-	prometheus.MustRegister(workqueueRetries)
+		workqueueDepth,
+		workqueueAdds,
+		workqueueLatency,
+		workqueueDuration,
+		workqueueUnfinished,
+		workqueueLongestRunningProcessor,
+		workqueueRetries,
+
+		EventsOverriddenTotal,
+		EventsBufferUsageRatio,
+		EventsLifecycleCount,
+
+		httpServerRequestDuration,
+		httpServerTotalRequests,
+
+		MachinesDeleteMarked,
+		MachinesState,
+		MachinesDestroyed,
+		PanicsRecovered,
+
+		ResourcesAvailable,
+		ResourcesTotal,
+		VMSlotsAvailable,
+		MachineClassesSkipped,
+		MachinesAvailable,
+		MachinesTotal,
+	}
+
+	for i := range collectors {
+		err := prometheus.Register(collectors[i])
+		if err != nil {
+			return err
+		}
+	}
 	workqueue.SetProvider(WorkqueueMetricsProvider{})
+
+	return nil
 }
 
 type WorkqueueMetricsProvider struct{}

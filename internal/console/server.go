@@ -30,16 +30,11 @@ func setHandlerOptionsDefaults(opts *HandlerOptions) {
 func NewHandler(srv *server.Server, opts HandlerOptions) (http.Handler, error) {
 	setHandlerOptionsDefaults(&opts)
 
-	httpMetrics, regErr := metrics.NewHTTPMetricsMiddleware("streaming")
-	if regErr != nil {
-		return nil, regErr
-	}
-
 	router := chi.NewRouter()
 
 	router.Use(utilshttp.InjectLogger(opts.Log))
 	router.Use(utilshttp.LogRequest)
-	router.Use(httpMetrics.Middleware)
+	router.Use(metrics.NewHTTPMetricsMiddlewareHandler("streaming"))
 	router.Use(utils.RecoveryMiddleware(opts.Log, "middleware"))
 
 	for _, method := range []string{http.MethodHead, http.MethodGet, http.MethodPost} {

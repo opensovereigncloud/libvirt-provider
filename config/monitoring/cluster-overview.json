@@ -1,2181 +1,2205 @@
 {
-    "annotations": {
-      "list": [
-        {
-          "builtIn": 1,
-          "datasource": {
-            "type": "grafana",
-            "uid": "-- Grafana --"
-          },
-          "enable": true,
-          "hide": true,
-          "iconColor": "rgba(0, 211, 255, 1)",
-          "name": "Annotations & Alerts",
-          "type": "dashboard"
-        }
-      ]
-    },
-    "description": "Overview of libvirt-provider state per node",
-    "editable": true,
-    "fiscalYearStartMonth": 0,
-    "graphTooltip": 1,
-    "id": 43,
-    "links": [],
-    "liveNow": true,
-    "panels": [
+  "annotations": {
+    "list": [
       {
-        "collapsed": false,
-        "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": 0,
-          "y": 0
-        },
-        "id": 12,
-        "panels": [],
-        "title": "Controller",
-        "type": "row"
-      },
-      {
+        "builtIn": 1,
         "datasource": {
-          "default": false,
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "VM shouldn't be destroyed. Accepted value is 0",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic-by-name"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "axisSoftMax": 5,
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                }
-              ]
-            },
-            "unit": "none"
-          },
-          "overrides": [
-            {
-              "matcher": {
-                "id": "byFrameRefID",
-                "options": "maxActiveWorkers"
-              },
-              "properties": [
-                {
-                  "id": "custom.lineStyle",
-                  "value": {
-                    "dash": [
-                      10,
-                      10
-                    ],
-                    "fill": "dash"
-                  }
-                },
-                {
-                  "id": "color",
-                  "value": {
-                    "fixedColor": "red",
-                    "mode": "shades"
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        "gridPos": {
-          "h": 9,
-          "w": 12,
-          "x": 0,
-          "y": 1
-        },
-        "id": 16,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true,
-            "sortBy": "Name",
-            "sortDesc": false
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    controller_runtime_active_workers{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
-            "format": "time_series",
-            "instant": false,
-            "interval": "",
-            "legendFormat": "{{ node }} active",
-            "range": true,
-            "refId": "activeWorkers"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    controller_runtime_max_concurrent_reconciles{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
-            "hide": false,
-            "instant": false,
-            "legendFormat": "{{ node }} limit",
-            "range": true,
-            "refId": "maxActiveWorkers"
-          }
-        ],
-        "title": "Countroller workers",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "default": false,
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "fixedColor": "red",
-              "mode": "fixed"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                }
-              ]
-            },
-            "unit": "cps"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 9,
-          "w": 12,
-          "x": 12,
-          "y": 1
-        },
-        "id": 19,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    rate(\n        controller_runtime_reconcile_errors_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}[2m]\n    )\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
-            "format": "time_series",
-            "instant": false,
-            "interval": "",
-            "legendFormat": "{{ node }}",
-            "range": true,
-            "refId": "manageVM"
-          }
-        ],
-        "title": "Rate of reconcile errors",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "default": false,
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                }
-              ]
-            },
-            "unit": "none"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 9,
-          "w": 12,
-          "x": 0,
-          "y": 10
-        },
-        "id": 11,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    libvirtprovider_machines_state{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, state)",
-            "format": "time_series",
-            "instant": false,
-            "interval": "",
-            "legendFormat": "{{ node }}/{{ state }}",
-            "range": true,
-            "refId": "manageVM"
-          }
-        ],
-        "title": "Count of vm in specific state per node",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "default": false,
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
-            },
-            "decimals": 0,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                }
-              ]
-            },
-            "unit": "none"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 9,
-          "w": 12,
-          "x": 12,
-          "y": 10
-        },
-        "id": 17,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    workqueue_depth{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
-            "format": "time_series",
-            "instant": false,
-            "interval": "",
-            "legendFormat": "{{ node }}",
-            "range": true,
-            "refId": "manageVM"
-          }
-        ],
-        "title": "Count of machine waiting for reconcilation",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "default": false,
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
-            },
-            "decimals": 0,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                }
-              ]
-            },
-            "unit": "none"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 9,
-          "w": 12,
-          "x": 0,
-          "y": 19
-        },
-        "id": 13,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    libvirtprovider_machines_delete_marked{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
-            "format": "time_series",
-            "instant": false,
-            "interval": "",
-            "legendFormat": "{{ node }}",
-            "range": true,
-            "refId": "manageVM"
-          }
-        ],
-        "title": "Count of vm marks for deletion per node",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "default": false,
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "VM shouldn't be destroyed. Accepted value is 0",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "axisSoftMax": 5,
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "area"
-              }
-            },
-            "decimals": 2,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "red",
-                  "value": 0.0001
-                }
-              ]
-            },
-            "unit": "none"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 9,
-          "w": 12,
-          "x": 12,
-          "y": 19
-        },
-        "id": 14,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    irate(\n        libvirtprovider_machines_destroyed_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}[2m]\n    )\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
-            "format": "time_series",
-            "instant": false,
-            "interval": "",
-            "legendFormat": "{{ node }}",
-            "range": true,
-            "refId": "manageVM"
-          }
-        ],
-        "title": "Count of destroyed vm per node",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "default": false,
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                }
-              ]
-            },
-            "unit": "none"
-          },
-          "overrides": [
-            {
-              "matcher": {
-                "id": "byFrameRefID",
-                "options": "limitVM"
-              },
-              "properties": [
-                {
-                  "id": "custom.lineStyle",
-                  "value": {
-                    "dash": [
-                      10,
-                      10
-                    ],
-                    "fill": "dash"
-                  }
-                },
-                {
-                  "id": "color",
-                  "value": {
-                    "fixedColor": "red",
-                    "mode": "fixed"
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        "gridPos": {
-          "h": 9,
-          "w": 12,
-          "x": 0,
-          "y": 28
-        },
-        "id": 1,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "median",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    libvirtprovider_machineclasses_machine_count{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
-            "format": "time_series",
-            "instant": false,
-            "interval": "",
-            "legendFormat": "{{ node }} managed",
-            "range": true,
-            "refId": "manageVM"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n  libvirtprovider_resourcemanager_vm_slot_available_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)\n+\nsum(\n    libvirtprovider_machineclasses_machine_count{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
-            "hide": false,
-            "instant": false,
-            "legendFormat": "{{ node }} limit",
-            "range": true,
-            "refId": "limitVM"
-          }
-        ],
-        "title": "Count of manage vms per node",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "default": false,
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
-            },
-            "decimals": 0,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                }
-              ]
-            },
-            "unit": "none"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 9,
-          "w": 12,
-          "x": 12,
-          "y": 28
-        },
-        "id": 4,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "median",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    libvirtprovider_machineclasses_machine_count{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, machineclass)",
-            "format": "time_series",
-            "instant": false,
-            "interval": "",
-            "legendFormat": "{{ node }}/{{ machineclass }}",
-            "range": true,
-            "refId": "manageVM"
-          }
-        ],
-        "title": "Count of vm with specific machineclass per node",
-        "type": "timeseries"
-      },
-      {
-        "collapsed": false,
-        "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": 0,
-          "y": 37
-        },
-        "id": 6,
-        "panels": [],
-        "title": "Application",
-        "type": "row"
-      },
-      {
-        "datasource": {
-          "default": false,
-          "type": "datasource",
-          "uid": "-- Mixed --"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 10,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "never",
-              "spanNulls": true,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green"
-                },
-                {
-                  "color": "red",
-                  "value": 80
-                }
-              ]
-            }
-          },
-          "overrides": [
-            {
-              "matcher": {
-                "id": "byFrameRefID",
-                "options": "B"
-              },
-              "properties": [
-                {
-                  "id": "custom.lineStyle",
-                  "value": {
-                    "fill": "dash"
-                  }
-                },
-                {
-                  "id": "custom.lineWidth",
-                  "value": 2
-                },
-                {
-                  "id": "color",
-                  "value": {
-                    "fixedColor": "red",
-                    "mode": "fixed"
-                  }
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byFrameRefID",
-                "options": "C"
-              },
-              "properties": [
-                {
-                  "id": "custom.lineStyle",
-                  "value": {
-                    "fill": "dash"
-                  }
-                },
-                {
-                  "id": "custom.lineWidth",
-                  "value": 2
-                },
-                {
-                  "id": "color",
-                  "value": {
-                    "fixedColor": "orange",
-                    "mode": "fixed"
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        "gridPos": {
-          "h": 7,
-          "w": 12,
-          "x": 0,
-          "y": 38
-        },
-        "id": 7,
-        "interval": "1m",
-        "options": {
-          "legend": {
-            "asTable": true,
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true,
-            "sortBy": "Name",
-            "sortDesc": false
-          },
-          "tooltip": {
-            "mode": "single",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum (\n  rate(\n    container_cpu_usage_seconds_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", container=\"provider\", pod=~\"${pods}\"}[2m]\n  ) \n  /\n  on() group_left() sum(machine_cpu_cores)\n) by (node, pod)",
-            "legendFormat": "{{ node }} usage",
-            "range": true,
-            "refId": "A"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    kube_pod_container_resource_requests{job=\"kube-state-metrics\", pod=~\"${pods}\", resource=\"cpu\", container=\"provider\"}  * on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)\n",
-            "legendFormat": "{{ node }} requested",
-            "range": true,
-            "refId": "B"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    kube_pod_container_resource_limits{job=\"kube-state-metrics\", pod=~\"${pods}\", resource=\"cpu\", container=\"provider\"} * on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
-            "legendFormat": "{{ node }} limits",
-            "range": true,
-            "refId": "C"
-          }
-        ],
-        "title": "CPU Usage",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "default": false,
-          "type": "datasource",
-          "uid": "-- Mixed --"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 10,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "never",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green"
-                },
-                {
-                  "color": "red",
-                  "value": 80
-                }
-              ]
-            },
-            "unit": "bytes"
-          },
-          "overrides": [
-            {
-              "matcher": {
-                "id": "byFrameRefID",
-                "options": "B"
-              },
-              "properties": [
-                {
-                  "id": "custom.lineStyle",
-                  "value": {
-                    "fill": "dash"
-                  }
-                },
-                {
-                  "id": "custom.lineWidth",
-                  "value": 2
-                },
-                {
-                  "id": "color",
-                  "value": {
-                    "fixedColor": "red",
-                    "mode": "fixed"
-                  }
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byFrameRefID",
-                "options": "C"
-              },
-              "properties": [
-                {
-                  "id": "custom.lineStyle",
-                  "value": {
-                    "fill": "dash"
-                  }
-                },
-                {
-                  "id": "custom.lineWidth",
-                  "value": 2
-                },
-                {
-                  "id": "color",
-                  "value": {
-                    "fixedColor": "orange",
-                    "mode": "fixed"
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        "gridPos": {
-          "h": 7,
-          "w": 12,
-          "x": 12,
-          "y": 38
-        },
-        "id": 8,
-        "interval": "1m",
-        "options": {
-          "legend": {
-            "asTable": true,
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "none"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n  container_memory_working_set_bytes{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", pod=~\"${pods}\", container=\"provider\", image!=\"\"}\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, pod)",
-            "legendFormat": "{{ node }}/{{ pod }} usage",
-            "range": true,
-            "refId": "A"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n  kube_pod_container_resource_requests{job=\"kube-state-metrics\", pod=~\"${pods}\", resource=\"memory\", container=\"provider\"}\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)\n",
-            "legendFormat": "{{ node }} requests",
-            "range": true,
-            "refId": "B"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n  kube_pod_container_resource_limits{job=\"kube-state-metrics\", pod=~\"${pods}\", resource=\"memory\", container=\"provider\"}\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
-            "legendFormat": "{{ node }} limits",
-            "range": true,
-            "refId": "C"
-          }
-        ],
-        "title": "Memory Usage (WSS)",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "Values have to be always 0 otherwise we need to check logs for panic.",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "axisSoftMax": 10,
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "area"
-              }
-            },
-            "decimals": 2,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green"
-                },
-                {
-                  "color": "red",
-                  "value": 0.001
-                }
-              ]
-            },
-            "unit": "cps"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 5,
-          "w": 12,
-          "x": 0,
-          "y": 45
-        },
-        "id": 9,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n  irate(libvirtprovider_panics_recovered_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\",pod=~\"${pods}\"}[2m])\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
-            "instant": false,
-            "legendFormat": "{{ node }}",
-            "range": true,
-            "refId": "A"
-          }
-        ],
-        "title": "caught panics per second",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "uid": "${datasource}"
-        },
-        "description": "",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "custom": {
-              "align": "auto",
-              "cellOptions": {
-                "type": "auto"
-              },
-              "filterable": true,
-              "inspect": false
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green"
-                },
-                {
-                  "color": "red",
-                  "value": 80
-                }
-              ]
-            }
-          },
-          "overrides": [
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "node"
-              },
-              "properties": [
-                {
-                  "id": "custom.width",
-                  "value": 143
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "pod"
-              },
-              "properties": [
-                {
-                  "id": "custom.width",
-                  "value": 302
-                }
-              ]
-            }
-          ]
-        },
-        "gridPos": {
-          "h": 5,
-          "w": 12,
-          "x": 12,
-          "y": 45
-        },
-        "id": 15,
-        "options": {
-          "cellHeight": "sm",
-          "footer": {
-            "countRows": false,
-            "fields": "",
-            "reducer": [
-              "sum"
-            ],
-            "show": false
-          },
-          "showHeader": true,
-          "sortBy": []
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "editorMode": "code",
-            "exemplar": false,
-            "expr": "sum(\n  go_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, pod, version)",
-            "format": "table",
-            "instant": true,
-            "interval": "",
-            "legendFormat": "__auto",
-            "range": false,
-            "refId": "A"
-          }
-        ],
-        "title": "Golang version",
-        "transformations": [
-          {
-            "id": "organize",
-            "options": {
-              "excludeByName": {
-                "Time": true,
-                "Value": true
-              },
-              "includeByName": {},
-              "indexByName": {},
-              "renameByName": {}
-            }
-          }
-        ],
-        "type": "table"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "Operation is very often independent logic in libvirt-provider which is running in own goroutines.",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "axisSoftMax": 10,
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "area"
-              }
-            },
-            "decimals": 2,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green"
-                },
-                {
-                  "color": "red",
-                  "value": 0.001
-                }
-              ]
-            },
-            "unit": "cps"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 5,
-          "w": 12,
-          "x": 0,
-          "y": 50
-        },
-        "id": 20,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n  irate(operation_errors_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\",pod=~\"${pods}\"}[2m])\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, operation)",
-            "instant": false,
-            "legendFormat": "{{ node }}/{{ operation }}",
-            "range": true,
-            "refId": "A"
-          }
-        ],
-        "title": "Rate of operation errors per node",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "IRI events can be lost (override), if they aren't consumed slowly as they are produced.",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "axisSoftMax": 10,
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "area"
-              }
-            },
-            "decimals": 2,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green"
-                },
-                {
-                  "color": "red",
-                  "value": 0.001
-                }
-              ]
-            },
-            "unit": "cps"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 5,
-          "w": 12,
-          "x": 12,
-          "y": 50
-        },
-        "id": 21,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n  irate(libvirtprovider_iri_events_overrides_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\",pod=~\"${pods}\"}[2m])\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
-            "instant": false,
-            "legendFormat": "{{ node }}",
-            "range": true,
-            "refId": "A"
-          }
-        ],
-        "title": "Rate of override iri events per node",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "Operation is very often independent logic in libvirt-provider which is running in own goroutines.",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic-by-name"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "axisSoftMax": 10,
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
-            },
-            "decimals": 2,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green"
-                }
-              ]
-            },
-            "unit": "reqps"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 5,
-          "w": 12,
-          "x": 0,
-          "y": 55
-        },
-        "id": 23,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    irate(grpc_server_handled_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}[2m])\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, pod, grpc_service, grpc_method, grpc_code)\n",
-            "instant": false,
-            "legendFormat": "{{ node }}/{{ grpc_service }}/{{ grpc_method }}/{{ grpc_code }}",
-            "range": true,
-            "refId": "A"
-          }
-        ],
-        "title": "Rate of IRI (GRPC) requests",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "Operation is very often independent logic in libvirt-provider which is running in own goroutines.",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "axisSoftMax": 10,
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "area"
-              }
-            },
-            "decimals": 2,
-            "mappings": [],
-            "noValue": "0",
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green"
-                },
-                {
-                  "color": "red",
-                  "value": 0.001
-                }
-              ]
-            },
-            "unit": "reqps"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 5,
-          "w": 12,
-          "x": 12,
-          "y": 55
-        },
-        "id": 26,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    irate(grpc_server_handled_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", grpc_code!=\"OK\"}[2m])\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, pod, grpc_service, grpc_method, grpc_code)\n",
-            "instant": false,
-            "legendFormat": "{{ node }}/{{ grpc_service }}/{{ grpc_method }}/{{ grpc_code }}",
-            "range": true,
-            "refId": "A"
-          }
-        ],
-        "title": "Rate of invalid IRI (GRPC) requests",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "description": "Operation is very often independent logic in libvirt-provider which is running in own goroutines.",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic-by-name"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "axisSoftMax": 3,
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
-            },
-            "decimals": 2,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green"
-                }
-              ]
-            },
-            "unit": "reqps"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 5,
-          "w": 12,
-          "x": 0,
-          "y": 60
-        },
-        "id": 27,
-        "options": {
-          "legend": {
-            "calcs": [
-              "min",
-              "max",
-              "lastNotNull"
-            ],
-            "displayMode": "table",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "asc"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    irate(libvirtprovider_httpserver_healthcheck_requests_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}[2m])\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, pod, status)\n",
-            "instant": false,
-            "legendFormat": "{{ node }}/{{ pod }}/healthcheck - {{ status }}",
-            "range": true,
-            "refId": "healtcheck"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
-            "editorMode": "code",
-            "expr": "sum(\n    irate(libvirtprovider_httpserver_streaming_requests_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}[2m])\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, pod)",
-            "hide": false,
-            "instant": false,
-            "legendFormat": "{{ node }}/{{ pod }}/streaming - {{ status }}",
-            "range": true,
-            "refId": "streaming"
-          }
-        ],
-        "title": "Rate of HTTP requests per node and server",
-        "type": "timeseries"
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
       }
-    ],
-    "preload": false,
-    "refresh": "",
-    "schemaVersion": 40,
-    "tags": [],
-    "templating": {
-      "list": [
-        {
-          "current": {
-            "text": "^libvirt-provider-controller-manager-.+",
-            "value": "^libvirt-provider-controller-manager-.+"
+    ]
+  },
+  "description": "Overview of libvirt-provider state per node",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": 31,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 12,
+      "panels": [],
+      "title": "Controller",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "default": false,
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "VM shouldn't be destroyed. Accepted value is 0",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic-by-name"
           },
-          "description": "",
-          "hide": 2,
-          "name": "pods",
-          "query": "^libvirt-provider-controller-manager-.+",
-          "skipUrlSync": true,
-          "type": "constant"
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 5,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
         },
-        {
-          "current": {
-            "text": "OSC-Mimir",
-            "value": "OSC-Mimir"
-          },
-          "includeAll": false,
-          "name": "datasource",
-          "options": [],
-          "query": "prometheus",
-          "refresh": 1,
-          "regex": "",
-          "type": "datasource"
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "maxActiveWorkers"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "shades"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      },
+      "id": 16,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Name",
+          "sortDesc": false
         },
-        {
-          "current": {
-            "text": "lab",
-            "value": "lab"
-          },
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "definition": "label_values(kube_pod_info,__tenant_id__)",
-          "description": "",
-          "label": "tenant",
-          "name": "tenant",
-          "options": [],
-          "query": {
-            "qryType": 1,
-            "query": "label_values(kube_pod_info,__tenant_id__)",
-            "refId": "PrometheusVariableQueryEditor-VariableQuery"
-          },
-          "refresh": 2,
-          "regex": "",
-          "sort": 1,
-          "type": "query"
-        },
-        {
-          "current": {
-            "text": "prometheus/ironcore1-vm1-prometheus",
-            "value": "prometheus/ironcore1-vm1-prometheus"
-          },
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "definition": "label_values(kube_pod_info{__tenant_id__=\"$tenant\", pod=~\"$pods\"},cluster)",
-          "label": "cluster",
-          "name": "cluster",
-          "options": [],
-          "query": {
-            "qryType": 1,
-            "query": "label_values(kube_pod_info{__tenant_id__=\"$tenant\", pod=~\"$pods\"},cluster)",
-            "refId": "PrometheusVariableQueryEditor-VariableQuery"
-          },
-          "refresh": 2,
-          "regex": "",
-          "sort": 1,
-          "type": "query"
-        },
-        {
-          "allValue": ".*",
-          "current": {
-            "text": "All",
-            "value": "$__all"
-          },
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "definition": "label_values(kube_pod_info{pod=~\"$pods\", __tenant_id__=\"$tenant\", cluster=\"$cluster\"},node)",
-          "includeAll": true,
-          "multi": true,
-          "name": "nodes",
-          "options": [],
-          "query": {
-            "qryType": 1,
-            "query": "label_values(kube_pod_info{pod=~\"$pods\", __tenant_id__=\"$tenant\", cluster=\"$cluster\"},node)",
-            "refId": "PrometheusVariableQueryEditor-VariableQuery"
-          },
-          "refresh": 2,
-          "regex": "",
-          "type": "query"
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
         }
-      ]
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    controller_runtime_active_workers{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{ node }} active",
+          "range": true,
+          "refId": "activeWorkers"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    controller_runtime_max_concurrent_reconciles{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{ node }} limit",
+          "range": true,
+          "refId": "maxActiveWorkers"
+        }
+      ],
+      "title": "Countroller workers",
+      "type": "timeseries"
     },
-    "time": {
-      "from": "now-6h",
-      "to": "now"
+    {
+      "datasource": {
+        "default": false,
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "red",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "cps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "id": 19,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    rate(\n        controller_runtime_reconcile_errors_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}[2m]\n    )\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{ node }}",
+          "range": true,
+          "refId": "manageVM"
+        }
+      ],
+      "title": "Rate of reconcile errors",
+      "type": "timeseries"
     },
-    "timepicker": {
-      "refresh_intervals": [
-        "15s",
-        "30s",
-        "1m",
-        "5m",
-        "15m",
-        "30m",
-        "1h",
-        "2h",
-        "1d"
-      ]
+    {
+      "datasource": {
+        "default": false,
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    libvirtprovider_machines_state{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, state)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{ node }}/{{ state }}",
+          "range": true,
+          "refId": "manageVM"
+        }
+      ],
+      "title": "Count of vm in specific state per node",
+      "type": "timeseries"
     },
-    "timezone": "browser",
-    "title": "libvirt-provider cluster / overview",
-    "uid": "aeanh0ldu4jy8e",
-    "version": 1,
-    "weekStart": ""
+    {
+      "datasource": {
+        "default": false,
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "id": 17,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    workqueue_depth{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{ node }}",
+          "range": true,
+          "refId": "manageVM"
+        }
+      ],
+      "title": "Count of machine waiting for reconcilation",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "default": false,
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 19
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    libvirtprovider_machines_delete_marked{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{ node }}",
+          "range": true,
+          "refId": "manageVM"
+        }
+      ],
+      "title": "Count of vm marks for deletion per node",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "default": false,
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "VM shouldn't be destroyed. Accepted value is 0",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 5,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "area"
+            }
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.0001
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 19
+      },
+      "id": 14,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    irate(\n        libvirtprovider_machines_destroyed_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}[2m]\n    )\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{ node }}",
+          "range": true,
+          "refId": "manageVM"
+        }
+      ],
+      "title": "Count of destroyed vm per node",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "default": false,
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "limitVM"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "median",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    libvirtprovider_machineclasses_machine_count{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{ node }} managed",
+          "range": true,
+          "refId": "manageVM"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n  libvirtprovider_resourcemanager_vm_slot_available_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)\n+\nsum(\n    libvirtprovider_machineclasses_machine_count{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{ node }} limit",
+          "range": true,
+          "refId": "limitVM"
+        }
+      ],
+      "title": "Count of manage vms per node",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "default": false,
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "median",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    libvirtprovider_machineclasses_machine_count{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, machineclass)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{ node }}/{{ machineclass }}",
+          "range": true,
+          "refId": "manageVM"
+        }
+      ],
+      "title": "Count of vm with specific machineclass per node",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "id": 6,
+      "panels": [],
+      "title": "Application",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "default": false,
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 38
+      },
+      "id": 7,
+      "interval": "1m",
+      "options": {
+        "legend": {
+          "asTable": true,
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Name",
+          "sortDesc": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum (\n  rate(\n    container_cpu_usage_seconds_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", container=\"provider\", pod=~\"${pods}\"}[2m]\n  ) \n  /\n  on() group_left() sum(machine_cpu_cores)\n) by (node, pod)",
+          "legendFormat": "{{ node }} usage",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    kube_pod_container_resource_requests{job=\"kube-state-metrics\", pod=~\"${pods}\", resource=\"cpu\", container=\"provider\"}  * on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)\n",
+          "legendFormat": "{{ node }} requested",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    kube_pod_container_resource_limits{job=\"kube-state-metrics\", pod=~\"${pods}\", resource=\"cpu\", container=\"provider\"} * on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+          "legendFormat": "{{ node }} limits",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "CPU Usage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "default": false,
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 38
+      },
+      "id": 8,
+      "interval": "1m",
+      "options": {
+        "legend": {
+          "asTable": true,
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n  container_memory_working_set_bytes{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", pod=~\"${pods}\", container=\"provider\", image!=\"\"}\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, pod)",
+          "legendFormat": "{{ node }}/{{ pod }} usage",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n  kube_pod_container_resource_requests{job=\"kube-state-metrics\", pod=~\"${pods}\", resource=\"memory\", container=\"provider\"}\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)\n",
+          "legendFormat": "{{ node }} requests",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n  kube_pod_container_resource_limits{job=\"kube-state-metrics\", pod=~\"${pods}\", resource=\"memory\", container=\"provider\"}\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+          "legendFormat": "{{ node }} limits",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Memory Usage (WSS)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Values have to be always 0 otherwise we need to check logs for panic.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 10,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "area"
+            }
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.001
+              }
+            ]
+          },
+          "unit": "cps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 0,
+        "y": 45
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n  irate(libvirtprovider_panics_recovered_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\",pod=~\"${pods}\"}[2m])\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+          "instant": false,
+          "legendFormat": "{{ node }}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "caught panics per second",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "node"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 143
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pod"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 302
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 45
+      },
+      "id": 15,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(\n  go_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, pod, version)",
+          "format": "table",
+          "instant": true,
+          "interval": "",
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Golang version",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {}
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Operation is very often independent logic in libvirt-provider which is running in own goroutines.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 10,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "area"
+            }
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.001
+              }
+            ]
+          },
+          "unit": "cps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 0,
+        "y": 50
+      },
+      "id": 20,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n  irate(operation_errors_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\",pod=~\"${pods}\"}[2m])\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, operation)",
+          "instant": false,
+          "legendFormat": "{{ node }}/{{ operation }}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Rate of operation errors per node",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "IRI events can be lost (override), if they aren't consumed slowly as they are produced.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 10,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "area"
+            }
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.001
+              }
+            ]
+          },
+          "unit": "cps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 50
+      },
+      "id": 21,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n  irate(libvirtprovider_iri_events_overrides_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\",pod=~\"${pods}\"}[2m])\n  *\n  on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node)",
+          "instant": false,
+          "legendFormat": "{{ node }}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Rate of override iri events per node",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Operation is very often independent logic in libvirt-provider which is running in own goroutines.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 10,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 0,
+        "y": 55
+      },
+      "id": 23,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    irate(grpc_server_handled_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\"}[2m])\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, pod, grpc_service, grpc_method, grpc_code)\n",
+          "instant": false,
+          "legendFormat": "{{ node }}/{{ grpc_service }}/{{ grpc_method }}/{{ grpc_code }}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Rate of IRI (GRPC) requests",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Operation is very often independent logic in libvirt-provider which is running in own goroutines.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 10,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "area"
+            }
+          },
+          "decimals": 2,
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.001
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 55
+      },
+      "id": 26,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    irate(grpc_server_handled_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", grpc_code!=\"OK\"}[2m])\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, pod, grpc_service, grpc_method, grpc_code)\n",
+          "instant": false,
+          "legendFormat": "{{ node }}/{{ grpc_service }}/{{ grpc_method }}/{{ grpc_code }}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Rate of invalid IRI (GRPC) requests",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Operation is very often independent logic in libvirt-provider which is running in own goroutines.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 3,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 60
+      },
+      "id": 27,
+      "maxPerRow": 2,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "repeat": "httpServer",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    irate(libvirtprovider_httpserver_requests_total{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", server=\"${httpServer}\"}[2m])\n    *\n    on (pod) group_left(node) kube_pod_info{__tenant_id__=\"${tenant}\", cluster=\"${cluster}\", pod=~\"${pods}\", node!=\"\"}\n) by (node, status)",
+          "instant": false,
+          "legendFormat": "{{ node }} - {{ status }}",
+          "range": true,
+          "refId": "healtcheck"
+        }
+      ],
+      "title": "${httpServer} server rate of HTTP requests per node",
+      "type": "timeseries"
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 40,
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "^libvirt-provider-controller-manager-.+",
+          "value": "^libvirt-provider-controller-manager-.+"
+        },
+        "description": "",
+        "hide": 2,
+        "name": "pods",
+        "query": "^libvirt-provider-controller-manager-.+",
+        "skipUrlSync": true,
+        "type": "constant"
+      },
+      {
+        "current": {
+          "text": "OSC-Mimir",
+          "value": "OSC-Mimir"
+        },
+        "includeAll": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "text": "lab",
+          "value": "lab"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kube_pod_info,__tenant_id__)",
+        "description": "",
+        "label": "tenant",
+        "name": "tenant",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(kube_pod_info,__tenant_id__)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "prometheus/ironcore1-vm1-prometheus",
+          "value": "prometheus/ironcore1-vm1-prometheus"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kube_pod_info{__tenant_id__=\"$tenant\", pod=~\"$pods\"},cluster)",
+        "label": "cluster",
+        "name": "cluster",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(kube_pod_info{__tenant_id__=\"$tenant\", pod=~\"$pods\"},cluster)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kube_pod_info{pod=~\"$pods\", __tenant_id__=\"$tenant\", cluster=\"$cluster\"},node)",
+        "includeAll": true,
+        "multi": true,
+        "name": "nodes",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(kube_pod_info{pod=~\"$pods\", __tenant_id__=\"$tenant\", cluster=\"$cluster\"},node)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(libvirtprovider_httpserver_requests_total{__tenant_id__=\"$tenant\", cluster=\"$cluster\", pod=~\"$pods\"},server)",
+        "description": "",
+        "hide": 2,
+        "includeAll": true,
+        "name": "httpServer",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(libvirtprovider_httpserver_requests_total{__tenant_id__=\"$tenant\", cluster=\"$cluster\", pod=~\"$pods\"},server)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "15s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "browser",
+  "title": "Cluster / Libvirt-provider Cluster Overview",
+  "uid": "aeanh0ldu4jy8e",
+  "version": 2,
+  "weekStart": ""
 }

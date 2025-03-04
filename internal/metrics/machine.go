@@ -35,12 +35,6 @@ var (
 	})
 )
 
-func init() {
-	prometheus.MustRegister(MachinesDeleteMarked)
-	prometheus.MustRegister(MachinesState)
-	prometheus.MustRegister(MachinesDestroyed)
-}
-
 func InitializeMachineMetrics(machines []*api.Machine) {
 	for _, machine := range machines {
 		MachinesState.WithLabelValues(machine.GetState()).Inc()

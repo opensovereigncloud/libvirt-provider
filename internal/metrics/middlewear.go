@@ -9,33 +9,25 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
-type httpMetricsMiddleware struct {
-	requestDuration *prometheus.HistogramVec
-	totalRequests   *prometheus.CounterVec
-}
+func NewHTTPMetricsMiddlewareHandler(serverName string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
 
-func NewHTTPMetricsMiddleware(subsystem string) (*httpMetricsMiddleware, error) {
-	return newHTTPMetrics(subsystem)
-}
+			rw := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
-func (m *httpMetricsMiddleware) Middleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
+			next.ServeHTTP(rw, r)
 
-		rw := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+			duration := time.Since(start).Milliseconds()
+			path := r.URL.Path
+			method := r.Method
 
-		next.ServeHTTP(rw, r)
+			statusCodeStr := strconv.Itoa(rw.Status())
 
-		duration := time.Since(start).Milliseconds()
-		path := r.URL.Path
-		method := r.Method
-
-		statusCodeStr := strconv.Itoa(rw.Status())
-
-		m.requestDuration.WithLabelValues(method, path, statusCodeStr).Observe(float64(duration) / 1000)
-		m.totalRequests.WithLabelValues(method, path, statusCodeStr).Inc()
-	})
+			httpServerRequestDuration.WithLabelValues(serverName, method, path, statusCodeStr).Observe(float64(duration) / 1000)
+			httpServerTotalRequests.WithLabelValues(serverName, method, path, statusCodeStr).Inc()
+		})
+	}
 }

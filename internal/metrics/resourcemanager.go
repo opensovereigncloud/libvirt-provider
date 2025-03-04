@@ -70,12 +70,3 @@ var (
 		[]string{"machineclass"},
 	)
 )
-
-func init() {
-	prometheus.MustRegister(ResourcesAvailable)
-	prometheus.MustRegister(ResourcesTotal)
-	prometheus.MustRegister(VMSlotsAvailable)
-	prometheus.MustRegister(MachineClassesSkipped)
-	prometheus.MustRegister(MachinesAvailable)
-	prometheus.MustRegister(MachinesTotal)
-}

@@ -19,7 +19,3 @@ var (
 		Help:      "Total count of panics which were recovered.",
 	})
 )
-
-func init() {
-	prometheus.MustRegister(PanicsRecovered)
-}

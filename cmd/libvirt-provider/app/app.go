@@ -622,16 +622,10 @@ func runPPROFServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOp
 		return nil
 	}
 
-	serverLog := ctrl.Log.WithName("pprof-server")
-
-	httpMetrics, regErr := metrics.NewHTTPMetricsMiddleware("pprof")
-	if regErr != nil {
-		setupLog.Error(regErr, "failed to register metrics collector")
-		return regErr
-	}
+	serverLog := ctrl.Log.WithName("pprof")
 
 	router := chi.NewRouter()
-	router.Use(httpMetrics.Middleware)
+	router.Use(metrics.NewHTTPMetricsMiddlewareHandler("pprof"))
 	router.Use(utils.RecoveryMiddleware(serverLog, "middleware"))
 
 	router.Get("/debug/pprof/", pprof.Index)
@@ -682,14 +676,8 @@ func runPPROFServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOp
 func runHealthCheckServer(ctx context.Context, setupLog logr.Logger, healthCheck healthcheck.HealthCheck, opts HTTPServerOptions) error {
 	serverLog := ctrl.Log.WithName("healthcheck-server")
 
-	httpMetrics, regErr := metrics.NewHTTPMetricsMiddleware("healthcheck")
-	if regErr != nil {
-		setupLog.Error(regErr, "failed to register metrics collector")
-		return regErr
-	}
-
 	router := chi.NewRouter()
-	router.Use(httpMetrics.Middleware)
+	router.Use(metrics.NewHTTPMetricsMiddlewareHandler("healthcheck"))
 	router.Use(utils.RecoveryMiddleware(serverLog, "middleware"))
 
 	router.Get("/healthz", healthCheck.HealthCheckHandler)
@@ -781,6 +769,11 @@ func updateMachinePCIStatus(ctx context.Context, machineStore *host.Store[*api.M
 }
 
 func initMetrics(ctx context.Context, listMachines func(context.Context) ([]*api.Machine, error)) error {
+	err := metrics.RegisterAllMetrics()
+	if err != nil {
+		return fmt.Errorf("failed to register all metrics: %w", err)
+	}
+
 	machines, err := listMachines(ctx)
 	if err != nil {
 		return err

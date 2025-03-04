@@ -60,12 +60,6 @@ var (
 	)
 )
 
-func init() {
-	prometheus.MustRegister(EventsOverriddenTotal)
-	prometheus.MustRegister(EventsBufferUsageRatio)
-	prometheus.MustRegister(EventsLifecycleCount)
-}
-
 func GetLibvirtDomainLifecycleEvent(id int32) string {
 	eventType, exists := eventIDToLibvirtDomainLifecycleEvent[id]
 	if !exists {
