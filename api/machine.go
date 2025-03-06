@@ -244,3 +244,16 @@ func (p PCIAddress) GetDomainSubsysPCI() *libvirtxml.DomainHostdevSubsysPCI {
 		},
 	}
 }
+
+func (m *MachineStatus) GetVolumesAsMap() map[string]*VolumeStatus {
+	if m == nil {
+		return map[string]*VolumeStatus{}
+	}
+
+	result := make(map[string]*VolumeStatus, len(m.VolumeStatus))
+	for index := range m.VolumeStatus {
+		result[m.VolumeStatus[index].Name] = &m.VolumeStatus[index]
+	}
+
+	return result
+}
