@@ -25,6 +25,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/libvirt/guest"
 	libvirtmeta "github.com/ironcore-dev/libvirt-provider/internal/libvirt/meta"
 	libvirtutils "github.com/ironcore-dev/libvirt-provider/internal/libvirt/utils"
+	providerlibvirtxml "github.com/ironcore-dev/libvirt-provider/internal/libvirtxml"
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	providerimage "github.com/ironcore-dev/libvirt-provider/internal/oci"
 	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
@@ -87,6 +88,7 @@ type MachineReconcilerOptions struct {
 	ResyncIntervalGarbageCollector time.Duration
 	GCVMGracefulShutdownTimeout    time.Duration
 	VolumeCachePolicyCeph          string
+	OverrideDomainXML              *libvirtxml.Domain
 }
 
 func NewMachineReconciler(
@@ -128,6 +130,7 @@ func NewMachineReconciler(
 		resyncIntervalGarbageCollector:          opts.ResyncIntervalGarbageCollector,
 		gcVMGracefulShutdownTimeout:             opts.GCVMGracefulShutdownTimeout,
 		volumeCachePolicyCeph:                   opts.VolumeCachePolicyCeph,
+		overrideDomainXML:                       opts.OverrideDomainXML,
 		metricsReconcileDuration:                metrics.ControllerRuntimeReconcileDuration.WithLabelValues(MachineReconcilerName),
 		metricsControllerRuntimeActiveWorker:    metrics.ControllerRuntimeActiveWorker.WithLabelValues(MachineReconcilerName),
 		metricsControllerRuntimeReconcileErrors: metrics.ControllerRuntimeReconcileErrors.WithLabelValues(MachineReconcilerName),
@@ -162,6 +165,8 @@ type MachineReconciler struct {
 	metricsReconcileDuration                prometheus.Observer
 	metricsControllerRuntimeActiveWorker    prometheus.Gauge
 	metricsControllerRuntimeReconcileErrors prometheus.Counter
+
+	overrideDomainXML *libvirtxml.Domain
 }
 
 func (r *MachineReconciler) Start(ctx context.Context) error {
@@ -662,11 +667,12 @@ func (r *MachineReconciler) createDomain(
 	log logr.Logger,
 	machine *api.Machine,
 ) ([]api.VolumeStatus, []api.NetworkInterfaceStatus, error) { // TODO add NetworkInterfaceStatus
-	domainXML, volumeStates, nicStates, err := r.domainFor(ctx, log, machine)
+	generatedDomainXML, volumeStates, nicStates, err := r.domainFor(ctx, log, machine)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	domainXML := providerlibvirtxml.MergeDomains(r.overrideDomainXML, generatedDomainXML)
 	domainXMLData, err := domainXML.Marshal()
 	if err != nil {
 		return nil, nil, err

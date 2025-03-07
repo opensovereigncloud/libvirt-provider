@@ -33,6 +33,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/host"
 	"github.com/ironcore-dev/libvirt-provider/internal/libvirt/guest"
 	libvirtutils "github.com/ironcore-dev/libvirt-provider/internal/libvirt/utils"
+	providerlibvirtxml "github.com/ironcore-dev/libvirt-provider/internal/libvirtxml"
 	"github.com/ironcore-dev/libvirt-provider/internal/mcr"
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/networkinterfaceplugin"
@@ -113,6 +114,8 @@ type LibvirtOptions struct {
 	PreferredMachineTypes []string
 
 	Qcow2Type string
+
+	OverrideDomainXML string
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
@@ -141,6 +144,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.Libvirt.Socket, "libvirt-socket", o.Libvirt.Socket, "Path to the libvirt socket to use.")
 	fs.StringVar(&o.Libvirt.Address, "libvirt-address", o.Libvirt.Address, "Address of a RPC libvirt socket to connect to.")
 	fs.StringVar(&o.Libvirt.URI, "libvirt-uri", o.Libvirt.URI, "URI to connect to inside the libvirt system.")
+	fs.StringVar(&o.Libvirt.OverrideDomainXML, "libvirt-override-template", o.Libvirt.OverrideDomainXML, "Path to the override domain XML template used for VM creation.")
 
 	// Guest Capabilities
 	fs.StringSliceVar(&o.Libvirt.PreferredDomainTypes, "preferred-domain-types", []string{"kvm", "qemu"}, "Ordered list of preferred domain types to use.")
@@ -360,6 +364,12 @@ func Run(ctx context.Context, opts Options) error {
 
 	eventStore := machineevent.NewEventStore(log, opts.MachineEventStore)
 
+	overrideDomainXML, err := providerlibvirtxml.LoadOverrideDomainXML(opts.Libvirt.OverrideDomainXML)
+	if err != nil {
+		setupLog.Error(err, "failed to load override domain template XML")
+		return err
+	}
+
 	machineReconciler, err := controllers.NewMachineReconciler(
 		log.WithName(controllers.MachineReconcilerName),
 		libvirt,
@@ -377,6 +387,7 @@ func Run(ctx context.Context, opts Options) error {
 			ResyncIntervalGarbageCollector: opts.ResyncIntervalGarbageCollector,
 			GCVMGracefulShutdownTimeout:    opts.GCVMGracefulShutdownTimeout,
 			VolumeCachePolicyCeph:          opts.VolumeCachePolicyCeph,
+			OverrideDomainXML:              overrideDomainXML,
 		},
 	)
 	if err != nil {
