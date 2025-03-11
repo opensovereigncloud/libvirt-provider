@@ -17,7 +17,7 @@ The state represents current usability of a feature.
 
 ## Features
 
-Last update: 2024-12-11T13:02:40+00:00
+Last update: 2025-03-10T10:11:01+00:00
 
 Please order features alphabetically A→Z in tables.
 
@@ -28,6 +28,7 @@ Please order features alphabetically A→Z in tables.
 | Healthcheck  | Healtcheck and probes endpoints                 | f8ef1e6 |  🔴wip   | Healtcheck only verifies connection to libvirt-provider |
 | IRI events   | Support of events for VM machine reconciliation | f8ef1e6 | 🟢stable |                                                         |
 | Metrics      | Exposing internal libvirt-provider metrics      | f8ef1e6 |  🔴wip   | Some important metrics aren't implemented yet           |
+| Override domain.xml  | Allows using a override domain.xml as a template for declarative VM configuration. All fields in the template override the corresponding values in the generated domain.xml                 | b51f69d |  🟡beta   | Useful for testing features without code changes or applying quick hotfixes. **⚠ WARNING:** Misconfigured values in the override template may lead to invalid domain configurations, potentially disrupting VM reconciliation. Ensure the template is correctly structured before applying changes |
 | PPROF server | Golang profiling server                         | f8ef1e6 | 🟢stable |                                                         |
 
 ### Resource-manager related
