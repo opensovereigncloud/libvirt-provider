@@ -997,7 +997,7 @@ func (r *MachineReconciler) setDomainImage(
 		return err
 	}
 	if !ok {
-		if err := r.raw.Create(rootFSFile, raw.WithSourceFile(img.RootFS.Path)); err != nil {
+		if err := r.raw.Create(rootFSFile, raw.WithSourceFile(img.SquashFS.Path)); err != nil {
 			return fmt.Errorf("error creating root fs disk: %w", err)
 		}
 		if err := os.Chmod(rootFSFile, permFile); err != nil {
