@@ -112,7 +112,7 @@ func GetSource(name string, options sources.Options) (Source, error) {
 }
 
 func GetSourcesAvailable() []string {
-	return []string{sources.SourceCPU, sources.SourceMemory, sources.SourceHugepages, sgx.SourceSGX}
+	return []string{sources.SourceCPU, sources.SourceMemory, sources.SourceHugepages, sgx.SourceSGX, sources.SourcePCI}
 }
 
 func GetMachineClassRequiredResources(name string) (core.ResourceList, error) {
