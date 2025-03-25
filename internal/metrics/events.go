@@ -31,7 +31,7 @@ var (
 )
 
 var (
-	EventsOverriddenTotal = prometheus.NewCounter(
+	IRIEventsOverriddenTotal = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystemIRIEvent,
@@ -40,7 +40,7 @@ var (
 		},
 	)
 
-	EventsBufferUsageRatio = prometheus.NewGauge(
+	IRIEventsBufferUsageRatio = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystemIRIEvent,
@@ -49,14 +49,14 @@ var (
 		},
 	)
 
-	EventsLifecycleCount = prometheus.NewCounterVec(
+	LibvirtEventsCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystemLibvirtEvent,
 			Name:      "total",
-			Help:      "Total number of libvirt lifecycle events, categorized by event ID and event type, captured by the libvirt provider.",
+			Help:      "Total number of libvirt events, categorized by event ID and event type, captured by the libvirt provider.",
 		},
-		[]string{"event_id", "event_type"},
+		[]string{LabelEventID, LabelEventType},
 	)
 )
 

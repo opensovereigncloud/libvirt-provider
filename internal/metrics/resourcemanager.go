@@ -19,7 +19,7 @@ var (
 			Name:      "resources_available",
 			Help:      "Available resources per source.",
 		},
-		[]string{"source", "resource"},
+		[]string{LabelSource, LabelResource},
 	)
 
 	ResourcesTotal = prometheus.NewGaugeVec(
@@ -29,7 +29,7 @@ var (
 			Name:      "resources_total",
 			Help:      "Total resources per source.",
 		},
-		[]string{"source", "resource"},
+		[]string{LabelSource, LabelResource},
 	)
 
 	VMSlotsAvailable = prometheus.NewGauge(
@@ -57,7 +57,7 @@ var (
 			Name:      "machines_available",
 			Help:      "Number of available machines per machineclass.",
 		},
-		[]string{"machineclass"},
+		[]string{LabelMachineclass},
 	)
 
 	MachinesTotal = prometheus.NewGaugeVec(
@@ -67,6 +67,6 @@ var (
 			Name:      "machines_total",
 			Help:      "Total number of machines per machineclass.",
 		},
-		[]string{"machineclass"},
+		[]string{LabelMachineclass},
 	)
 )

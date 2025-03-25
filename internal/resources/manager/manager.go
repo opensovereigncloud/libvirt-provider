@@ -563,7 +563,12 @@ func (r *resourceManager) getMachineClassAvailibilityAsString() string {
 
 func (r *resourceManager) setMachineClassMetrics(metric *prometheus.GaugeVec) {
 	for _, class := range r.machineClasses {
-		metric.WithLabelValues(class.Name).Set(float64(class.available))
+		labels := prometheus.Labels{metrics.LabelMachineclass: class.Name}
+		machineclassGauge, err := metrics.GetGaugeWithLabels(metric, labels)
+		if err != nil {
+			r.log.Error(err, "failed to get machineclass metric", metrics.LogKeyLabels, labels)
+		}
+		machineclassGauge.Set(float64(class.available))
 	}
 }
 

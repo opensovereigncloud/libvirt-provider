@@ -15,7 +15,7 @@ type Options struct {
 	BlockedHugepages   uint64
 	VMLimit            uint64
 	PCIDevicesFile     string
-	log                logr.Logger
+	Log                logr.Logger
 }
 
 // // MemorySize is a custom type to handle memory sizes in human-readable format.

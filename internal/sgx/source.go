@@ -19,6 +19,7 @@ import (
 	"github.com/go-logr/logr"
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
 	"github.com/prometheus/client_golang/prometheus"
@@ -209,7 +210,16 @@ func (c *SGX) getSupportedResources() sets.Set[core.ResourceName] {
 
 func (c *SGX) SetResourcesMetric(metric *prometheus.GaugeVec) {
 	for numaZoneResourceName, quantity := range c.availableResources {
-		metric.WithLabelValues(c.GetName(), sources.GetMetricsResourceName(string(numaZoneResourceName), sources.ResourceMemoryUnit)).Set(float64(quantity.Value()))
+		labels := prometheus.Labels{
+			metrics.LabelSource:   c.GetName(),
+			metrics.LabelResource: sources.GetMetricsResourceName(string(numaZoneResourceName), sources.ResourceMemoryUnit),
+		}
+
+		sgxGauge, err := metrics.GetGaugeWithLabels(metric, labels)
+		if err != nil {
+			c.log.Error(err, "failed to get sgx metric", metrics.LogKeyLabels, labels)
+		}
+		sgxGauge.Set(float64(quantity.Value()))
 	}
 }
 

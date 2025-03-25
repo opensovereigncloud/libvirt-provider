@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
-	"sync"
 	"time"
 
 	"github.com/digitalocean/go-libvirt"
@@ -39,6 +38,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
 	"github.com/ironcore-dev/libvirt-provider/internal/utils"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/workqueue"
@@ -59,6 +59,7 @@ const (
 	MachineReconcilerOpsVolumeSize       = "volume-size"
 	MachineReconcilerOpsGarbageCollector = "garbage-collector"
 	MachineReconcilerOpsLibvirtEvent     = "libvirt-event"
+	MachineReconcilerMetrics             = "metrics"
 
 	ArchitectureAARCH64 = "aarch64"
 	ArchitectureX8664   = "x86_64"
@@ -115,10 +116,26 @@ func NewMachineReconciler(
 		return nil, fmt.Errorf("must specify machine events")
 	}
 
+	labels := prometheus.Labels{metrics.LabelController: MachineReconcilerName}
+	durationSummary, err := metrics.GetSummaryWithLabels(metrics.ControllerRuntimeReconcileDuration, labels)
+	if err != nil {
+		log.Error(err, "failed to get reconcile duration metric", metrics.LogKeyLabels, labels)
+	}
+
+	activeWorkerGauge, err := metrics.GetGaugeWithLabels(metrics.ControllerRuntimeActiveWorker, labels)
+	if err != nil {
+		log.Error(err, "failed to get active workers metric", metrics.LogKeyLabels, labels)
+	}
+
+	reconcileErrorsCounter, err := metrics.GetCounterWithLabels(metrics.ControllerRuntimeReconcileErrors, labels)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reconcile errors total metric: %w", err)
+	}
+
 	return &MachineReconciler{
 		log: log,
 		queue: workqueue.NewTypedRateLimitingQueueWithConfig[string](workqueue.DefaultTypedControllerRateLimiter[string](),
-			workqueue.TypedRateLimitingQueueConfig[string]{Name: MachineReconcilerName}),
+			workqueue.TypedRateLimitingQueueConfig[string]{Name: MachineReconcilerName, MetricsProvider: metrics.NewWorkqueueMetricsProvider(log.WithName(MachineReconcilerMetrics))}),
 		libvirt:                                 libvirt,
 		machines:                                machines,
 		machineEvents:                           machineEvents,
@@ -135,9 +152,9 @@ func NewMachineReconciler(
 		gcVMGracefulShutdownTimeout:             opts.GCVMGracefulShutdownTimeout,
 		volumeCachePolicyCeph:                   opts.VolumeCachePolicyCeph,
 		overrideDomainXML:                       opts.OverrideDomainXML,
-		metricsReconcileDuration:                metrics.ControllerRuntimeReconcileDuration.WithLabelValues(MachineReconcilerName),
-		metricsControllerRuntimeActiveWorker:    metrics.ControllerRuntimeActiveWorker.WithLabelValues(MachineReconcilerName),
-		metricsControllerRuntimeReconcileErrors: metrics.ControllerRuntimeReconcileErrors.WithLabelValues(MachineReconcilerName),
+		metricsReconcileDuration:                durationSummary,
+		metricsControllerRuntimeActiveWorker:    activeWorkerGauge,
+		metricsControllerRuntimeReconcileErrors: reconcileErrorsCounter,
 	}, nil
 }
 
@@ -178,7 +195,13 @@ func (r *MachineReconciler) Start(ctx context.Context) error {
 
 	//todo make configurable
 	workerSize := 15
-	metrics.ControllerRuntimeMaxConccurrentReconciles.WithLabelValues(MachineReconcilerName).Set(float64(workerSize))
+
+	labels := prometheus.Labels{metrics.LabelController: MachineReconcilerName}
+	maxConcurrentReconcilesGauge, err := metrics.GetGaugeWithLabels(metrics.ControllerRuntimeMaxConcurrentReconciles, labels)
+	if err != nil {
+		log.Error(err, "failed to get max concurrent reconciles metric", metrics.LogKeyLabels, labels)
+	}
+	maxConcurrentReconcilesGauge.Set(float64(workerSize))
 
 	r.imageCache.AddListener(providerimage.ListenerFuncs{
 		HandlePullDoneFunc: func(evt providerimage.PullDoneEvent) {
@@ -210,53 +233,56 @@ func (r *MachineReconciler) Start(ctx context.Context) error {
 		}
 	}()
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		r.startCheckAndEnqueueVolumeResize(ctx)
-	}()
+	g, ctx := errgroup.WithContext(ctx)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		r.startEnqueueMachineByLibvirtEvent(ctx)
-	}()
+	g.Go(func() error {
+		return r.startCheckAndEnqueueVolumeResize(ctx)
+	})
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		r.startGarbageCollector(ctx)
-	}()
+	g.Go(func() error {
+		return r.startEnqueueMachineByLibvirtEvent(ctx)
+	})
 
-	go func() {
+	g.Go(func() error {
+		return r.startGarbageCollector(ctx)
+	})
+
+	g.Go(func() error {
 		<-ctx.Done()
+		log.Info("Shutting down work queue")
 		r.queue.ShutDown()
-	}()
+		return nil
+	})
 
 	for i := 0; i < workerSize; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		g.Go(func() error {
 			for r.processNextWorkItem(ctx, log) {
 			}
-		}()
+			return nil
+		})
 	}
 
-	wg.Wait()
-	return nil
+	return g.Wait()
 }
 
-func (r *MachineReconciler) startCheckAndEnqueueVolumeResize(ctx context.Context) {
+func (r *MachineReconciler) startCheckAndEnqueueVolumeResize(ctx context.Context) error {
 	log := r.log.WithName(MachineReconcilerOpsVolumeSize)
 
 	if r.resyncIntervalVolumeSize == 0 {
 		log.V(1).Info("volume resize trigger loop is disabled")
-		return
+		return nil
 	}
 
-	opsDuration := metrics.OperationDuration.WithLabelValues(MachineReconcilerOpsVolumeSize)
-	opsErrors := metrics.OperationErrors.WithLabelValues(MachineReconcilerOpsVolumeSize)
+	labels := prometheus.Labels{metrics.LabelOperation: MachineReconcilerOpsVolumeSize}
+	opsDuration, err := metrics.GetSummaryWithLabels(metrics.OperationDuration, labels)
+	if err != nil {
+		r.log.Error(err, "failed to get operation duration metric", metrics.LogKeyLabels, labels)
+	}
+
+	opsErrors, err := metrics.GetCounterWithLabels(metrics.OperationErrors, labels)
+	if err != nil {
+		return fmt.Errorf("failed to get operation errors metric from startCheckAndEnqueueVolumeResize: %w", err)
+	}
 
 	wait.UntilWithContext(ctx, func(ctx context.Context) {
 		log.V(1).Info("starting volume resize trigger loop")
@@ -315,17 +341,24 @@ func (r *MachineReconciler) startCheckAndEnqueueVolumeResize(ctx context.Context
 			}
 		}
 	}, r.resyncIntervalVolumeSize)
+
+	return nil
 }
 
-func (r *MachineReconciler) startEnqueueMachineByLibvirtEvent(ctx context.Context) {
+func (r *MachineReconciler) startEnqueueMachineByLibvirtEvent(ctx context.Context) error {
 	log := r.log.WithName(MachineReconcilerOpsLibvirtEvent)
-	opsErrors := metrics.OperationErrors.WithLabelValues(MachineReconcilerOpsLibvirtEvent)
+
+	labels := prometheus.Labels{metrics.LabelOperation: MachineReconcilerOpsLibvirtEvent}
+	opsErrors, err := metrics.GetCounterWithLabels(metrics.OperationErrors, labels)
+	if err != nil {
+		return fmt.Errorf("failed to get operation errors metric from startEnqueueMachineByLibvirtEvent: %w", err)
+	}
 
 	lifecycleEvents, err := r.libvirt.LifecycleEvents(ctx)
 	if err != nil {
 		opsErrors.Inc()
 		log.Error(err, "failed to subscribe to libvirt lifecycle events")
-		return
+		return nil
 	}
 
 	log.Info("Subscribing to libvirt lifecycle events")
@@ -337,7 +370,7 @@ func (r *MachineReconciler) startEnqueueMachineByLibvirtEvent(ctx context.Contex
 		case evt, ok := <-lifecycleEvents:
 			if !ok {
 				log.Error(fmt.Errorf("libvirt lifecycle event channel closed"), "failed to process event")
-				return
+				return nil
 			}
 
 			machine, err := r.machines.Get(ctx, evt.Dom.Name)
@@ -351,20 +384,38 @@ func (r *MachineReconciler) startEnqueueMachineByLibvirtEvent(ctx context.Contex
 				continue
 			}
 
-			metrics.EventsLifecycleCount.WithLabelValues("lifecycle", metrics.GetLibvirtDomainLifecycleEvent(evt.Event)).Inc()
+			labels := prometheus.Labels{
+				metrics.LabelEventID:   "lifecycle",
+				metrics.LabelEventType: metrics.GetLibvirtDomainLifecycleEvent(evt.Event),
+			}
+			libvirtEventsTotalgauge, err := metrics.GetCounterWithLabels(metrics.LibvirtEventsCount, labels)
+			if err != nil {
+				r.log.Error(err, "failed to get libvirt events total metric", metrics.LogKeyLabels, labels)
+			}
+			libvirtEventsTotalgauge.Inc()
+
 			log.V(1).Info("requeue machine", "machineID", machine.ID, "lifecycleEventID", evt.Event)
 			r.queue.AddRateLimited(machine.ID)
 		case <-ctx.Done():
 			log.Info("Context done for libvirt event lifecycle.")
-			return
+			return nil
 		}
 	}
 }
 
-func (r *MachineReconciler) startGarbageCollector(ctx context.Context) {
+func (r *MachineReconciler) startGarbageCollector(ctx context.Context) error {
 	log := r.log.WithName(MachineReconcilerOpsGarbageCollector)
-	opsDuration := metrics.OperationDuration.WithLabelValues(MachineReconcilerOpsGarbageCollector)
-	opsErrors := metrics.OperationErrors.WithLabelValues(MachineReconcilerOpsGarbageCollector)
+
+	labels := prometheus.Labels{metrics.LabelOperation: MachineReconcilerOpsGarbageCollector}
+	opsDuration, err := metrics.GetSummaryWithLabels(metrics.OperationDuration, labels)
+	if err != nil {
+		r.log.Error(err, "failed to get operation duration metric", metrics.LogKeyLabels, labels)
+	}
+
+	opsErrors, err := metrics.GetCounterWithLabels(metrics.OperationErrors, labels)
+	if err != nil {
+		return fmt.Errorf("failed to get operation errors metric from startGarbageCollector: %w", err)
+	}
 
 	wait.UntilWithContext(ctx, func(ctx context.Context) {
 		log.V(1).Info("starting garbage-collector loop")
@@ -396,6 +447,8 @@ func (r *MachineReconciler) startGarbageCollector(ctx context.Context) {
 		}
 
 	}, r.resyncIntervalGarbageCollector)
+
+	return nil
 }
 
 func (r *MachineReconciler) processMachineDeletion(ctx context.Context, log logr.Logger, machine *api.Machine) error {
@@ -512,9 +565,13 @@ func (r *MachineReconciler) processNextWorkItem(ctx context.Context, log logr.Lo
 	if shutdown {
 		return false
 	}
+
 	r.metricsControllerRuntimeActiveWorker.Inc()
+
 	defer r.queue.Done(id)
-	defer r.metricsControllerRuntimeActiveWorker.Dec()
+	defer func() {
+		r.metricsControllerRuntimeActiveWorker.Dec()
+	}()
 
 	log = log.WithValues("machineID", id)
 	ctx = logr.NewContext(ctx, log)

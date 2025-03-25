@@ -34,7 +34,7 @@ func NewHandler(srv *server.Server, opts HandlerOptions) (http.Handler, error) {
 
 	router.Use(utilshttp.InjectLogger(opts.Log))
 	router.Use(utilshttp.LogRequest)
-	router.Use(metrics.NewHTTPMetricsMiddlewareHandler("streaming"))
+	router.Use(metrics.NewHTTPMetricsMiddlewareHandler(log, "streaming"))
 	router.Use(utils.RecoveryMiddleware(opts.Log, "middleware"))
 
 	for _, method := range []string{http.MethodHead, http.MethodGet, http.MethodPost} {

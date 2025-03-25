@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/go-logr/logr"
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/shirou/gopsutil/v3/mem"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -27,10 +29,14 @@ type Hugepages struct {
 	availableMemory    *resource.Quantity
 	availableHugePages *resource.Quantity
 	blockedCount       uint64
+	log                logr.Logger
 }
 
 func NewSourceHugepages(options Options) *Hugepages {
-	return &Hugepages{blockedCount: options.BlockedHugepages}
+	return &Hugepages{
+		blockedCount: options.BlockedHugepages,
+		log:          options.Log.WithName(SourceHugepages),
+	}
 }
 
 func (m *Hugepages) GetName() string {
@@ -127,8 +133,23 @@ func (m *Hugepages) GetAvailableResources() core.ResourceList {
 }
 
 func (m *Hugepages) SetResourcesMetric(metric *prometheus.GaugeVec) {
-	metric.WithLabelValues(m.GetName(), string(ResourceHugepages)).Set(float64(m.availableHugePages.Value()))
-	metric.WithLabelValues(m.GetName(), GetMetricsResourceName(string(core.ResourceMemory), ResourceMemoryUnit)).Set(float64(m.availableMemory.Value()))
+	labels := prometheus.Labels{
+		metrics.LabelSource:   m.GetName(),
+		metrics.LabelResource: string(ResourceHugepages),
+	}
+
+	hugepageGauge, err := metrics.GetGaugeWithLabels(metric, labels)
+	if err != nil {
+		m.log.Error(err, "failed to get hugepage metric", metrics.LogKeyLabels, labels)
+	}
+	hugepageGauge.Set(float64(m.availableHugePages.Value()))
+
+	labels[metrics.LabelResource] = GetMetricsResourceName(string(core.ResourceMemory), ResourceMemoryUnit)
+	memoryGauge, err := metrics.GetGaugeWithLabels(metric, labels)
+	if err != nil {
+		m.log.Error(err, "failed to get memory metric", metrics.LogKeyLabels, labels)
+	}
+	memoryGauge.Set(float64(m.availableMemory.Value()))
 }
 
 func calculateAvailableHugepages(totalHugepages, blockedHugepages uint64) (uint64, error) {

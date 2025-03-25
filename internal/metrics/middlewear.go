@@ -9,9 +9,12 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-logr/logr"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
-func NewHTTPMetricsMiddlewareHandler(serverName string) func(http.Handler) http.Handler {
+func NewHTTPMetricsMiddlewareHandler(log logr.Logger, serverName string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
@@ -26,8 +29,24 @@ func NewHTTPMetricsMiddlewareHandler(serverName string) func(http.Handler) http.
 
 			statusCodeStr := strconv.Itoa(rw.Status())
 
-			httpServerRequestDuration.WithLabelValues(serverName, method, path, statusCodeStr).Observe(float64(duration) / 1000)
-			httpServerTotalRequests.WithLabelValues(serverName, method, path, statusCodeStr).Inc()
+			labels := prometheus.Labels{
+				LabelServer: serverName,
+				LabelMethod: method,
+				LabelPath:   path,
+				LabelStatus: statusCodeStr,
+			}
+
+			httpServerRequestDurationGauge, err := GetHistogramWithLabels(httpServerRequestDuration, labels)
+			if err != nil {
+				log.Error(err, "failed to get HTTP server duration metric", LogKeyLabels, labels)
+			}
+			httpServerRequestDurationGauge.Observe(float64(duration) / 1000)
+
+			httpServerTotalRequestsGauge, err := GetCounterWithLabels(httpServerTotalRequests, labels)
+			if err != nil {
+				log.Error(err, "failed to get HTTP server total requests metric", LogKeyLabels, labels)
+			}
+			httpServerTotalRequestsGauge.Inc()
 		})
 	}
 }

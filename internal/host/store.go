@@ -21,6 +21,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
 	utilssync "github.com/ironcore-dev/libvirt-provider/internal/sync"
 	"github.com/ironcore-dev/libvirt-provider/internal/utils"
+	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/sets"
 	kjson "sigs.k8s.io/json"
@@ -111,12 +112,22 @@ func (s *Store[E]) Create(_ context.Context, obj E) (E, error) {
 
 	class, ok := obj.GetLabels()[api.ClassLabel]
 	if ok {
-		metrics.MachineClassesMachineCount.WithLabelValues(class).Inc()
+		machineCountLabels := prometheus.Labels{metrics.LabelMachineclass: class}
+		machineCountGauge, err := metrics.GetGaugeWithLabels(metrics.MachineClassesMachineCount, machineCountLabels)
+		if err != nil {
+			s.log.Error(err, "failed to get machine count metric", metrics.LogKeyLabels, machineCountLabels)
+		}
+		machineCountGauge.Inc()
 	} else {
 		s.log.Error(fmt.Errorf("failed to get machineclass label for machine %s", obj.GetID()), "machineclass metrics cannot be update properly")
 	}
 
-	metrics.MachinesState.WithLabelValues(string(api.MachineStatePending)).Inc()
+	machineStateLabels := prometheus.Labels{metrics.LabelState: string(api.MachineStatePending)}
+	machineStateGauge, err := metrics.GetGaugeWithLabels(metrics.MachinesState, machineStateLabels)
+	if err != nil {
+		s.log.Error(err, "failed to get machine state metric", metrics.LogKeyLabels, machineStateLabels)
+	}
+	machineStateGauge.Inc()
 
 	return obj, nil
 }
@@ -142,11 +153,21 @@ func (s *Store[E]) Update(_ context.Context, obj E) (E, error) {
 			return utils.Zero[E](), fmt.Errorf("failed to delete object metadata: %w", err)
 		}
 
-		metrics.MachinesState.WithLabelValues(obj.GetState()).Dec()
+		machineStateLabels := prometheus.Labels{metrics.LabelState: obj.GetState()}
+		machineStateGauge, err := metrics.GetGaugeWithLabels(metrics.MachinesState, machineStateLabels)
+		if err != nil {
+			s.log.Error(err, "failed to get machine state metric", metrics.LogKeyLabels, machineStateLabels)
+		}
+		machineStateGauge.Dec()
 
 		class, ok := obj.GetLabels()[api.ClassLabel]
 		if ok {
-			metrics.MachineClassesMachineCount.WithLabelValues(class).Dec()
+			machineCountLabels := prometheus.Labels{metrics.LabelMachineclass: class}
+			machineCountGauge, err := metrics.GetGaugeWithLabels(metrics.MachineClassesMachineCount, machineCountLabels)
+			if err != nil {
+				s.log.Error(err, "failed to get machine count metric", metrics.LogKeyLabels, machineCountLabels)
+			}
+			machineCountGauge.Dec()
 		} else {
 			s.log.Error(fmt.Errorf("failed to get machineclass label for machine %s", obj.GetID()), "machineclass metrics cannot be update properly")
 		}
@@ -179,8 +200,19 @@ func (s *Store[E]) Update(_ context.Context, obj E) (E, error) {
 	previousState := oldObj.GetState()
 	state := obj.GetState()
 	if previousState != state {
-		metrics.MachinesState.WithLabelValues(string(state)).Inc()
-		metrics.MachinesState.WithLabelValues(string(previousState)).Dec()
+		machineStateLabels := prometheus.Labels{metrics.LabelState: string(state)}
+		machineStateGauge, err := metrics.GetGaugeWithLabels(metrics.MachinesState, machineStateLabels)
+		if err != nil {
+			s.log.Error(err, "failed to get machine state metric", metrics.LogKeyLabels, machineStateLabels)
+		}
+		machineStateGauge.Inc()
+
+		machinePreviousStateLabels := prometheus.Labels{metrics.LabelState: string(previousState)}
+		machinePreviousStateGauge, err := metrics.GetGaugeWithLabels(metrics.MachinesState, machinePreviousStateLabels)
+		if err != nil {
+			s.log.Error(err, "failed to get machine state metric", metrics.LogKeyLabels, machinePreviousStateLabels)
+		}
+		machinePreviousStateGauge.Dec()
 	}
 
 	s.enqueue(store.WatchEvent[E]{

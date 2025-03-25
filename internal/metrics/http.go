@@ -18,7 +18,7 @@ var (
 			Help:      "Histogram of HTTP request durations in seconds.",
 			Buckets:   prometheus.DefBuckets,
 		},
-		[]string{"server", "method", "path", "status"},
+		[]string{LabelServer, LabelMethod, LabelPath, LabelStatus},
 	)
 
 	httpServerTotalRequests = prometheus.NewCounterVec(
@@ -28,6 +28,6 @@ var (
 			Name:      "requests_total",
 			Help:      "Total number of HTTP requests.",
 		},
-		[]string{"server", "method", "path", "status"},
+		[]string{LabelServer, LabelMethod, LabelPath, LabelStatus},
 	)
 )

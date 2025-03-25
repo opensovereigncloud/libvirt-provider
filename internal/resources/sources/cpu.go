@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/go-logr/logr"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -24,10 +26,14 @@ const (
 type CPU struct {
 	overcommitVCPU float64
 	availableCPU   *resource.Quantity
+	log            logr.Logger
 }
 
 func NewSourceCPU(options Options) *CPU {
-	return &CPU{overcommitVCPU: options.OvercommitVCPU}
+	return &CPU{
+		overcommitVCPU: options.OvercommitVCPU,
+		log:            options.Log.WithName(SourceCPU),
+	}
 }
 
 func (c *CPU) GetName() string {
@@ -92,5 +98,14 @@ func (c *CPU) GetAvailableResources() core.ResourceList {
 }
 
 func (c *CPU) SetResourcesMetric(metric *prometheus.GaugeVec) {
-	metric.WithLabelValues(c.GetName(), GetMetricsResourceName(string(core.ResourceCPU), resourceCPUUnit)).Set(float64(c.availableCPU.Value()))
+	labels := prometheus.Labels{
+		metrics.LabelSource:   c.GetName(),
+		metrics.LabelResource: GetMetricsResourceName(string(core.ResourceCPU), resourceCPUUnit),
+	}
+
+	cpuGauge, err := metrics.GetGaugeWithLabels(metric, labels)
+	if err != nil {
+		c.log.Error(err, "failed to get cpu metric", metrics.LogKeyLabels, labels)
+	}
+	cpuGauge.Set(float64(c.availableCPU.Value()))
 }

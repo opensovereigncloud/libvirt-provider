@@ -334,12 +334,13 @@ func Run(ctx context.Context, opts Options) error {
 		return fmt.Errorf("failed to cleanup machine store")
 	}
 
-	err = initMetrics(ctx, machineStore.List)
+	err = initMetrics(ctx, log, machineStore.List)
 	if err != nil {
 		setupLog.Error(err, "failed to initialize metrics")
 		return err
 	}
 
+	opts.ResourceManagerOptions.Log = log
 	err = initResourceManager(ctx, opts.ResourceManagerOptions, machineStore, opts.PathSupportedMachineClasses)
 	if err != nil {
 		setupLog.Error(err, "failed to initialize resource manager")
@@ -474,7 +475,7 @@ func Run(ctx context.Context, opts Options) error {
 
 	g.Go(func() error {
 		setupLog.Info("Starting health check server")
-		if err := runHealthCheckServer(ctx, setupLog, healthCheck, opts.Servers.HealthCheck); err != nil {
+		if err := runHealthCheckServer(ctx, setupLog, log, healthCheck, opts.Servers.HealthCheck); err != nil {
 			setupLog.Error(err, "failed to start health check server")
 			return err
 		}
@@ -483,7 +484,7 @@ func Run(ctx context.Context, opts Options) error {
 
 	g.Go(func() error {
 		setupLog.Info("Starting pprof server")
-		if err := runPPROFServer(ctx, setupLog, opts.Servers.PPROF); err != nil {
+		if err := runPPROFServer(ctx, setupLog, log, opts.Servers.PPROF); err != nil {
 			setupLog.Error(err, "failed to start pprof server")
 			return err
 		}
@@ -627,7 +628,7 @@ func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServer
 	return nil
 }
 
-func runPPROFServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOptions) error {
+func runPPROFServer(ctx context.Context, setupLog, log logr.Logger, opts HTTPServerOptions) error {
 	if opts.Addr == "" {
 		setupLog.Info("pprof server address isn't configured. pprof server is disabled.")
 		return nil
@@ -636,7 +637,7 @@ func runPPROFServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOp
 	serverLog := ctrl.Log.WithName("pprof")
 
 	router := chi.NewRouter()
-	router.Use(metrics.NewHTTPMetricsMiddlewareHandler("pprof"))
+	router.Use(metrics.NewHTTPMetricsMiddlewareHandler(log, "pprof"))
 	router.Use(utils.RecoveryMiddleware(serverLog, "middleware"))
 
 	router.Get("/debug/pprof/", pprof.Index)
@@ -684,11 +685,11 @@ func runPPROFServer(ctx context.Context, setupLog logr.Logger, opts HTTPServerOp
 	return nil
 }
 
-func runHealthCheckServer(ctx context.Context, setupLog logr.Logger, healthCheck healthcheck.HealthCheck, opts HTTPServerOptions) error {
+func runHealthCheckServer(ctx context.Context, setupLog, log logr.Logger, healthCheck healthcheck.HealthCheck, opts HTTPServerOptions) error {
 	serverLog := ctrl.Log.WithName("healthcheck-server")
 
 	router := chi.NewRouter()
-	router.Use(metrics.NewHTTPMetricsMiddlewareHandler("healthcheck"))
+	router.Use(metrics.NewHTTPMetricsMiddlewareHandler(log, "healthcheck"))
 	router.Use(utils.RecoveryMiddleware(serverLog, "middleware"))
 
 	router.Get("/healthz", healthCheck.HealthCheckHandler)
@@ -779,7 +780,7 @@ func updateMachinePCIStatus(ctx context.Context, machineStore *host.Store[*api.M
 	return nil
 }
 
-func initMetrics(ctx context.Context, listMachines func(context.Context) ([]*api.Machine, error)) error {
+func initMetrics(ctx context.Context, log logr.Logger, listMachines func(context.Context) ([]*api.Machine, error)) error {
 	err := metrics.RegisterAllMetrics()
 	if err != nil {
 		return fmt.Errorf("failed to register all metrics: %w", err)
@@ -790,6 +791,9 @@ func initMetrics(ctx context.Context, listMachines func(context.Context) ([]*api
 		return err
 	}
 
-	metrics.InitializeMachineMetrics(machines)
-	return metrics.InitializeMachineClassesMetrics(machines)
+	err = metrics.InitializeMachineMetrics(machines)
+	if err != nil {
+		return fmt.Errorf("failed to get machinestate metric: %w", err)
+	}
+	return metrics.InitializeMachineClassesMetrics(log, machines)
 }

@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/go-logr/logr"
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/shirou/gopsutil/v3/mem"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -23,10 +25,14 @@ const (
 type Memory struct {
 	availableMemory    *resource.Quantity
 	reservedMemorySize MemorySize
+	log                logr.Logger
 }
 
 func NewSourceMemory(options Options) *Memory {
-	return &Memory{reservedMemorySize: options.ReservedMemorySize}
+	return &Memory{
+		reservedMemorySize: options.ReservedMemorySize,
+		log:                options.Log.WithName(SourceMemory),
+	}
 }
 
 func (m *Memory) GetName() string {
@@ -88,7 +94,16 @@ func (m *Memory) GetAvailableResources() core.ResourceList {
 }
 
 func (m *Memory) SetResourcesMetric(metric *prometheus.GaugeVec) {
-	metric.WithLabelValues(m.GetName(), GetMetricsResourceName(string(core.ResourceMemory), ResourceMemoryUnit)).Set(float64(m.availableMemory.Value()))
+	labels := prometheus.Labels{
+		metrics.LabelSource:   m.GetName(),
+		metrics.LabelResource: GetMetricsResourceName(string(core.ResourceMemory), ResourceMemoryUnit),
+	}
+
+	memoryGauge, err := metrics.GetGaugeWithLabels(metric, labels)
+	if err != nil {
+		m.log.Error(err, "failed to get memory metric", metrics.LogKeyLabels, labels)
+	}
+	memoryGauge.Set(float64(m.availableMemory.Value()))
 }
 
 func (m *Memory) calculateAvailableMemory(totalMemory, reservedMemory MemorySize) (*resource.Quantity, error) {

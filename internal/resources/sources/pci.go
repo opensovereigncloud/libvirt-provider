@@ -19,6 +19,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v3"
@@ -67,7 +68,7 @@ func NewSourcePCI(options Options) *PCI {
 	return &PCI{
 		deviceFilePath: options.PCIDevicesFile,
 		devices:        map[core.ResourceName][]*api.PCIAddress{},
-		log:            options.log.WithName("source-pci"),
+		log:            options.Log.WithName(SourcePCI),
 	}
 }
 
@@ -161,7 +162,16 @@ func (p *PCI) GetAvailableResources() core.ResourceList {
 
 func (p *PCI) SetResourcesMetric(metric *prometheus.GaugeVec) {
 	for resourceName, addrs := range p.devices {
-		metric.WithLabelValues(p.GetName(), string(resourceName)).Set(float64(len(addrs)))
+		labels := prometheus.Labels{
+			metrics.LabelSource:   p.GetName(),
+			metrics.LabelResource: string(resourceName),
+		}
+
+		pciGauge, err := metrics.GetGaugeWithLabels(metric, labels)
+		if err != nil {
+			p.log.Error(err, "failed to get pci metric", metrics.LogKeyLabels, labels)
+		}
+		pciGauge.Set(float64(len(addrs)))
 	}
 }
 

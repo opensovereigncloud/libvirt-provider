@@ -25,7 +25,7 @@ var (
 		Subsystem: subsystemMachine,
 		Name:      "state",
 		Help:      "Current count of manage machines in specific state.",
-	}, []string{"state"})
+	}, []string{LabelState})
 
 	MachinesDestroyed = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: namespace,
@@ -35,11 +35,18 @@ var (
 	})
 )
 
-func InitializeMachineMetrics(machines []*api.Machine) {
+func InitializeMachineMetrics(machines []*api.Machine) error {
 	for _, machine := range machines {
-		MachinesState.WithLabelValues(machine.GetState()).Inc()
+		labels := prometheus.Labels{LabelState: machine.GetState()}
+		machinestateGauge, err := GetGaugeWithLabels(MachinesState, labels)
+		if err != nil {
+			return err
+		}
+		machinestateGauge.Inc()
+
 		if machine.GetDeletedAt() != nil {
 			MachinesDeleteMarked.Inc()
 		}
 	}
+	return nil
 }
