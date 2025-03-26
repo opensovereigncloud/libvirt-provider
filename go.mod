@@ -1,8 +1,6 @@
 module github.com/ironcore-dev/libvirt-provider
 
-go 1.24
-
-toolchain go1.24.1
+go 1.24.0
 
 require (
 	github.com/blang/semver/v4 v4.0.0
@@ -25,6 +23,7 @@ require (
 	github.com/onsi/gomega v1.36.2
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/prometheus/client_golang v1.21.1
+	github.com/prometheus/client_model v0.6.1
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
@@ -100,7 +99,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
