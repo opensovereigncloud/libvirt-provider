@@ -784,18 +784,17 @@ func (r *MachineReconciler) domainFor(
 		cpu.Mode = "host-passthrough"
 	}
 
-	if domainSettings.Type == "qemu" {
-		cpu.Model = &libvirtxml.DomainCPUModel{
-			Value: "max",
-		}
-	}
-
 	var serialTargetType string
 	switch architecture {
 	case ArchitectureAARCH64:
-		serialTargetType = "pci-serial"
-	case ArchitectureX8664:
+		if domainSettings.Type == "qemu" {
+			cpu.Model = &libvirtxml.DomainCPUModel{
+				Value: "max",
+			}
+		}
 		serialTargetType = "system-serial"
+	case ArchitectureX8664:
+		serialTargetType = "pci-serial"
 	}
 
 	domainDesc := &libvirtxml.Domain{

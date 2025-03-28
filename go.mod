@@ -5,14 +5,9 @@ go 1.24.0
 require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/ceph/go-ceph v0.32.0
-<<<<<<< HEAD
-	github.com/containerd/containerd v1.7.26
-	github.com/digitalocean/go-libvirt v0.0.0-20250226181018-4d5f24afb7c2
-	github.com/docker/go-units v0.5.0
-=======
 	github.com/containerd/containerd v1.7.27
 	github.com/digitalocean/go-libvirt v0.0.0-20250317183548-13bf9b43b50b
->>>>>>> bd053c9 (ARM support (#533))
+	github.com/docker/go-units v0.5.0
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-logr/logr v1.4.2
 	github.com/go-playground/validator/v10 v10.23.0
@@ -34,17 +29,7 @@ require (
 	github.com/spf13/pflag v1.0.6
 	golang.org/x/sync v0.12.0
 	google.golang.org/grpc v1.71.0
-<<<<<<< HEAD
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.32.2
-	k8s.io/apimachinery v0.32.2
-	k8s.io/client-go v0.32.2
-	k8s.io/kubectl v0.32.2
-	k8s.io/utils v0.0.0-20241210054802-24370beab758
-	libvirt.org/go/libvirtxml v1.11000.1
-	sigs.k8s.io/controller-runtime v0.20.3
-	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8
-=======
 	k8s.io/api v0.32.3
 	k8s.io/apimachinery v0.32.3
 	k8s.io/client-go v0.32.3
@@ -52,7 +37,7 @@ require (
 	k8s.io/utils v0.0.0-20250321185631-1f6e0b77f77e
 	libvirt.org/go/libvirtxml v1.11001.0
 	sigs.k8s.io/controller-runtime v0.20.4
->>>>>>> bd053c9 (ARM support (#533))
+	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3
 )
 
 require (
