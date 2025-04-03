@@ -119,7 +119,6 @@ func (r *MachineReconciler) reconcileVolumes(ctx context.Context, log logr.Logge
 
 		if detachCalled {
 			volumeLog.V(1).Info("Successfully requested detaching volume")
-			r.queue.AddRateLimited(machine.ID)
 		}
 
 		if deleted {
@@ -185,7 +184,7 @@ func (r *MachineReconciler) detachOrDeleteVolume(ctx context.Context, log logr.L
 		return
 	}
 
-	log.V(1).Info("Successfully detached volume", "volumeName", volumeName)
+	log.V(1).Info("Successfully detached volume")
 	log.V(1).Info("Unmounting volume if mounted")
 	err = mounter.DeleteVolume(ctx, volumeName)
 	if err != nil {

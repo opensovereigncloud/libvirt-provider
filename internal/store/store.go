@@ -48,6 +48,7 @@ type Store[E api.Object] interface {
 	Update(ctx context.Context, obj E) (E, error)
 	Delete(ctx context.Context, id string) error
 	List(ctx context.Context) ([]E, error)
+	Exists(id string) error
 
 	Watch(ctx context.Context) (Watch[E], error)
 }

@@ -13,24 +13,6 @@ const (
 )
 
 var (
-	// eventIDToLibvirtDomainLifecycleEvent maps domain lifecycle event IDs to their corresponding human-readable event types.
-	// These IDs represent the various states that a domain can go through during its lifecycle.
-	// Ref: https://libvirt.org/html/libvirt-libvirt-domain.html#virDomainEventType
-	eventIDToLibvirtDomainLifecycleEvent = map[int32]string{
-		0: "defined",
-		1: "undefined",
-		2: "started",
-		3: "suspended",
-		4: "resumed",
-		5: "stopped",
-		6: "shutdown",
-		7: "pmsuspended",
-		8: "crashed",
-		9: "last",
-	}
-)
-
-var (
 	IRIEventsOverriddenTotal = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: namespace,
@@ -59,12 +41,3 @@ var (
 		[]string{LabelEventID, LabelEventType},
 	)
 )
-
-func GetLibvirtDomainLifecycleEvent(id int32) string {
-	eventType, exists := eventIDToLibvirtDomainLifecycleEvent[id]
-	if !exists {
-		eventType = "unknown"
-	}
-
-	return eventType
-}

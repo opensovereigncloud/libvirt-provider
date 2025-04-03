@@ -55,6 +55,7 @@ import (
 	"github.com/spf13/pflag"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
@@ -371,8 +372,17 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
+	controllerLogger := log.WithName(controllers.MachineReconcilerName)
+
+	queue := workqueue.NewTypedRateLimitingQueueWithConfig[string](workqueue.DefaultTypedControllerRateLimiter[string](),
+		workqueue.TypedRateLimitingQueueConfig[string]{
+			Name:            controllers.MachineReconcilerName,
+			MetricsProvider: metrics.NewWorkqueueMetricsProvider(controllerLogger.WithName(controllers.MachineReconcilerMetrics)),
+		},
+	)
+
 	machineReconciler, err := controllers.NewMachineReconciler(
-		log.WithName(controllers.MachineReconcilerName),
+		controllerLogger,
 		libvirt,
 		machineStore,
 		machineEvents,
@@ -389,6 +399,7 @@ func Run(ctx context.Context, opts Options) error {
 			GCVMGracefulShutdownTimeout:    opts.GCVMGracefulShutdownTimeout,
 			VolumeCachePolicyCeph:          opts.VolumeCachePolicyCeph,
 			OverrideDomainXML:              overrideDomainXML,
+			Queue:                          queue,
 		},
 	)
 	if err != nil {
@@ -487,6 +498,14 @@ func Run(ctx context.Context, opts Options) error {
 		if err := runPPROFServer(ctx, setupLog, log, opts.Servers.PPROF); err != nil {
 			setupLog.Error(err, "failed to start pprof server")
 			return err
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		setupLog.Info("Starting handling libvirt events")
+		if err := libvirtutils.HandleEvents(ctx, log.WithName("libvirt-event"), libvirt, machineStore, queue); err != nil {
+			setupLog.Error(err, "failed to run libvirt events handling")
 		}
 		return nil
 	})

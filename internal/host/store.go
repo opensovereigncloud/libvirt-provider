@@ -297,6 +297,24 @@ func (s *Store[E]) Watch(_ context.Context) (store.Watch[E], error) {
 	return w, nil
 }
 
+func (s *Store[E]) Exists(id string) error {
+	filePath := filepath.Join(s.dir, id)
+
+	s.idMu.Lock(id)
+	defer s.idMu.Unlock(id)
+
+	_, err := os.Stat(filePath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to read file: %w", err)
+		}
+
+		return fmt.Errorf("object with id %q %w", id, store.ErrNotFound)
+	}
+
+	return nil
+}
+
 func (s *Store[E]) CleanupSwapFiles() []error {
 	entries, err := os.ReadDir(s.dir)
 	if err != nil {

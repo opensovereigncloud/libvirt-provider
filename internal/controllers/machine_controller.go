@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/digitalocean/go-libvirt"
@@ -58,7 +59,6 @@ const (
 	MachineReconcilerName                = "machine-reconciler"
 	MachineReconcilerOpsVolumeSize       = "volume-size"
 	MachineReconcilerOpsGarbageCollector = "garbage-collector"
-	MachineReconcilerOpsLibvirtEvent     = "libvirt-event"
 	MachineReconcilerMetrics             = "metrics"
 
 	ArchitectureAARCH64 = "aarch64"
@@ -94,6 +94,7 @@ type MachineReconcilerOptions struct {
 	GCVMGracefulShutdownTimeout    time.Duration
 	VolumeCachePolicyCeph          string
 	OverrideDomainXML              *libvirtxml.Domain
+	Queue                          workqueue.TypedRateLimitingInterface[string]
 }
 
 func NewMachineReconciler(
@@ -133,9 +134,8 @@ func NewMachineReconciler(
 	}
 
 	return &MachineReconciler{
-		log: log,
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig[string](workqueue.DefaultTypedControllerRateLimiter[string](),
-			workqueue.TypedRateLimitingQueueConfig[string]{Name: MachineReconcilerName, MetricsProvider: metrics.NewWorkqueueMetricsProvider(log.WithName(MachineReconcilerMetrics))}),
+		log:                                     log,
+		queue:                                   opts.Queue,
 		libvirt:                                 libvirt,
 		machines:                                machines,
 		machineEvents:                           machineEvents,
@@ -194,7 +194,7 @@ func (r *MachineReconciler) Start(ctx context.Context) error {
 	log := r.log
 
 	//todo make configurable
-	workerSize := 15
+	workerSize := int64(15)
 
 	labels := prometheus.Labels{metrics.LabelController: MachineReconcilerName}
 	maxConcurrentReconcilesGauge, err := metrics.GetGaugeWithLabels(metrics.ControllerRuntimeMaxConcurrentReconciles, labels)
@@ -240,10 +240,6 @@ func (r *MachineReconciler) Start(ctx context.Context) error {
 	})
 
 	g.Go(func() error {
-		return r.startEnqueueMachineByLibvirtEvent(ctx)
-	})
-
-	g.Go(func() error {
 		return r.startGarbageCollector(ctx)
 	})
 
@@ -254,8 +250,9 @@ func (r *MachineReconciler) Start(ctx context.Context) error {
 		return nil
 	})
 
-	for i := 0; i < workerSize; i++ {
+	for i := int64(0); i < workerSize; i++ {
 		g.Go(func() error {
+			log.V(1).Info("starting worker: " + strconv.FormatInt(i, 10))
 			for r.processNextWorkItem(ctx, log) {
 			}
 			return nil
@@ -343,64 +340,6 @@ func (r *MachineReconciler) startCheckAndEnqueueVolumeResize(ctx context.Context
 	}, r.resyncIntervalVolumeSize)
 
 	return nil
-}
-
-func (r *MachineReconciler) startEnqueueMachineByLibvirtEvent(ctx context.Context) error {
-	log := r.log.WithName(MachineReconcilerOpsLibvirtEvent)
-
-	labels := prometheus.Labels{metrics.LabelOperation: MachineReconcilerOpsLibvirtEvent}
-	opsErrors, err := metrics.GetCounterWithLabels(metrics.OperationErrors, labels)
-	if err != nil {
-		return fmt.Errorf("failed to get operation errors metric from startEnqueueMachineByLibvirtEvent: %w", err)
-	}
-
-	lifecycleEvents, err := r.libvirt.LifecycleEvents(ctx)
-	if err != nil {
-		opsErrors.Inc()
-		log.Error(err, "failed to subscribe to libvirt lifecycle events")
-		return nil
-	}
-
-	log.Info("Subscribing to libvirt lifecycle events")
-
-	for {
-		defer utils.Recover(log, "startEnqueueMachineByLibvirtEvent")
-
-		select {
-		case evt, ok := <-lifecycleEvents:
-			if !ok {
-				log.Error(fmt.Errorf("libvirt lifecycle event channel closed"), "failed to process event")
-				return nil
-			}
-
-			machine, err := r.machines.Get(ctx, evt.Dom.Name)
-			if err != nil {
-				if errors.Is(err, store.ErrNotFound) {
-					log.V(2).Info("Skipped: not managed by libvirt-provider", "machineID", evt.Dom.Name)
-					continue
-				}
-				opsErrors.Inc()
-				log.Error(err, "failed to fetch machine from store")
-				continue
-			}
-
-			labels := prometheus.Labels{
-				metrics.LabelEventID:   "lifecycle",
-				metrics.LabelEventType: metrics.GetLibvirtDomainLifecycleEvent(evt.Event),
-			}
-			libvirtEventsTotalgauge, err := metrics.GetCounterWithLabels(metrics.LibvirtEventsCount, labels)
-			if err != nil {
-				r.log.Error(err, "failed to get libvirt events total metric", metrics.LogKeyLabels, labels)
-			}
-			libvirtEventsTotalgauge.Inc()
-
-			log.V(1).Info("requeue machine", "machineID", machine.ID, "lifecycleEventID", evt.Event)
-			r.queue.AddRateLimited(machine.ID)
-		case <-ctx.Done():
-			log.Info("Context done for libvirt event lifecycle.")
-			return nil
-		}
-	}
 }
 
 func (r *MachineReconciler) startGarbageCollector(ctx context.Context) error {
