@@ -677,8 +677,18 @@ func (r *MachineReconciler) applyVolume(
 		}
 		return nil
 	})
+
+	lastVolumeSize := getLastVolumeSize(machine, volumeID)
+
+	var volumeSize int64
+	if providerVolume != nil {
+		volumeSize = providerVolume.Size
+	} else {
+		volumeSize = lastVolumeSize
+	}
+
 	if err != nil {
-		return "", 0, fmt.Errorf("error applying volume mount: %w", err)
+		return "", volumeSize, fmt.Errorf("error applying volume mount: %w", err)
 	}
 
 	log.V(1).Info("Ensuring volume is attached")
@@ -687,22 +697,22 @@ func (r *MachineReconciler) applyVolume(
 		Device: desiredVolume.Device,
 		Spec:   *providerVolume,
 	}); err != nil && !errors.Is(err, ErrAttachedVolumeAlreadyExists) {
-		return "", 0, fmt.Errorf("error ensuring volume is attached: %w", err)
+		return "", volumeSize, fmt.Errorf("error ensuring volume is attached: %w", err)
 	}
 
 	//TODO do epsilon comparison
-	if lastVolumeSize := getLastVolumeSize(machine, volumeID); lastVolumeSize != 0 && providerVolume.Size != lastVolumeSize {
-		log.V(1).Info("Resize volume", "volumeID", volumeID, "lastSize", lastVolumeSize, "volumeSize", providerVolume.Size)
+	if lastVolumeSize != 0 && volumeSize != lastVolumeSize {
+		log.V(1).Info("Resize volume", "volumeID", volumeID, "lastSize", lastVolumeSize, "volumeSize", volumeSize)
 		if err := attacher.ResizeVolume(&AttachVolume{
 			Name:   desiredVolume.Name,
 			Device: desiredVolume.Device,
 			Spec:   *providerVolume,
 		}); err != nil {
-			return "", 0, fmt.Errorf("failed to resize volume: %w", err)
+			return "", volumeSize, fmt.Errorf("failed to resize volume: %w", err)
 		}
 	}
 
-	return volumeID, providerVolume.Size, nil
+	return volumeID, volumeSize, nil
 }
 
 func (r *MachineReconciler) listDesiredVolumes(machine *api.Machine) map[string]*api.VolumeSpec {

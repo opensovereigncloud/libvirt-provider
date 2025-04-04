@@ -68,12 +68,12 @@ func (r *MachineReconciler) setDomainNetworkInterfaces(
 
 		providerNic, err := r.networkInterfacePlugin.Apply(ctx, nic, machine)
 		if err != nil {
-			return nil, fmt.Errorf("[network interface %s] %w", nic.Name, err)
+			return states, fmt.Errorf("[network interface %s] %w", nic.Name, err)
 		}
 
 		libvirtNic, err := providerNetworkInterfaceToLibvirt(nic.Name, providerNic)
 		if err != nil {
-			return nil, fmt.Errorf("[network interface %s] %w", nic.Name, err)
+			return states, fmt.Errorf("[network interface %s] %w", nic.Name, err)
 		}
 
 		switch {
@@ -82,7 +82,7 @@ func (r *MachineReconciler) setDomainNetworkInterfaces(
 		case libvirtNic.iface != nil:
 			addDomainInterface(domainDesc, *libvirtNic.iface)
 		default:
-			return nil, fmt.Errorf("[network interface %s] unsupported by libvirt", nic.Name)
+			return states, fmt.Errorf("[network interface %s] unsupported by libvirt", nic.Name)
 		}
 
 		states = append(states, api.NetworkInterfaceStatus{
@@ -98,7 +98,7 @@ func (r *MachineReconciler) setDomainNetworkInterfaces(
 		}
 
 		if err := r.networkInterfacePlugin.Delete(ctx, machineNic.NetworkInterfaceName, machine.ID); err != nil {
-			return nil, fmt.Errorf("[network interface %s] %w", machineNic.NetworkInterfaceName, err)
+			return states, fmt.Errorf("[network interface %s] %w", machineNic.NetworkInterfaceName, err)
 		}
 	}
 	return states, nil
@@ -120,7 +120,7 @@ func addDomainInterface(domainDesc *libvirtxml.Domain, iface libvirtxml.DomainIn
 	domainDesc.Devices.Interfaces = append(domainDesc.Devices.Interfaces, iface)
 }
 
-func (r *MachineReconciler) attachDetachNetworkInterfaces(
+func (r *MachineReconciler) reconcileNetworkInterfaces(
 	ctx context.Context,
 	log logr.Logger,
 	machine *api.Machine,
@@ -189,7 +189,7 @@ func (r *MachineReconciler) attachDetachNetworkInterfaces(
 	}
 
 	if len(errs) > 0 {
-		return nil, fmt.Errorf("attach / detach error(s): %v", errs)
+		return nicStates, fmt.Errorf("attach / detach error(s): %v", errs)
 	}
 	return nicStates, nil
 }

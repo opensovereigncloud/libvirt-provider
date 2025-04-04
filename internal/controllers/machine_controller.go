@@ -599,7 +599,13 @@ func (r *MachineReconciler) reconcileDomain(
 		log.V(1).Info("Creating new domain")
 		volumeStates, nicStates, err := r.createDomain(ctx, log, machine)
 		if err != nil {
-			return "", volumeStates, nil, err
+			for i := range volumeStates {
+				volumeStates[i].State = api.VolumeStatePending
+			}
+			for i := range nicStates {
+				nicStates[i].State = api.NetworkInterfaceStatePending
+			}
+			return api.MachineStatePending, volumeStates, nicStates, err
 		}
 
 		log.V(1).Info("Created domain")
@@ -607,17 +613,19 @@ func (r *MachineReconciler) reconcileDomain(
 	}
 
 	log.V(1).Info("Updating existing domain")
-	volumeStates, nicStates, err := r.updateDomain(ctx, log, machine)
-	if err != nil {
-		return "", volumeStates, nil, err
+	volumeStates, nicStates, updateDomainErr := r.updateDomain(ctx, log, machine)
+
+	// Always attempt to get the machine state, even if updateDomain fails.
+	state, stateErr := r.getMachineState(machine.ID)
+	if stateErr != nil {
+		errMsg := fmt.Errorf("error getting machine state: %w", stateErr)
+		if updateDomainErr != nil {
+			errMsg = fmt.Errorf("updateDomain failed: %w; also %w", updateDomainErr, stateErr)
+		}
+		return "", volumeStates, nicStates, errMsg
 	}
 
-	state, err := r.getMachineState(machine.ID)
-	if err != nil {
-		return "", volumeStates, nil, fmt.Errorf("error getting machine state: %w", err)
-	}
-
-	return state, volumeStates, nicStates, nil
+	return state, volumeStates, nicStates, updateDomainErr
 }
 
 func (r *MachineReconciler) updateDomain(
@@ -641,10 +649,10 @@ func (r *MachineReconciler) updateDomain(
 		return volumeStates, nil, fmt.Errorf("[volumes] %w", err)
 	}
 
-	nicStates, err := r.attachDetachNetworkInterfaces(ctx, log, machine, domainDesc)
+	nicStates, err := r.reconcileNetworkInterfaces(ctx, log, machine, domainDesc)
 	if err != nil {
-		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttchDetachNIC", "NIC attach/detach failed with error: %s", err)
-		return nil, nil, fmt.Errorf("[network interfaces] %w", err)
+		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "reconcileNetworkInterfaces", "NIC reconciliation failed with error: %s", err)
+		return volumeStates, nicStates, fmt.Errorf("[network interfaces] %w", err)
 	}
 
 	return volumeStates, nicStates, nil
@@ -666,7 +674,7 @@ func (r *MachineReconciler) createDomain(
 	ctx context.Context,
 	log logr.Logger,
 	machine *api.Machine,
-) ([]api.VolumeStatus, []api.NetworkInterfaceStatus, error) { // TODO add NetworkInterfaceStatus
+) ([]api.VolumeStatus, []api.NetworkInterfaceStatus, error) {
 	generatedDomainXML, volumeStates, nicStates, err := r.domainFor(ctx, log, machine)
 	if err != nil {
 		return nil, nil, err
@@ -681,7 +689,7 @@ func (r *MachineReconciler) createDomain(
 	log.V(1).Info("Creating domain")
 	log.V(2).Info("Domain", "XML", domainXMLData)
 	if _, err := r.libvirt.DomainCreateXML(domainXMLData, libvirt.DomainNone); err != nil {
-		return nil, nil, err
+		return volumeStates, nicStates, err
 	}
 
 	return volumeStates, nicStates, nil
@@ -871,7 +879,7 @@ func (r *MachineReconciler) domainFor(
 
 	nicStates, err := r.setDomainNetworkInterfaces(ctx, machine, domainDesc)
 	if err != nil {
-		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttchDetachNIC", "Setting domain network interface failed with error: %s", err)
+		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "setDomainNetworkInterfaces", "Setting domain network interface failed with error: %s", err)
 		return nil, nil, nil, err
 	}
 	if machine.Spec.NetworkInterfaces != nil {
