@@ -3,6 +3,7 @@ stages:
   - lint
   - test
   - build
+  - e2e
   - post-processing
 
 variables:
@@ -155,8 +156,7 @@ unit-tests:
     - make test
 
 e2e-tests:
-  extends: .skip-on-schedule
-  stage: test
+  stage: e2e
   tags:
     - infra-development
     - libvirt
@@ -166,6 +166,15 @@ e2e-tests:
       # Script failure doesn't work properly with libvirt executors
       - runner_system_failure
       - job_execution_timeout
+  rules:
+    - if: '$CI_PIPELINE_SOURCE != "schedule"'
+      changes:
+        compare_to: 'osc/main'
+        paths:
+          - '**/*.go'
+          - 'go.mod'
+          - 'go.sum'
+          - '**/hack/osc-pipeline-setup-e2e-env.sh'
   script:
     - bash ./hack/osc-pipeline-setup-e2e-env.sh
     - |
