@@ -38,7 +38,6 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/networkinterfaceplugin"
 	"github.com/ironcore-dev/libvirt-provider/internal/oci"
-	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	volumeplugin "github.com/ironcore-dev/libvirt-provider/internal/plugins/volume"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/volume/ceph"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/volume/emptydisk"
@@ -64,14 +63,19 @@ var (
 	homeDir string
 )
 
+const (
+	HTTPServerReadTimeout     = 200 * time.Millisecond
+	HTTPServerWriteTimeout    = 200 * time.Millisecond
+	HTTPServerIdleTimeout     = 1 * time.Second
+	HTTPServerGracefulTimeout = 2 * time.Second
+)
+
 func init() {
 	homeDir, _ = os.UserHomeDir()
 }
 
 type Options struct {
-	Address          string
-	StreamingAddress string
-	BaseURL          string
+	BaseURL string
 
 	Servers ServersOptions
 
@@ -97,13 +101,23 @@ type Options struct {
 
 type HTTPServerOptions struct {
 	Addr            string
+	ReadTimeout     time.Duration
+	WriteTimeout    time.Duration
+	IdleTimeout     time.Duration
 	GracefulTimeout time.Duration
+}
+
+type GRPCServerOptions struct {
+	Addr              string
+	ConnectionTimeout time.Duration
 }
 
 type ServersOptions struct {
 	Metrics     HTTPServerOptions
 	HealthCheck HTTPServerOptions
 	PPROF       HTTPServerOptions
+	Streaming   HTTPServerOptions
+	GRPC        GRPCServerOptions
 }
 
 type LibvirtOptions struct {
@@ -120,24 +134,41 @@ type LibvirtOptions struct {
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&o.Address, "address", "/var/run/iri-machinebroker.sock", "Address to listen on.")
+	// ServerOptions
+	fs.StringVar(&o.Servers.GRPC.Addr, "servers-grpc-address", "/var/run/iri-machinebroker.sock", "Address to listen on.")
+	fs.DurationVar(&o.Servers.GRPC.ConnectionTimeout, "servers-grpc-connectiontimeout", 3*time.Second, "Connection timeout for GRPC server.")
+
+	fs.StringVar(&o.Servers.Streaming.Addr, "servers-streaming-address", "127.0.0.1:20251", "Address at which the stream server will listen")
+	fs.DurationVar(&o.Servers.Streaming.ReadTimeout, "servers-streaming-readtimeout", HTTPServerReadTimeout, "Read timeout for streaming server.")
+	fs.DurationVar(&o.Servers.Streaming.WriteTimeout, "servers-streaming-writetimeout", HTTPServerWriteTimeout, "Write timeout for streaming server.")
+	fs.DurationVar(&o.Servers.Streaming.IdleTimeout, "servers-streaming-idletimeout", HTTPServerIdleTimeout, "Idle timeout for connections to streaming server.")
+	fs.DurationVar(&o.Servers.Streaming.GracefulTimeout, "servers-streaming-gracefultimeout", HTTPServerGracefulTimeout, "Graceful timeout to shutdown streaming server. Ideally set it little longer than idletimeout.")
+
+	fs.StringVar(&o.Servers.Metrics.Addr, "servers-metrics-address", "", "Address to listen on exposing of metrics. If address isn't set, server is disabled.")
+	fs.DurationVar(&o.Servers.Metrics.ReadTimeout, "servers-metrics-readtimeout", HTTPServerReadTimeout, "Read timeout for metrics server.")
+	fs.DurationVar(&o.Servers.Metrics.WriteTimeout, "servers-metrics-writetimeout", HTTPServerWriteTimeout, "Write timeout for metrics server.")
+	fs.DurationVar(&o.Servers.Metrics.IdleTimeout, "servers-metrics-idletimeout", HTTPServerIdleTimeout, "Idle timeout for connections to metrics server.")
+	fs.DurationVar(&o.Servers.Metrics.GracefulTimeout, "servers-metrics-gracefultimeout", HTTPServerGracefulTimeout, "Graceful timeout for shutdown metrics server.")
+
+	fs.StringVar(&o.Servers.HealthCheck.Addr, "servers-health-check-address", ":8181", "Address to listen on health check liveness.")
+	fs.DurationVar(&o.Servers.HealthCheck.ReadTimeout, "servers-health-check-readtimeout", HTTPServerReadTimeout, "Read timeout for health check server.")
+	fs.DurationVar(&o.Servers.HealthCheck.WriteTimeout, "servers-health-check-writetimeout", HTTPServerWriteTimeout, "Write timeout for health check server.")
+	fs.DurationVar(&o.Servers.HealthCheck.IdleTimeout, "servers-health-check-idletimeout", HTTPServerIdleTimeout, "Idle timeout for connections to health check server.")
+	fs.DurationVar(&o.Servers.HealthCheck.GracefulTimeout, "servers-health-check-gracefultimeout", HTTPServerGracefulTimeout, "Graceful timeout for shutdown health check server.")
+
+	fs.StringVar(&o.Servers.PPROF.Addr, "servers-pprof-address", "", "Address to listen on exposing of pprof. If address isn't set, server is disabled.")
+	fs.DurationVar(&o.Servers.Metrics.ReadTimeout, "servers-pprof-readtimeout", HTTPServerReadTimeout, "Read timeout for pprof server.")
+	fs.DurationVar(&o.Servers.Metrics.WriteTimeout, "servers-pprof-writetimeout", HTTPServerWriteTimeout, "Write timeout for pprof server.")
+	fs.DurationVar(&o.Servers.Metrics.IdleTimeout, "servers-pprof-idletimeout", HTTPServerIdleTimeout, "Idle timeout for connections to pprof server.")
+	fs.DurationVar(&o.Servers.PPROF.GracefulTimeout, "servers-pprof-gracefultimeout", HTTPServerGracefulTimeout, "Graceful timeout for shutdown pprof server.")
+
 	fs.StringVar(&o.RootDir, "libvirt-provider-dir", filepath.Join(homeDir, ".libvirt-provider"), "Path to the directory libvirt-provider manages its content at.")
 
 	fs.StringVar(&o.PathSupportedMachineClasses, "supported-machine-classes", o.PathSupportedMachineClasses, "File containing supported machine classes.")
 	fs.DurationVar(&o.ResyncIntervalVolumeSize, "volume-size-resync-interval", 1*time.Minute, "Interval to determine volume size changes.")
 
-	fs.StringVar(&o.StreamingAddress, "streaming-address", ":20251", "Address to run the streaming server on")
 	fs.StringVar(&o.BaseURL, "base-url", "", "The base url to construct urls for streaming from. If empty it will be "+
 		"constructed from the streaming-address")
-
-	fs.StringVar(&o.Servers.Metrics.Addr, "servers-metrics-address", "", "Address to listen on exposing of metrics. If address isn't set, server is disabled.")
-	fs.DurationVar(&o.Servers.Metrics.GracefulTimeout, "servers-metrics-gracefultimeout", 2*time.Second, "Graceful timeout for shutdown metrics server.")
-
-	fs.StringVar(&o.Servers.HealthCheck.Addr, "servers-health-check-address", ":8181", "Address to listen on health check liveness.")
-	fs.DurationVar(&o.Servers.HealthCheck.GracefulTimeout, "servers-health-check-gracefultimeout", 2*time.Second, "Graceful timeout for shutdown health check server.")
-
-	fs.StringVar(&o.Servers.PPROF.Addr, "servers-pprof-address", "", "Address to listen on exposing of pprof. If address isn't set, server is disabled.")
-	fs.DurationVar(&o.Servers.PPROF.GracefulTimeout, "servers-pprof-gracefultimeout", 2*time.Second, "Graceful timeout for shutdown pprof server.")
 
 	fs.Var(&o.GuestAgent, "guest-agent-type", fmt.Sprintf("Guest agent implementation to use. Available: %v", guestAgentOptionAvailable()))
 
@@ -243,7 +274,7 @@ func Run(ctx context.Context, opts Options) error {
 	if baseURL == "" {
 		u := &url.URL{
 			Scheme: "http",
-			Host:   opts.StreamingAddress,
+			Host:   opts.Servers.Streaming.Addr,
 		}
 		baseURL = u.String()
 	}
@@ -468,7 +499,7 @@ func Run(ctx context.Context, opts Options) error {
 
 	g.Go(func() error {
 		setupLog.Info("Starting grpc server")
-		if err := runGRPCServer(ctx, setupLog, log, srv, opts); err != nil {
+		if err := runGRPCServer(ctx, setupLog, log, srv, opts.Servers.GRPC); err != nil {
 			setupLog.Error(err, "failed to start grpc server")
 			return err
 		}
@@ -477,7 +508,7 @@ func Run(ctx context.Context, opts Options) error {
 
 	g.Go(func() error {
 		setupLog.Info("Starting streaming server")
-		if err := runStreamingServer(ctx, setupLog, log, srv, opts); err != nil {
+		if err := runStreamingServer(ctx, setupLog, log, srv, opts.Servers.Streaming); err != nil {
 			setupLog.Error(err, "failed to start streaming server")
 			return err
 		}
@@ -513,9 +544,9 @@ func Run(ctx context.Context, opts Options) error {
 	return g.Wait()
 }
 
-func runGRPCServer(ctx context.Context, setupLog, log logr.Logger, srv *server.Server, opts Options) error {
+func runGRPCServer(ctx context.Context, setupLog, log logr.Logger, srv *server.Server, opts GRPCServerOptions) error {
 	setupLog.V(1).Info("Cleaning up any previous socket")
-	if err := common.CleanupSocketIfExists(opts.Address); err != nil {
+	if err := common.CleanupSocketIfExists(opts.Addr); err != nil {
 		return fmt.Errorf("error cleaning up socket: %w", err)
 	}
 
@@ -541,31 +572,38 @@ func runGRPCServer(ctx context.Context, setupLog, log logr.Logger, srv *server.S
 			grpcMetrics.UnaryServerInterceptor(),
 			utils.RecoveryInterceptor(iriLog, "interceptor"),
 		),
+		grpc.ConnectionTimeout(opts.ConnectionTimeout),
 	)
 
 	iri.RegisterMachineRuntimeServer(grpcSrv, srv)
 
-	setupLog.V(1).Info("Start listening on unix socket", "Address", opts.Address)
-	l, err := net.Listen("unix", opts.Address)
+	setupLog.V(1).Info("Start listening on unix socket", "Address", opts.Addr)
+	l, err := net.Listen("unix", opts.Addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen: %w", err)
 	}
 
-	setupLog.Info("Starting grpc server", "Address", l.Addr().String())
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		defer utils.Recover(iriLog, "shutdown")
 		<-ctx.Done()
 		setupLog.Info("Shutting down grpc server")
 		grpcSrv.GracefulStop()
 		setupLog.Info("GRPC server is shutdown")
 	}()
+	setupLog.Info("Starting grpc server", "Address", l.Addr().String())
 	if err := grpcSrv.Serve(l); err != nil {
 		return fmt.Errorf("error serving grpc: %w", err)
 	}
+	setupLog.Info("GRPC server stopped serving requests")
+
+	wg.Wait()
 	return nil
 }
 
-func runStreamingServer(ctx context.Context, setupLog, log logr.Logger, srv *server.Server, opts Options) error {
+func runStreamingServer(ctx context.Context, setupLog, log logr.Logger, srv *server.Server, opts HTTPServerOptions) error {
 	serverLog := log.WithName("streaming-server")
 
 	httpHandler, err := console.NewHandler(srv, console.HandlerOptions{
@@ -577,22 +615,38 @@ func runStreamingServer(ctx context.Context, setupLog, log logr.Logger, srv *ser
 	}
 
 	httpSrv := &http.Server{
-		Addr:    opts.StreamingAddress,
-		Handler: httpHandler,
+		Addr:         opts.Addr,
+		Handler:      httpHandler,
+		ReadTimeout:  opts.ReadTimeout,
+		WriteTimeout: opts.WriteTimeout,
+		IdleTimeout:  opts.IdleTimeout,
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		defer utils.Recover(serverLog, "shutdown")
 		<-ctx.Done()
 		setupLog.Info("Shutting down streaming server")
-		osutils.CloseWithErrorLogging(httpSrv, "error closing http streaming server", &log)
-		setupLog.Info("Streaming server is shutdown")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), opts.GracefulTimeout)
+		defer cancel()
+
+		locErr := httpSrv.Shutdown(shutdownCtx)
+		if locErr != nil {
+			setupLog.Error(locErr, "streaming server wasn't shutdown properly")
+		} else {
+			setupLog.Info("Streaming server is shutdown")
+		}
 	}()
 
-	setupLog.V(1).Info("Starting streaming server", "Address", opts.StreamingAddress)
+	setupLog.V(1).Info("Starting streaming server", "Address", opts.Addr)
 	if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("error listening / serving streaming server: %w", err)
 	}
+	setupLog.Info("Streaming server stopped serving requests")
+
+	wg.Wait()
 	return nil
 }
 
@@ -611,15 +665,18 @@ func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServer
 	router.Handle("/metrics", promhttp.Handler())
 
 	srv := http.Server{
-		Addr:    opts.Addr,
-		Handler: router,
+		Addr:         opts.Addr,
+		Handler:      router,
+		ReadTimeout:  opts.ReadTimeout,
+		WriteTimeout: opts.WriteTimeout,
+		IdleTimeout:  opts.IdleTimeout,
 	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		defer utils.Recover(serverLog, "shutdown")
 		defer wg.Done()
+		defer utils.Recover(serverLog, "shutdown")
 
 		<-ctx.Done()
 		setupLog.Info("Shutting down metrics server")
@@ -666,8 +723,11 @@ func runPPROFServer(ctx context.Context, setupLog, log logr.Logger, opts HTTPSer
 	router.Get("/debug/pprof/trace", pprof.Trace)
 
 	srv := http.Server{
-		Addr:    opts.Addr,
-		Handler: router,
+		Addr:         opts.Addr,
+		Handler:      router,
+		ReadTimeout:  opts.ReadTimeout,
+		WriteTimeout: opts.WriteTimeout,
+		IdleTimeout:  opts.IdleTimeout,
 	}
 
 	setupLog.Info("Starting pprof server on " + opts.Addr)
@@ -675,8 +735,8 @@ func runPPROFServer(ctx context.Context, setupLog, log logr.Logger, opts HTTPSer
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		defer utils.Recover(serverLog, "shutdown")
 		defer wg.Done()
+		defer utils.Recover(serverLog, "shutdown")
 
 		<-ctx.Done()
 		setupLog.Info("Shutting down pprof server")
@@ -713,15 +773,18 @@ func runHealthCheckServer(ctx context.Context, setupLog, log logr.Logger, health
 
 	router.Get("/healthz", healthCheck.HealthCheckHandler)
 	srv := http.Server{
-		Addr:    opts.Addr,
-		Handler: router,
+		Addr:         opts.Addr,
+		Handler:      router,
+		ReadTimeout:  opts.ReadTimeout,
+		WriteTimeout: opts.WriteTimeout,
+		IdleTimeout:  opts.IdleTimeout,
 	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		defer utils.Recover(serverLog, "shutdown")
 		defer wg.Done()
+		defer utils.Recover(serverLog, "shutdown")
 
 		<-ctx.Done()
 		setupLog.Info("Shutting down health check server")

@@ -48,7 +48,7 @@ For a complete list of available make targets, refer to the [Makefile](../../Mak
 
 | Flag | Description | Default value |
 | --- | --- | --- |
-| `--address` | The address where the provider will listen for connections. | `/var/run/iri-machinebroker.sock` |
+| `--servers-grpc-address` | The address where the provider will listen for connections. | `/var/run/iri-machinebroker.sock` |
 | `--base-url` | The base URL for constructing URLs for streaming (e.g., `http://<address>`). | `""` |
 | `--libvirt-provider-dir` | Path to the directory where the provider manages its content. | `~/.libvirt-provider` |
 | `--supported-machine-classes` | Path to the file containing supported machine classes. | `""` |
@@ -66,13 +66,27 @@ For a complete list of available make targets, refer to the [Makefile](../../Mak
 
 | Flag | Description | Default value |
 | --- | --- | --- |
-| `--servers-metrics-address` | Address to expose metrics for monitoring. | `""` (disabled) |
+| `--servers-grpc-connectiontimeout` | Connection timeout for GRPC server. | `3s` |
 | `--servers-health-check-address` | Address for the health check endpoint. | `:8181` |
-| `--servers-pprof-address` | Address to expose metrics for pprof. | `""` (disabled) |
-| `--servers-metrics-gracefultimeout` | Graceful shutdown timeout for metrics server. | `2s` |
+| `--servers-health-check-readtimeout` | Read timeout for health check server. | `200ms` |
+| `--servers-health-check-writetimeout` | Write timeout for health check server. | `200ms` |
+| `--servers-health-check-idletimeout` | Idle timeout for connections to health check server. | `1s` |
 | `--servers-health-check-gracefultimeout` | Graceful shutdown timeout for health check server. | `2s` |
+| `--servers-metrics-address` | Address to expose metrics for monitoring. | `""` (disabled) |
+| `--servers-metrics-readtimeout` | Read timeout for metrics server. | `200ms` |
+| `--servers-metrics-writetimeout` | Write timeout for metrics server. | `200ms` |
+| `--servers-metrics-idletimeout` | Idle timeout for connections to metrics server. | `1s` |
+| `--servers-metrics-gracefultimeout` | Graceful shutdown timeout for metrics server. | `2s` |
+| `--servers-pprof-address` | Address to expose profiling data. | `""` (disabled) |
+| `--servers-pprof-readtimeout` | Read timeout for pprof server. | `200ms` |
+| `--servers-pprof-writetimeout` | Write timeout for pprof server. | `200ms` |
+| `--servers-pprof-idletimeout` | Idle timeout for connections to pprof server. | `1s` |
 | `--servers-pprof-gracefultimeout` | Graceful shutdown timeout for pprof server. | `2s` |
-| `--streaming-address` | The address for the streaming server. | `:20251` |
+| `--servers-streaming-address` | The address for the streaming server. | `:20251` |
+| `--servers-streaming-readtimeout` | Read timeout for streaming server. | `200ms` |
+| `--servers-streaming-writetimeout` | Write timeout for streaming server. | `200ms` |
+| `--servers-streaming-idletimeout` | Idle timeout for connections to streaming server. | `1s` |
+| `--servers-streaming-gracefultimeout` | Graceful shutdown timeout for streaming server. | `2s` |
 
 #### Garbage collection
 

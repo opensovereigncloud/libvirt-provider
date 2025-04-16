@@ -105,17 +105,34 @@ var _ = BeforeSuite(func() {
 	Expect(os.Chmod(tempDir, 0730)).Should(Succeed())
 
 	opts := app.Options{
-		Address:                     filepath.Join(tempDir, "test.sock"),
 		BaseURL:                     baseURL,
 		PathSupportedMachineClasses: machineClassesFile.Name(),
 		RootDir:                     filepath.Join(tempDir, "libvirt-provider"),
-		StreamingAddress:            streamingAddress,
 		Servers: app.ServersOptions{
+			GRPC: app.GRPCServerOptions{
+				Addr:              filepath.Join(tempDir, "test.sock"),
+				ConnectionTimeout: 3 * time.Second,
+			},
+			Streaming: app.HTTPServerOptions{
+				Addr:            streamingAddress,
+				ReadTimeout:     app.HTTPServerReadTimeout,
+				WriteTimeout:    app.HTTPServerWriteTimeout,
+				IdleTimeout:     app.HTTPServerIdleTimeout,
+				GracefulTimeout: app.HTTPServerGracefulTimeout,
+			},
 			Metrics: app.HTTPServerOptions{
-				Addr: metricsAddress,
+				Addr:            metricsAddress,
+				ReadTimeout:     app.HTTPServerReadTimeout,
+				WriteTimeout:    app.HTTPServerWriteTimeout,
+				IdleTimeout:     app.HTTPServerIdleTimeout,
+				GracefulTimeout: app.HTTPServerGracefulTimeout,
 			},
 			HealthCheck: app.HTTPServerOptions{
-				Addr: healthCheckAddress,
+				Addr:            healthCheckAddress,
+				ReadTimeout:     app.HTTPServerReadTimeout,
+				WriteTimeout:    app.HTTPServerWriteTimeout,
+				IdleTimeout:     app.HTTPServerIdleTimeout,
+				GracefulTimeout: app.HTTPServerGracefulTimeout,
 			},
 		},
 		Libvirt: app.LibvirtOptions{
@@ -150,10 +167,10 @@ var _ = BeforeSuite(func() {
 	}()
 
 	Eventually(func() error {
-		return isSocketAvailable(opts.Address)
+		return isSocketAvailable(opts.Servers.GRPC.Addr)
 	}).WithTimeout(30 * time.Second).WithPolling(500 * time.Millisecond).Should(Succeed())
 
-	address, err := machine.GetAddressWithTimeout(3*time.Second, fmt.Sprintf("unix://%s", opts.Address))
+	address, err := machine.GetAddressWithTimeout(3*time.Second, fmt.Sprintf("unix://%s", opts.Servers.GRPC.Addr))
 	Expect(err).NotTo(HaveOccurred())
 
 	gconn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
