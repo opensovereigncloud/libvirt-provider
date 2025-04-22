@@ -2,8 +2,9 @@
 
 The `libvirt-provider` facilitates PCI device passthrough, enabling resource management for various PCI devices, not limited to GPUs. This document provides a detailed guide on configuring PCI passthrough support, making it adaptable to any PCI device type, such as GPUs, network adapters, storage controllers, etc.
 
-**Status**: Draft / Proof of Concept
-*Note: The current solution may experience issues upon restart, potentially affecting device availability and passthrough functionality. Testing and further development are in progress to address these limitations.*
+**Status:** Draft / Proof of Concept
+
+**Note:** *The current solution may experience issues upon restart, potentially affecting device availability and passthrough functionality. Testing and further development are in progress to address these limitations.*
 
 ## Enabling PCI Passthrough Support
 
@@ -77,6 +78,27 @@ The structure allows the resource manager to handle various device types, not ju
 - Storage controllers (e.g., Intel ICH9 SATA)
 
 Each device is referenced using its vendor and device IDs, which are crucial for the passthrough mechanism. The `type` field is particularly important for informing the resource manager about the device's function, allowing it to appropriately manage the resources based on their specific characteristics.
+
+## MachineClass Configuration for PCI Devices
+
+In order to match workloads with hosts capable of providing PCI passthrough resources, the relevant PCI devices must also be declared as capabilities within the MachineClass definitions. This ensures the resource manager can consider the available hardware when allocating resources.
+
+For every PCI device, there must be a MachineClass that explicitly references the device using the format: `<type>.<vendor>/<device_name>`. For example, for the NVIDIA device in the `pci_devices.yaml` defined above, the corresponding MachineClass will look like:
+
+```json
+[
+  {
+    "name": "t3-small-gpu",
+    "capabilities": {
+      "cpu": 2,
+      "memory": 2147483648,
+      "gpu.nvidia/ga100gl.rev.a1": 1  // Entry for the NVIDIA device mentioned above
+    }
+  }
+]
+```
+
+**Note:** *It is critical that the capability key in the MachineClass exactly matches the format `type.vendor/device_name` as defined in the pci_devices.yaml. Any mismatch will result in the device not being allocated correctly.*
 
 ## Integration with `libvirt-provider`
 
