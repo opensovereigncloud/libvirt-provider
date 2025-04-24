@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -89,6 +90,14 @@ func (s *Server) createMachineFromIRIMachine(ctx context.Context, log logr.Logge
 	err = manager.Allocate(machine, requiredResources)
 	if err != nil {
 		return nil, fmt.Errorf("cannot allocate resources: %w", err)
+	}
+
+	if api.GetExistingPCICount(machine) > s.pciControllerTotal {
+		deallocErr := manager.Deallocate(machine, machine.Spec.Resources.DeepCopy())
+		if deallocErr != nil {
+			return nil, errors.Join(deallocErr, api.ErrPCIControllerMaxedOut)
+		}
+		return nil, api.ErrPCIControllerMaxedOut
 	}
 
 	apiMachine, err := s.machineStore.Create(ctx, machine)

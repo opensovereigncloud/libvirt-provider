@@ -131,6 +131,8 @@ type LibvirtOptions struct {
 	Qcow2Type string
 
 	OverrideDomainXML string
+
+	PCIControllerTotal int
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
@@ -177,6 +179,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.Libvirt.Address, "libvirt-address", o.Libvirt.Address, "Address of a RPC libvirt socket to connect to.")
 	fs.StringVar(&o.Libvirt.URI, "libvirt-uri", o.Libvirt.URI, "URI to connect to inside the libvirt system.")
 	fs.StringVar(&o.Libvirt.OverrideDomainXML, "libvirt-override-template", o.Libvirt.OverrideDomainXML, "Path to the override domain XML template used for VM creation.")
+	fs.IntVar(&o.Libvirt.PCIControllerTotal, "libvirt-domain-pci-total", 30, "Total number of PCI controllers to be configured in the domain XML.")
 
 	// Guest Capabilities
 	fs.StringSliceVar(&o.Libvirt.PreferredDomainTypes, "preferred-domain-types", []string{"kvm", "qemu"}, "Ordered list of preferred domain types to use.")
@@ -425,6 +428,7 @@ func Run(ctx context.Context, opts Options) error {
 			Host:                           providerHost,
 			VolumePluginManager:            volumePlugins,
 			NetworkInterfacePlugin:         nicPlugin,
+			PCIControllerTotal:             opts.Libvirt.PCIControllerTotal,
 			ResyncIntervalVolumeSize:       opts.ResyncIntervalVolumeSize,
 			ResyncIntervalGarbageCollector: opts.ResyncIntervalGarbageCollector,
 			GCVMGracefulShutdownTimeout:    opts.GCVMGracefulShutdownTimeout,
@@ -439,14 +443,15 @@ func Run(ctx context.Context, opts Options) error {
 	}
 
 	srv, err := server.New(server.Options{
-		BaseURL:        baseURL,
-		Libvirt:        libvirt,
-		MachineStore:   machineStore,
-		EventStore:     eventStore,
-		MachineClasses: machineClasses,
-		VolumePlugins:  volumePlugins,
-		NetworkPlugins: nicPlugin,
-		GuestAgent:     opts.GuestAgent.GetAPIGuestAgent(),
+		BaseURL:            baseURL,
+		Libvirt:            libvirt,
+		MachineStore:       machineStore,
+		EventStore:         eventStore,
+		MachineClasses:     machineClasses,
+		VolumePlugins:      volumePlugins,
+		NetworkPlugins:     nicPlugin,
+		PCIControllerTotal: opts.Libvirt.PCIControllerTotal,
+		GuestAgent:         opts.GuestAgent.GetAPIGuestAgent(),
 	})
 	if err != nil {
 		setupLog.Error(err, "failed to initialize server")

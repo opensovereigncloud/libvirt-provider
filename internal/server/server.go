@@ -37,7 +37,10 @@ type Server struct {
 
 	networkInterfacePlugin providernetworkinterface.Plugin
 
-	volumePlugins  *volume.PluginManager
+	volumePlugins *volume.PluginManager
+
+	pciControllerTotal int
+
 	machineClasses MachineClassRegistry
 
 	execRequestCache request.Cache[*iri.ExecRequest]
@@ -62,7 +65,10 @@ type Options struct {
 
 	VolumePlugins  *volume.PluginManager
 	NetworkPlugins providernetworkinterface.Plugin
-	GuestAgent     api.GuestAgent
+
+	PCIControllerTotal int
+
+	GuestAgent api.GuestAgent
 }
 
 func setOptionsDefaults(o *Options) {
@@ -87,6 +93,7 @@ func New(opts Options) (*Server, error) {
 		eventStore:             opts.EventStore,
 		volumePlugins:          opts.VolumePlugins,
 		networkInterfacePlugin: opts.NetworkPlugins,
+		pciControllerTotal:     opts.PCIControllerTotal,
 		machineClasses:         opts.MachineClasses,
 		guestAgent:             opts.GuestAgent,
 		execRequestCache:       request.NewCache[*iri.ExecRequest](),

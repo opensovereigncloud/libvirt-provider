@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
+	"github.com/ironcore-dev/libvirt-provider/api"
 )
 
 func (s *Server) AttachNetworkInterface(ctx context.Context, req *iri.AttachNetworkInterfaceRequest) (res *iri.AttachNetworkInterfaceResponse, retErr error) {
@@ -21,6 +22,10 @@ func (s *Server) AttachNetworkInterface(ctx context.Context, req *iri.AttachNetw
 	apiMachine, err := s.machineStore.Get(ctx, req.MachineId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get machine: %w", err)
+	}
+
+	if api.GetExistingPCICount(apiMachine) >= s.pciControllerTotal {
+		return nil, api.ErrPCIControllerMaxedOut
 	}
 
 	nicSpec, err := s.getNICFromIRINIC(req.NetworkInterface)

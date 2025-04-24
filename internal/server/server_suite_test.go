@@ -141,6 +141,7 @@ var _ = BeforeSuite(func() {
 			PreferredDomainTypes:  []string{"kvm", "qemu"},
 			PreferredMachineTypes: []string{"pc-q35", "pc-i440fx"},
 			Qcow2Type:             "exec",
+			PCIControllerTotal:    30,
 		},
 		ResourceManagerOptions: sources.Options{
 			OvercommitVCPU: 1.0,

@@ -88,6 +88,7 @@ type MachineReconcilerOptions struct {
 	Host                           providerhost.Host
 	VolumePluginManager            *providervolume.PluginManager
 	NetworkInterfacePlugin         providernetworkinterface.Plugin
+	PCIControllerTotal             int
 	VolumeEvents                   event.Source[*api.Machine]
 	ResyncIntervalVolumeSize       time.Duration
 	ResyncIntervalGarbageCollector time.Duration
@@ -147,6 +148,7 @@ func NewMachineReconciler(
 		raw:                                     opts.Raw,
 		volumePluginManager:                     opts.VolumePluginManager,
 		networkInterfacePlugin:                  opts.NetworkInterfacePlugin,
+		pciControllerTotal:                      opts.PCIControllerTotal,
 		resyncIntervalVolumeSize:                opts.ResyncIntervalVolumeSize,
 		resyncIntervalGarbageCollector:          opts.ResyncIntervalGarbageCollector,
 		gcVMGracefulShutdownTimeout:             opts.GCVMGracefulShutdownTimeout,
@@ -171,6 +173,8 @@ type MachineReconciler struct {
 
 	volumePluginManager    *providervolume.PluginManager
 	networkInterfacePlugin providernetworkinterface.Plugin
+
+	pciControllerTotal int
 
 	machines      store.Store[*api.Machine]
 	machineEvents event.Source[*api.Machine]
@@ -951,7 +955,10 @@ func (r *MachineReconciler) setDomainPCIControllers(domain *libvirtxml.Domain) e
 		Model: "pcie-root",
 	})
 
-	for i := 1; i <= 30; i++ {
+	// Adding 3 more PCIe root ports because the root disk, memballoon, and rng each consume one PCIe slot by default.
+	const defaultDomainPCICount = 3
+
+	for i := 1; i <= r.pciControllerTotal+defaultDomainPCICount; i++ {
 		domain.Devices.Controllers = append(domain.Devices.Controllers, libvirtxml.DomainController{
 			Type:  "pci",
 			Model: "pcie-root-port",

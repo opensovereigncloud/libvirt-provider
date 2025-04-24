@@ -5,11 +5,14 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/ironcore-dev/controller-utils/metautils"
 	irimeta "github.com/ironcore-dev/ironcore/iri/apis/meta/v1alpha1"
 )
+
+var ErrPCIControllerMaxedOut = errors.New("pci controllers count already maxed out")
 
 func GetObjectMetadata(o Metadata) (*irimeta.ObjectMetadata, error) {
 	annotations, err := GetAnnotationsAnnotation(o)
@@ -110,4 +113,67 @@ func GetClassLabel(o Object) (string, bool) {
 func IsManagedBy(o Object, manager string) bool {
 	actual, ok := o.GetLabels()[ManagerLabel]
 	return ok && actual == manager
+}
+
+// GetExistingPCICount returns the total count of unique PCI-related resources for a given machine.
+// It includes:
+//   - Unique volumes from both the spec and status sections
+//   - Unique network interfaces from both the spec and status sections
+//   - The total number of PCI devices
+func GetExistingPCICount(machine *Machine) int {
+	if machine == nil {
+		return 0
+	}
+
+	volumeCount := getUniqueElementCount(
+		machine.Spec.Volumes,
+		func(v *VolumeSpec) string {
+			if v == nil {
+				return ""
+			}
+			return v.Name
+		},
+		machine.Status.VolumeStatus,
+		func(v VolumeStatus) string {
+			return v.Name
+		},
+	)
+
+	nicCount := getUniqueElementCount(
+		machine.Spec.NetworkInterfaces,
+		func(n *NetworkInterfaceSpec) string {
+			return n.Name
+		},
+		machine.Status.NetworkInterfaceStatus,
+		func(n NetworkInterfaceStatus) string {
+			return n.Name
+		},
+	)
+
+	return volumeCount + nicCount + len(machine.Status.PCIDevices)
+}
+
+// getUniqueElementCount returns the total number of unique non-empty names extracted from two slices.
+// It accepts two slices of different types and their respective name-extraction functions.
+// A name is considered unique if it is non-empty and not duplicated across both slices.
+// This is useful when merging data from two distinct sources while avoiding duplicates.
+func getUniqueElementCount[T1, T2 any](
+	slice1 []T1, getName1 func(T1) string,
+	slice2 []T2, getName2 func(T2) string,
+) int {
+	seen := make(map[string]struct{}, len(slice1)+len(slice2))
+
+	for _, item := range slice1 {
+		if name := getName1(item); name != "" {
+			seen[name] = struct{}{}
+		}
+	}
+
+	for _, item := range slice2 {
+		if name := getName2(item); name != "" {
+			seen[name] = struct{}{}
+		}
+	}
+
+	return len(seen)
 }
