@@ -44,16 +44,18 @@ vendors:
   - id: "0x10de"  # NVIDIA vendor ID
     name: nvidia
     devices:
-      - id: "0x030200"  # Device ID for the NVIDIA GA100 GPU
+      - id: "0x030200"  # Class ID for the NVIDIA GA100 GPU
         name: ga100gl.rev.a1
         type: gpu
   - id: "0x8086"  # Intel vendor ID
     name: intel
     devices:
-      - id: "0x100f"  # Device ID for an Intel network adapter
+      - id: "0x100f"  # Class ID for an Intel network adapter
         name: x520-da2
         type: network
 ```
+
+**Note:**  *The `id` field under `devices` in the YAML file currently refers to a **class ID** (e.g., `0x030200` for display controller - 3D), **not** a specific PCI device ID. This distinction is critical. Mismatching class ID with device ID may result in `0` devices being detected or passed through. Ensure you're using the correct identifier.*
 
 ### PCI Devices File Structure
 
@@ -63,7 +65,7 @@ The PCI devices file contains a hierarchical structure to organize vendors and t
     - **id**: A unique hexadecimal identifier for the vendor (e.g., "0x10de" for NVIDIA, "0x8086" for Intel).
     - **name**: A human-readable name for the vendor (e.g., "nvidia", "intel").
     - **devices**: A list of devices provided by the vendor. Each device entry consists of:
-        - **id**: A unique hexadecimal identifier for the device (e.g., "0x030200" for a GPU, "0x100f" for a network adapter).
+        - **id**: A unique hexadecimal identifier for the device class (e.g., "0x030200" for a GPU, "0x100f" for a network adapter).
         - **name**: A human-readable name for the device (e.g., "ga100gl.rev.a1", "x520-da2").
         - **type**: The type of the PCI device, which helps categorize it (e.g., "gpu", "network", "storage").
 
