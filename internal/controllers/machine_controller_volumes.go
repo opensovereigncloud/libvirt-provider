@@ -26,6 +26,8 @@ import (
 	"libvirt.org/go/libvirtxml"
 )
 
+const VolumeWithoutDevice = ""
+
 func (r *MachineReconciler) deleteVolumes(ctx context.Context, log logr.Logger, machine *api.Machine) error {
 	mounter := r.machineVolumeMounter(machine)
 	var errs []error
@@ -88,8 +90,11 @@ func (r *MachineReconciler) reconcileVolumes(ctx context.Context, log logr.Logge
 	specVolumes := r.listDesiredVolumes(machine)
 
 	currentVolumeNames := sets.NewString()
+	// getting list of devices used by volumes
+	currentDevices := map[string]string{}
 	if err := attacher.ForEachVolume(func(volume *AttachVolume) bool {
 		currentVolumeNames.Insert(volume.Name)
+		currentDevices[volume.Device] = volume.Name
 		return true
 	}); err != nil {
 		return nil, fmt.Errorf("error iterating attached volumes: %w", err)
@@ -105,8 +110,12 @@ func (r *MachineReconciler) reconcileVolumes(ctx context.Context, log logr.Logge
 	volumeStatus := machine.Status.GetVolumesAsMap()
 	var errs []error
 	for volumeName := range currentVolumeNames {
-		if _, ok := specVolumes[volumeName]; ok {
-			continue
+		if specVolume, ok := specVolumes[volumeName]; ok {
+			deviceVolumeName := currentDevices[computeVirtioDiskTargetDeviceName(specVolume.Device)]
+			// skip detaching if volume is without device or if volume is properly attached
+			if volumeName == VolumeWithoutDevice || volumeName == deviceVolumeName {
+				continue
+			}
 		}
 
 		volumeLog := log.WithValues("volumeName", volumeName)
@@ -119,19 +128,20 @@ func (r *MachineReconciler) reconcileVolumes(ctx context.Context, log logr.Logge
 
 		if detachCalled {
 			volumeLog.V(1).Info("Successfully requested detaching volume")
+			// Disk state at this point isn't known.
+			// So it can be still attached and it will safe to report it as attached.
+			status, ok := volumeStatus[volumeName]
+			if ok {
+				status.State = api.VolumeStateAttached
+			} else {
+				volumeLog.Error(errors.New("failed to get volume from status"), "volume status cannot be updated properly")
+				volumeStatus[volumeName] = &api.VolumeStatus{Name: volumeName, State: api.VolumeStateAttached}
+			}
 		}
 
 		if deleted {
 			volumeLog.V(1).Info("Successfully deleted volume")
 			delete(volumeStatus, volumeName)
-		} else {
-			status, ok := volumeStatus[volumeName]
-			if ok {
-				status.State = api.VolumeStatePending
-			} else {
-				volumeLog.Error(errors.New("failed to get volume from status"), "volume status cannot be updated properly")
-				volumeStatus[volumeName] = &api.VolumeStatus{Name: volumeName, State: api.VolumeStatePending}
-			}
 		}
 	}
 
@@ -145,6 +155,12 @@ func (r *MachineReconciler) reconcileVolumes(ctx context.Context, log logr.Logge
 				State: api.VolumeStatePending,
 			}
 			volumeStatus[volume.Name] = status
+		}
+		deviceName := computeVirtioDiskTargetDeviceName(volume.Device)
+		deviceVolumeName := currentDevices[deviceName]
+		if deviceVolumeName != VolumeWithoutDevice && deviceVolumeName != volume.Name {
+			errs = append(errs, fmt.Errorf("[volume %s] error reconciling: device %s is used by another volume %s", volume.Name, deviceName, deviceVolumeName))
+			continue
 		}
 		volumeID, volumeSize, err := r.applyVolume(ctx, log, machine, volume, mounter, attacher)
 		if err != nil {
