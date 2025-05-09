@@ -44,9 +44,9 @@ var (
 			"libvirt-provider.ironcore.dev/labels":      "{\"downward-api.machinepoollet.ironcore.dev/root-machine-namespace\":\"default\", \"downward-api.machinepoollet.ironcore.dev/root-machine-name\":\"machine1\"}",
 		}}
 	opts = EventStoreOptions{
-		MachineEventMaxEvents:      maxEvents,
-		MachineEventTTL:            eventTTL,
-		MachineEventResyncInterval: resyncInterval,
+		MaxEvents:      maxEvents,
+		TTL:            eventTTL,
+		ResyncInterval: resyncInterval,
 	}
 )
 

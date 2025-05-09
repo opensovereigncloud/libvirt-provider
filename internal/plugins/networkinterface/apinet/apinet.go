@@ -45,7 +45,7 @@ const (
 
 type Plugin struct {
 	nodeName      string
-	host          providerhost.Host
+	host          providerhost.LibvirtHost
 	apinetClient  client.Client
 	enableCleanup bool
 }
@@ -62,7 +62,7 @@ func GetAPInetPlugin() *Plugin {
 	return &Plugin{}
 }
 
-func (p *Plugin) Init(ctx context.Context, host providerhost.Host) error {
+func (p *Plugin) Init(ctx context.Context, host providerhost.LibvirtHost) error {
 	p.host = host
 	return p.cleanup(ctx)
 }

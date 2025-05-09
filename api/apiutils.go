@@ -5,14 +5,11 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/ironcore-dev/controller-utils/metautils"
 	irimeta "github.com/ironcore-dev/ironcore/iri/apis/meta/v1alpha1"
 )
-
-var ErrPCIControllerMaxedOut = errors.New("pci controllers count already maxed out")
 
 func GetObjectMetadata(o Metadata) (*irimeta.ObjectMetadata, error) {
 	annotations, err := GetAnnotationsAnnotation(o)

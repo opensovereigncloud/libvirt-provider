@@ -44,7 +44,7 @@ const (
 	streamingAddress               = "127.0.0.1:20251"
 	healthCheckAddress             = "127.0.0.1:20252"
 	metricsAddress                 = "" // disable metrics server for integration tests
-	machineEventMaxEvents          = 10
+	machineEventMaxEvents          = 1000
 	machineEventTTL                = 10 * time.Second
 	machineEventResyncInterval     = 2 * time.Second
 )
@@ -140,7 +140,6 @@ var _ = BeforeSuite(func() {
 			URI:                   "qemu:///system",
 			PreferredDomainTypes:  []string{"kvm", "qemu"},
 			PreferredMachineTypes: []string{"pc-q35", "pc-i440fx"},
-			Qcow2Type:             "exec",
 			PCIControllerTotal:    30,
 		},
 		ResourceManagerOptions: sources.Options{
@@ -153,9 +152,9 @@ var _ = BeforeSuite(func() {
 		ResyncIntervalVolumeSize:       resyncVolumeSizeInterval,
 		GuestAgent:                     app.GuestAgentOption(api.GuestAgentNone),
 		MachineEventStore: machineevent.EventStoreOptions{
-			MachineEventMaxEvents:      machineEventMaxEvents,
-			MachineEventTTL:            machineEventTTL,
-			MachineEventResyncInterval: machineEventResyncInterval,
+			MaxEvents:      machineEventMaxEvents,
+			TTL:            machineEventTTL,
+			ResyncInterval: machineEventResyncInterval,
 		},
 	}
 

@@ -30,9 +30,9 @@ type EventStore interface {
 
 // EventStoreOptions defines options to initialize the machine event store
 type EventStoreOptions struct {
-	MachineEventMaxEvents      int
-	MachineEventTTL            time.Duration
-	MachineEventResyncInterval time.Duration
+	MaxEvents      int
+	TTL            time.Duration
+	ResyncInterval time.Duration
 }
 
 // Store implements the EventRecorder and EventStore interface and represents an in-memory event store with TTL for events.
@@ -50,10 +50,10 @@ type Store struct {
 // NewEventStore creates a new EventStore with a fixed number of events and set TTL for events.
 func NewEventStore(log logr.Logger, opts EventStoreOptions) *Store {
 	return &Store{
-		maxEvents:           opts.MachineEventMaxEvents,
-		events:              make([]*irievent.Event, opts.MachineEventMaxEvents),
-		eventTTL:            opts.MachineEventTTL,
-		eventResyncInterval: opts.MachineEventResyncInterval,
+		maxEvents:           opts.MaxEvents,
+		events:              make([]*irievent.Event, opts.MaxEvents),
+		eventTTL:            opts.TTL,
+		eventResyncInterval: opts.ResyncInterval,
 		head:                0,
 		count:               0,
 		log:                 log,

@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/digitalocean/go-libvirt"
-	ocistore "github.com/ironcore-dev/ironcore-image/oci/store"
 )
 
 const (
@@ -136,23 +135,9 @@ func (p *paths) MachineIgnitionFile(machineUID string) string {
 	return filepath.Join(p.MachineIgnitionsDir(machineUID), DefaultMachineIgnitionFile)
 }
 
-type Host interface {
-	Paths
-	OCIStore() *ocistore.Store
-}
-
 type LibvirtHost interface {
-	Host
-	Libvirt() *libvirt.Libvirt
-}
-
-type host struct {
 	Paths
-	ociStore *ocistore.Store
-}
-
-func (h *host) OCIStore() *ocistore.Store {
-	return h.ociStore
+	Libvirt() *libvirt.Libvirt
 }
 
 func PathsAt(rootDir string) (Paths, error) {
@@ -169,25 +154,17 @@ func PathsAt(rootDir string) (Paths, error) {
 	return p, nil
 }
 
-func NewAt(rootDir string) (Host, error) {
+func NewAt(rootDir string) (Paths, error) {
 	p, err := PathsAt(rootDir)
 	if err != nil {
 		return nil, err
 	}
 
-	ociStore, err := ocistore.New(p.ImagesDir())
-	if err != nil {
-		return nil, fmt.Errorf("error creating oci store: %w", err)
-	}
-
-	return &host{
-		Paths:    p,
-		ociStore: ociStore,
-	}, nil
+	return p, nil
 }
 
 type libvirtHost struct {
-	Host
+	Paths
 	libvirt *libvirt.Libvirt
 }
 
@@ -196,12 +173,12 @@ func (h *libvirtHost) Libvirt() *libvirt.Libvirt {
 }
 
 func NewLibvirtAt(rootDir string, libvirt *libvirt.Libvirt) (LibvirtHost, error) {
-	host, err := NewAt(rootDir)
+	p, err := NewAt(rootDir)
 	if err != nil {
 		return nil, err
 	}
 
-	return &libvirtHost{host, libvirt}, nil
+	return &libvirtHost{Paths: p, libvirt: libvirt}, nil
 }
 
 type MachineVolume struct {
@@ -211,55 +188,6 @@ type MachineVolume struct {
 
 type MachineNetworkInterface struct {
 	NetworkInterfaceName string
-}
-
-func ReadMachineUIDs(paths Paths) ([]string, error) {
-	var res []string
-	if err := IterateMachines(paths, func(machineUID string) error {
-		res = append(res, machineUID)
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
-func IterateMachines(paths Paths, f func(machineUID string) error) error {
-	entries, err := os.ReadDir(paths.MachinesDir())
-	if err != nil {
-		return err
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		machineUID := string(entry.Name())
-		if err := f(machineUID); err != nil {
-			return fmt.Errorf("[machine uid %s] %w", machineUID, err)
-		}
-	}
-	return nil
-}
-
-func IterateMachineNetworkInterfaces(paths Paths, machineUID string, f func(networkInterfaceName string) error) error {
-	entries, err := os.ReadDir(paths.MachineNetworkInterfacesDir(machineUID))
-	if err != nil {
-		return err
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		networkInterfaceName := entry.Name()
-		if err := f(networkInterfaceName); err != nil {
-			return fmt.Errorf("[network interface %s] %w", networkInterfaceName, err)
-		}
-	}
-	return nil
 }
 
 func ReadMachineNetworkInterfaces(paths Paths, machineUID string) ([]MachineNetworkInterface, error) {

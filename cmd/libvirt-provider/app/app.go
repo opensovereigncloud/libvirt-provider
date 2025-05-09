@@ -21,6 +21,7 @@ import (
 	"github.com/go-logr/logr"
 	grpcprometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/ironcore-dev/ironcore-image/oci/remote"
+	ocistore "github.com/ironcore-dev/ironcore-image/oci/store"
 	"github.com/ironcore-dev/ironcore/broker/common"
 	commongrpc "github.com/ironcore-dev/ironcore/broker/common/grpc"
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
@@ -41,7 +42,6 @@ import (
 	volumeplugin "github.com/ironcore-dev/libvirt-provider/internal/plugins/volume"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/volume/ceph"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/volume/emptydisk"
-	"github.com/ironcore-dev/libvirt-provider/internal/qcow2"
 	"github.com/ironcore-dev/libvirt-provider/internal/raw"
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/manager"
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
@@ -128,8 +128,6 @@ type LibvirtOptions struct {
 	PreferredDomainTypes  []string
 	PreferredMachineTypes []string
 
-	Qcow2Type string
-
 	OverrideDomainXML string
 
 	PCIControllerTotal int
@@ -185,8 +183,6 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringSliceVar(&o.Libvirt.PreferredDomainTypes, "preferred-domain-types", []string{"kvm", "qemu"}, "Ordered list of preferred domain types to use.")
 	fs.StringSliceVar(&o.Libvirt.PreferredMachineTypes, "preferred-machine-types", []string{"pc-q35"}, "Ordered list of preferred machine types to use.")
 
-	fs.StringVar(&o.Libvirt.Qcow2Type, "qcow2-type", qcow2.Default(), fmt.Sprintf("qcow2 implementation to use. Available: %v", qcow2.Available()))
-
 	fs.DurationVar(&o.GCVMGracefulShutdownTimeout, "gc-vm-graceful-shutdown-timeout", 5*time.Minute, "Duration to wait for the VM to gracefully shut down. If the VM does not shut down within this period, it will be forcibly destroyed by garbage collector.")
 	fs.DurationVar(&o.ResyncIntervalGarbageCollector, "gc-resync-interval", 1*time.Minute, "Interval for resynchronizing the garbage collector.")
 
@@ -198,9 +194,9 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ResourceManagerOptions.PCIDevicesFile, "resource-manager-pci-devices-file", "", "yaml file with list of supported pci devices for pci source.")
 
 	// Machine event store options
-	fs.IntVar(&o.MachineEventStore.MachineEventMaxEvents, "machine-event-max-events", 100, "Maximum number of machine events that can be stored.")
-	fs.DurationVar(&o.MachineEventStore.MachineEventTTL, "machine-event-ttl", 5*time.Minute, "Time to live for machine events.")
-	fs.DurationVar(&o.MachineEventStore.MachineEventResyncInterval, "machine-event-resync-interval", 1*time.Minute, "Interval for resynchronizing the machine events.")
+	fs.IntVar(&o.MachineEventStore.MaxEvents, "machine-event-max-events", 100, "Maximum number of machine events that can be stored.")
+	fs.DurationVar(&o.MachineEventStore.TTL, "machine-event-ttl", 5*time.Minute, "Time to live for machine events.")
+	fs.DurationVar(&o.MachineEventStore.ResyncInterval, "machine-event-resync-interval", 1*time.Minute, "Interval for resynchronizing the machine events.")
 
 	// Volume cache policy option
 	fs.StringVar(&o.VolumeCachePolicyCeph, "volume-cache-policy-ceph", "none",
@@ -294,15 +290,15 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
-	imgCache, err := oci.NewLocalCache(log, reg, providerHost.OCIStore())
+	ociStore, err := ocistore.New(providerHost.ImagesDir())
 	if err != nil {
-		setupLog.Error(err, "failed to initialize oci manager")
+		setupLog.Error(err, "error creating oci store")
 		return err
 	}
 
-	qcow2Inst, err := qcow2.Instance(opts.Libvirt.Qcow2Type)
+	imgCache, err := oci.NewLocalCache(log, reg, ociStore)
 	if err != nil {
-		setupLog.Error(err, "failed to initialize qcow2 instance")
+		setupLog.Error(err, "failed to initialize oci manager")
 		return err
 	}
 
@@ -325,7 +321,7 @@ func Run(ctx context.Context, opts Options) error {
 	volumePlugins := volumeplugin.NewPluginManager()
 	if err := volumePlugins.InitPlugins(providerHost, []volumeplugin.Plugin{
 		ceph.NewPlugin(),
-		emptydisk.NewPlugin(qcow2Inst, rawInst),
+		emptydisk.NewPlugin(rawInst),
 	}); err != nil {
 		setupLog.Error(err, "failed to initialize volume plugin manager")
 		return err
@@ -417,7 +413,7 @@ func Run(ctx context.Context, opts Options) error {
 
 	machineReconciler, err := controllers.NewMachineReconciler(
 		controllerLogger,
-		libvirt,
+		providerHost,
 		machineStore,
 		machineEvents,
 		eventStore,
@@ -425,7 +421,6 @@ func Run(ctx context.Context, opts Options) error {
 			GuestCapabilities:              caps,
 			ImageCache:                     imgCache,
 			Raw:                            rawInst,
-			Host:                           providerHost,
 			VolumePluginManager:            volumePlugins,
 			NetworkInterfacePlugin:         nicPlugin,
 			PCIControllerTotal:             opts.Libvirt.PCIControllerTotal,
