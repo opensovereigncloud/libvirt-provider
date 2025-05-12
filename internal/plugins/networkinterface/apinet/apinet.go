@@ -15,12 +15,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	apinetv1alpha1 "github.com/ironcore-dev/ironcore-net/api/core/v1alpha1"
 	apinet "github.com/ironcore-dev/ironcore-net/apimachinery/api/net"
 	"github.com/ironcore-dev/ironcore-net/apinetlet/provider"
 	"github.com/ironcore-dev/libvirt-provider/api"
 	providerhost "github.com/ironcore-dev/libvirt-provider/internal/host"
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,25 +38,30 @@ const (
 
 	defaultAPINetConfigFile = "api-net.json"
 
-	permFile     = 0640
-	permFolder   = 0750
+	permFile   = 0o640
+	permFolder = 0o750
+
 	pluginAPInet = "apinet"
 
 	labelLibvirtProviderHostname = "libvirt-provider/hostname"
 )
 
 type Plugin struct {
-	nodeName      string
-	host          providerhost.LibvirtHost
-	apinetClient  client.Client
-	enableCleanup bool
+	nodeName        string
+	host            providerhost.LibvirtHost
+	apinetClient    client.Client
+	pollingInterval time.Duration
+	pollingDuration time.Duration
+	enableCleanup   bool
 }
 
-func NewPlugin(nodeName string, client client.Client, cleanup bool) providernetworkinterface.Plugin {
+func NewPlugin(nodeName string, client client.Client, duration, interval time.Duration, cleanup bool) providernetworkinterface.Plugin {
 	return &Plugin{
-		nodeName:      nodeName,
-		apinetClient:  client,
-		enableCleanup: cleanup,
+		nodeName:        nodeName,
+		apinetClient:    client,
+		pollingDuration: duration,
+		pollingInterval: interval,
+		enableCleanup:   cleanup,
 	}
 }
 
@@ -150,11 +157,11 @@ type apiNetNetworkInterfaceConfig struct {
 	Namespace string `json:"namespace"`
 }
 
-func (p *Plugin) apiNetNetworkInterfaceConfigFile(machineID string, networkInterfaceName string) string {
+func (p *Plugin) apiNetNetworkInterfaceConfigFile(machineID, networkInterfaceName string) string {
 	return filepath.Join(p.host.MachineNetworkInterfaceDir(machineID, networkInterfaceName), defaultAPINetConfigFile)
 }
 
-func (p *Plugin) writeAPINetNetworkInterfaceConfig(machineID string, networkInterfaceName string, cfg *apiNetNetworkInterfaceConfig) error {
+func (p *Plugin) writeAPINetNetworkInterfaceConfig(machineID, networkInterfaceName string, cfg *apiNetNetworkInterfaceConfig) error {
 	data, err := json.Marshal(cfg)
 	if err != nil {
 		return err
@@ -163,7 +170,7 @@ func (p *Plugin) writeAPINetNetworkInterfaceConfig(machineID string, networkInte
 	return os.WriteFile(p.apiNetNetworkInterfaceConfigFile(machineID, networkInterfaceName), data, permFile)
 }
 
-func (p *Plugin) readAPINetNetworkInterfaceConfig(machineID string, networkInterfaceName string) (*apiNetNetworkInterfaceConfig, error) {
+func (p *Plugin) readAPINetNetworkInterfaceConfig(machineID, networkInterfaceName string) (*apiNetNetworkInterfaceConfig, error) {
 	data, err := os.ReadFile(p.apiNetNetworkInterfaceConfigFile(machineID, networkInterfaceName))
 	if err != nil {
 		return nil, err
@@ -176,7 +183,7 @@ func (p *Plugin) readAPINetNetworkInterfaceConfig(machineID string, networkInter
 	return cfg, nil
 }
 
-func (p *Plugin) APInetNicName(machineID string, networkInterfaceName string) string {
+func (p *Plugin) APInetNicName(machineID, networkInterfaceName string) string {
 	return uuid.NewHash(sha256.New(), uuid.Nil, []byte(fmt.Sprintf("%s/%s", machineID, networkInterfaceName)), 5).String()
 }
 
@@ -258,7 +265,7 @@ func (p *Plugin) Apply(ctx context.Context, spec *api.NetworkInterfaceSpec, mach
 
 	log.V(1).Info("Waiting for apinet network interface to become ready")
 	apinetNicKey := client.ObjectKeyFromObject(apinetNic)
-	if err := wait.PollUntilContextTimeout(ctx, 50*time.Millisecond, 5*time.Second, true, func(ctx context.Context) (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(ctx, p.pollingInterval, p.pollingDuration, true, func(ctx context.Context) (done bool, err error) {
 		if err := p.apinetClient.Get(ctx, apinetNicKey, apinetNic); err != nil {
 			return false, fmt.Errorf("error getting apinet nic %s: %w", apinetNicKey, err)
 		}
@@ -341,7 +348,7 @@ func getHostDevice(apinetNic *apinetv1alpha1.NetworkInterface) (*providernetwork
 	}
 }
 
-func (p *Plugin) Delete(ctx context.Context, computeNicName string, machineID string) error {
+func (p *Plugin) Delete(ctx context.Context, computeNicName, machineID string) error {
 	log := ctrl.LoggerFrom(ctx)
 
 	log.V(1).Info("Reading APINet network interface config file")
