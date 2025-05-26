@@ -108,12 +108,16 @@ func (r *MachineReconciler) reconcileVolumes(ctx context.Context, log logr.Logge
 	}
 
 	volumeStatus := machine.Status.GetVolumesAsMap()
+	for key := range volumeStatus {
+		currentVolumeNames.Insert(key)
+	}
+
 	var errs []error
 	for volumeName := range currentVolumeNames {
 		if specVolume, ok := specVolumes[volumeName]; ok {
 			deviceVolumeName := currentDevices[computeVirtioDiskTargetDeviceName(specVolume.Device)]
 			// skip detaching if volume is without device or if volume is properly attached
-			if volumeName == VolumeWithoutDevice || volumeName == deviceVolumeName {
+			if deviceVolumeName == VolumeWithoutDevice || volumeName == deviceVolumeName {
 				continue
 			}
 		}
