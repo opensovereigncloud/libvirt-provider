@@ -257,3 +257,16 @@ func (m *MachineStatus) GetVolumesAsMap() map[string]*VolumeStatus {
 
 	return result
 }
+
+func (m *MachineStatus) GetNetworkInterfacesAsMap() map[string]*NetworkInterfaceStatus {
+	if m == nil {
+		return map[string]*NetworkInterfaceStatus{}
+	}
+
+	results := make(map[string]*NetworkInterfaceStatus, len(m.NetworkInterfaceStatus))
+	for index := range m.NetworkInterfaceStatus {
+		results[m.NetworkInterfaceStatus[index].Name] = &m.NetworkInterfaceStatus[index]
+	}
+
+	return results
+}

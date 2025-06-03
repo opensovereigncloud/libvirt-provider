@@ -140,9 +140,18 @@ func (r *MachineReconciler) reconcileNetworkInterfaces(
 
 	desiredNics := r.desiredNetworkInterfaces(machine)
 
+	statusNics := machine.Status.GetNetworkInterfacesAsMap()
+
+	// remove removed nics from status
+	for nicName := range statusNics {
+		_, ok := machineNicByName[nicName]
+		if !ok {
+			delete(statusNics, nicName)
+		}
+	}
+
 	var (
-		nicStates []api.NetworkInterfaceStatus
-		errs      []error
+		errs []error
 	)
 
 	for nicName, actualNic := range mountedNics {
@@ -151,27 +160,40 @@ func (r *MachineReconciler) reconcileNetworkInterfaces(
 		}
 
 		log.V(1).Info("Detaching network interface", "NetworkInterfaceName", nicName)
-		if err := r.detachDomainDevice(domain, actualNic.libvirt.device()); err != nil {
+		err = r.detachDomainDevice(domain, actualNic.libvirt.device())
+		if err != nil {
 			errs = append(errs, fmt.Errorf("[network interface %s] error detaching: %w", nicName, err))
 		} else {
-			log.V(1).Info("Successfully detached network interface", "NetworkInterfaceName", nicName)
-			delete(mountedNics, nicName)
+			log.V(1).Info("Successfully called detach of network interface", "NetworkInterfaceName", nicName)
 		}
 	}
 
 	for nicName, desiredNic := range desiredNics {
-		log.V(1).Info("Reconciling desired network interface", "NetworkInterfaceName", nicName)
-		mountedNic, err := r.reconcileDesiredNetworkInterface(ctx, machine, domain, mountedNics, desiredNic)
+		locLog := log.WithValues("NetworkInterfaceName", nicName)
+		locLog.V(1).Info("Reconciling desired network interface")
+		nicState, ok := statusNics[nicName]
+		if !ok {
+			nicState = &api.NetworkInterfaceStatus{
+				Name:  nicName,
+				State: api.NetworkInterfaceStatePending,
+			}
+			statusNics[nicName] = nicState
+		}
+
+		mountedNic, detachCalled, err := r.reconcileDesiredNetworkInterface(ctx, machine, domain, mountedNics, desiredNic)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("[network interface %s] error reconciling: %w", nicName, err))
+			continue
+		}
+
+		nicState.State = api.NetworkInterfaceStateAttached
+
+		if detachCalled {
+			locLog.V(1).Info("Successfully requested detaching network interface")
 		} else {
-			log.V(1).Info("Successfully reconciled desired network interface", "NetworkInterfaceName", nicName)
+			locLog.V(1).Info("Successfully reconciled desired network interface")
 			mountedNics[nicName] = *mountedNic
-			nicStates = append(nicStates, api.NetworkInterfaceStatus{
-				Name:   nicName,
-				Handle: mountedNic.networkInterface.Handle,
-				State:  api.NetworkInterfaceStateAttached,
-			})
+			nicState.Handle = mountedNic.networkInterface.Handle
 		}
 	}
 
@@ -184,14 +206,17 @@ func (r *MachineReconciler) reconcileNetworkInterfaces(
 		if err := r.deleteNetworkInterface(ctx, machine, machineNic); err != nil {
 			errs = append(errs, fmt.Errorf("[network interface %s] error deleting: %w", nicName, err))
 		} else {
+			delete(statusNics, nicName)
 			log.V(1).Info("Successfully torn down network interface", "NetworkInterfaceName", nicName)
 		}
 	}
 
+	newNicsStatus := convertNicStatusMapToList(statusNics)
+
 	if len(errs) > 0 {
-		return nicStates, fmt.Errorf("attach / detach error(s): %v", errs)
+		return newNicsStatus, fmt.Errorf("attach / detach error(s): %v", errs)
 	}
-	return nicStates, nil
+	return newNicsStatus, nil
 }
 
 func (r *MachineReconciler) deleteNetworkInterface(
@@ -208,36 +233,37 @@ func (r *MachineReconciler) reconcileDesiredNetworkInterface(
 	domain libvirt.Domain,
 	mountedNics map[string]mountedNetworkInterface,
 	nic *api.NetworkInterfaceSpec,
-) (*mountedNetworkInterface, error) {
+) (*mountedNetworkInterface, bool, error) {
+	detachCalled := false
 	providerNic, err := r.networkInterfacePlugin.Apply(ctx, nic, machine)
 	if err != nil {
-		return nil, err
+		return nil, detachCalled, err
 	}
 
 	mountedNic, ok := mountedNics[nic.Name]
 	if ok {
 		mountedNic.networkInterface.Handle = providerNic.Handle
 		if reflect.DeepEqual(mountedNic.networkInterface, providerNic) {
-			return &mountedNic, nil
+			return &mountedNic, detachCalled, nil
 		}
 
-		if err := r.detachDomainDevice(domain, mountedNic.libvirt.device()); err != nil {
-			return nil, err
-		}
+		detachCalled = true
+		err = r.detachDomainDevice(domain, mountedNic.libvirt.device())
+		return nil, detachCalled, err
 	}
 
 	libvirtNic, err := providerNetworkInterfaceToLibvirt(nic.Name, providerNic)
 	if err != nil {
-		return nil, err
+		return nil, detachCalled, err
 	}
 
 	if err := r.attachDomainDevice(domain, libvirtNic.device()); err != nil {
-		return nil, fmt.Errorf("error attaching network interface device: %w", err)
+		return nil, detachCalled, fmt.Errorf("error attaching network interface device: %w", err)
 	}
 	return &mountedNetworkInterface{
 		networkInterface: providerNic,
 		libvirt:          libvirtNic,
-	}, nil
+	}, detachCalled, nil
 }
 
 func (r *MachineReconciler) listMachineNetworkInterfaces(machineUID string) (map[string]providerhost.MachineNetworkInterface, error) {
@@ -495,4 +521,13 @@ func providerNetworkInterfaceToLibvirt(name string, nic *providernetworkinterfac
 	default:
 		return nil, fmt.Errorf("unsupported provider network interface: %#+v", nic)
 	}
+}
+
+func convertNicStatusMapToList(currentStatus map[string]*api.NetworkInterfaceStatus) []api.NetworkInterfaceStatus {
+	newStatus := make([]api.NetworkInterfaceStatus, 0, len(currentStatus))
+	for _, status := range currentStatus {
+		newStatus = append(newStatus, *status)
+	}
+
+	return newStatus
 }
