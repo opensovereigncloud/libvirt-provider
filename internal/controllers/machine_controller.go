@@ -82,7 +82,6 @@ var (
 
 type MachineReconcilerOptions struct {
 	GuestCapabilities              guest.Capabilities
-	TCMallocLibPath                string
 	ImageCache                     providerimage.Cache
 	Raw                            raw.Raw
 	VolumePluginManager            *providervolume.PluginManager
@@ -141,7 +140,6 @@ func NewMachineReconciler(
 		machineEvents:                           machineEvents,
 		EventRecorder:                           eventRecorder,
 		guestCapabilities:                       opts.GuestCapabilities,
-		tcMallocLibPath:                         opts.TCMallocLibPath,
 		imageCache:                              opts.ImageCache,
 		raw:                                     opts.Raw,
 		volumePluginManager:                     opts.VolumePluginManager,
@@ -163,7 +161,6 @@ type MachineReconciler struct {
 	queue workqueue.TypedRateLimitingInterface[string]
 
 	guestCapabilities guest.Capabilities
-	tcMallocLibPath   string
 	host              providerhost.LibvirtHost
 	imageCache        providerimage.Cache
 	raw               raw.Raw
@@ -840,10 +837,6 @@ func (r *MachineReconciler) domainFor(
 		return nil, nil, nil, err
 	}
 
-	if err := r.setTCMallocPath(domainDesc); err != nil {
-		return nil, nil, nil, err
-	}
-
 	sgx.EnableSGXInDomain(&machine.Spec, domainDesc)
 
 	if machine.Spec.GuestAgent != api.GuestAgentNone {
@@ -961,22 +954,6 @@ func (r *MachineReconciler) setDomainPCIControllers(domain *libvirtxml.Domain) e
 			Model: "pcie-root-port",
 		})
 	}
-	return nil
-}
-
-// setTCMallocPath enables support for the tcmalloc for the VMs.
-func (r *MachineReconciler) setTCMallocPath(domain *libvirtxml.Domain) error {
-	if r.tcMallocLibPath == "" {
-		return nil
-	}
-
-	if domain.QEMUCommandline == nil {
-		domain.QEMUCommandline = &libvirtxml.DomainQEMUCommandline{}
-	}
-	domain.QEMUCommandline.Envs = append(domain.QEMUCommandline.Envs, libvirtxml.DomainQEMUCommandlineEnv{
-		Name:  "LD_PRELOAD",
-		Value: r.tcMallocLibPath,
-	})
 	return nil
 }
 
