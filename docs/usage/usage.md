@@ -61,6 +61,7 @@ For a complete list of available make targets, refer to the [Makefile](../../Mak
 | `--libvirt-address` | Address of the RPC libvirt socket. | `""` |
 | `--libvirt-uri` | URI to connect to inside the libvirt system. | `""` |
 | `--libvirt-override-template` | Path to the override domain XML template used for VM creation. | (disabled) |
+| `--libvirt-domain-pci-total` | Total number of PCI controllers to be configured in the domain XML. | `30` |
 
 #### Server and health monitoring
 
@@ -101,7 +102,6 @@ For a complete list of available make targets, refer to the [Makefile](../../Mak
 | --- | --- | --- |
 | `--preferred-domain-types` | Ordered list of preferred domain types to use. | `[kvm,qemu]` |
 | `--preferred-machine-types` | Ordered list of preferred machine types to use. | `[pc-q35]` |
-| `--qcow2-type` | qcow2 implementation to use. Available options:  `exec` | `[exec]` |
 | `--guest-agent-type` | Type of guest agent to use. Available options: `None`, `Qemu` | `None` |
 
 #### Machine IRI event store
@@ -122,6 +122,8 @@ For a complete list of available make targets, refer to the [Makefile](../../Mak
 | `--apinet-cleanup` | Cleanup orphan apinet interfaces during startup. | `false` |
 | `--apinet-node-name` | APInet node name. | `""` |
 | `--apinet-kubeconfig` | Path to the kubeconfig file for the apinet-cluster. | `""` |
+| `--apinet-polling-duration` | The maximum time the apinet plugin will wait until the networkinterface becomes ready. | `30s` |
+| `--apinet-polling-interval` | The polling interval the apinet plugin uses to check if the networkinterface became ready. | `1s` |
 
 #### Resource manager
 
