@@ -96,7 +96,9 @@ func mergeStructs(final, override, generated reflect.Value) {
 			}
 
 		case reflect.Slice:
-			if finalField.Type().Elem().Kind() == reflect.Struct {
+			if overrideField.IsNil() {
+				finalField.Set(generatedField)
+			} else if finalField.Type().Elem().Kind() == reflect.Struct {
 				finalField.Set(mergeStructSlices(overrideField, generatedField))
 			} else {
 				finalField.Set(mergeSlices(overrideField, generatedField))

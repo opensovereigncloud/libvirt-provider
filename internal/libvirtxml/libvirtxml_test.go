@@ -216,6 +216,131 @@ var _ = Describe("Domain Merge Function", func() {
 		})
 	})
 
+	Context("PCI controller merging", func() {
+		It("should retain all generated PCIe root port controllers if override has none", func() {
+			override := &libvirtxml.Domain{
+				Devices: &libvirtxml.DomainDeviceList{
+					Controllers: nil,
+				},
+			}
+
+			var controllers []libvirtxml.DomainController
+			for range 30 {
+				controllers = append(controllers, libvirtxml.DomainController{
+					Type:  "pci",
+					Model: "pcie-root-port",
+				})
+			}
+			generated := &libvirtxml.Domain{
+				Devices: &libvirtxml.DomainDeviceList{
+					Controllers: controllers,
+				},
+			}
+
+			final := providerlibvirtxml.MergeDomains(override, generated)
+
+			Expect(final.Devices.Controllers).To(HaveLen(30))
+			Expect(final.Devices.Controllers).To(Equal(controllers))
+		})
+
+		It("should append override controller if not present in generated", func() {
+			generatedController := []libvirtxml.DomainController{
+				{
+					Type:  "pci",
+					Model: "pcie-root-port",
+				},
+			}
+			generated := &libvirtxml.Domain{
+				Devices: &libvirtxml.DomainDeviceList{
+					Controllers: generatedController,
+				},
+			}
+
+			overrideController := []libvirtxml.DomainController{
+				{
+					Type:  "type-test",
+					Model: "model-test",
+				},
+			}
+			override := &libvirtxml.Domain{
+				Devices: &libvirtxml.DomainDeviceList{
+					Controllers: overrideController,
+				},
+			}
+
+			final := providerlibvirtxml.MergeDomains(override, generated)
+			Expect(final.Devices.Controllers).To(HaveLen(2))
+			Expect(final.Devices.Controllers[0]).To(Equal(overrideController[0]))
+			Expect(final.Devices.Controllers[1]).To(Equal(generatedController[0]))
+		})
+
+		It("should not duplicate controllers if override has identical entry", func() {
+			generatedController := []libvirtxml.DomainController{
+				{
+					Type:  "pci",
+					Model: "pcie-root-port",
+				},
+			}
+			generated := &libvirtxml.Domain{
+				Devices: &libvirtxml.DomainDeviceList{
+					Controllers: generatedController,
+				},
+			}
+
+			overrideController := []libvirtxml.DomainController{
+				{
+					Type:  "pci",
+					Model: "pcie-root-port",
+				},
+			}
+			override := &libvirtxml.Domain{
+				Devices: &libvirtxml.DomainDeviceList{
+					Controllers: overrideController,
+				},
+			}
+
+			final := providerlibvirtxml.MergeDomains(override, generated)
+			Expect(final.Devices.Controllers).To(HaveLen(1))
+			Expect(final.Devices.Controllers[0]).To(Equal(generatedController[0]))
+		})
+
+		It("should override identical entry and append diffeent entry", func() {
+			generatedController := []libvirtxml.DomainController{
+				{
+					Type:  "pci",
+					Model: "pcie-root-port",
+				},
+			}
+			generated := &libvirtxml.Domain{
+				Devices: &libvirtxml.DomainDeviceList{
+					Controllers: generatedController,
+				},
+			}
+
+			overrideController := []libvirtxml.DomainController{
+				{
+					Type:  "pci",
+					Model: "pcie-root-port",
+				},
+				{
+					Type:  "type-test",
+					Model: "model-test",
+				},
+			}
+			override := &libvirtxml.Domain{
+				Devices: &libvirtxml.DomainDeviceList{
+					Controllers: overrideController,
+				},
+			}
+
+			final := providerlibvirtxml.MergeDomains(override, generated)
+			Expect(final.Devices.Controllers).To(HaveLen(2))
+			Expect(final.Devices.Controllers[0]).To(Equal(overrideController[0]))
+			Expect(final.Devices.Controllers[1]).To(Equal(overrideController[1]))
+		})
+
+	})
+
 	Context("Edge cases & stress testing", func() {
 		It("should correctly merge deeply nested structures with mixed types in random order", func() {
 			override := &libvirtxml.Domain{
