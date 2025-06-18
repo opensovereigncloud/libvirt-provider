@@ -383,7 +383,7 @@ func (p *Plugin) Delete(ctx context.Context, computeNicName, machineID string) e
 	}
 
 	log.V(1).Info("Waiting until apinet network interface is gone")
-	if err := wait.PollUntilContextTimeout(ctx, 50*time.Millisecond, 10*time.Second, true, func(ctx context.Context) (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(ctx, p.pollingInterval, p.pollingDuration, true, func(ctx context.Context) (done bool, err error) {
 		if err := p.apinetClient.Get(ctx, apinetNicKey, &apinetv1alpha1.NetworkInterface{}); err != nil {
 			if !apierrors.IsNotFound(err) {
 				return false, fmt.Errorf("error getting apinet network interface %s: %w", apinetNicKey, err)
