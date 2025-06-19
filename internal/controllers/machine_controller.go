@@ -675,13 +675,13 @@ func (r *MachineReconciler) createDomain(
 ) ([]api.VolumeStatus, []api.NetworkInterfaceStatus, error) {
 	generatedDomainXML, volumeStates, nicStates, err := r.domainFor(ctx, log, machine)
 	if err != nil {
-		return nil, nil, err
+		return volumeStates, nicStates, err
 	}
 
 	domainXML := providerlibvirtxml.MergeDomains(r.overrideDomainXML, generatedDomainXML)
 	domainXMLData, err := domainXML.Marshal()
 	if err != nil {
-		return nil, nil, err
+		return volumeStates, nicStates, err
 	}
 
 	log.V(1).Info("Creating domain")
@@ -865,23 +865,24 @@ func (r *MachineReconciler) domainFor(
 	volumeStates, err := r.reconcileVolumes(ctx, log, machine, attacher)
 	if err != nil {
 		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "reconcileVolumes", "Volume reconciliation failed with error: %s", err)
-		return nil, nil, nil, err
+		return nil, volumeStates, nil, err
 	}
 	if machine.Spec.Volumes != nil {
 		r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "AttchedVolume", "Successfully attached volumes")
 	}
 
-	nicStates, err := r.setDomainNetworkInterfaces(ctx, machine, domainDesc)
+	nicStatesAsPointers, err := r.setDomainNetworkInterfaces(ctx, machine, domainDesc)
+	nicStates := removePointerFromNicsStatusArray(nicStatesAsPointers)
 	if err != nil {
 		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "setDomainNetworkInterfaces", "Setting domain network interface failed with error: %s", err)
-		return nil, nil, nil, err
+		return nil, volumeStates, nicStates, err
 	}
 	if machine.Spec.NetworkInterfaces != nil {
 		r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "AttchedNIC", "Successfully attached network interfaces")
 	}
 
 	if err := r.setPCIDevices(machine, domainDesc); err != nil {
-		return nil, nil, nil, err
+		return nil, volumeStates, nicStates, err
 	}
 
 	return domainDesc, volumeStates, nicStates, nil
@@ -1122,4 +1123,12 @@ func machineDomain(machineID string) libvirt.Domain {
 	return libvirt.Domain{
 		UUID: libvirtutils.UUIDStringToBytes(machineID),
 	}
+}
+
+func removePointerFromNicsStatusArray(nics []*api.NetworkInterfaceStatus) []api.NetworkInterfaceStatus {
+	result := make([]api.NetworkInterfaceStatus, 0, len(nics))
+	for index := range nics {
+		result = append(result, *(nics[index]))
+	}
+	return result
 }

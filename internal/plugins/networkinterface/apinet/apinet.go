@@ -27,6 +27,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -190,21 +191,32 @@ func (p *Plugin) APInetNicName(machineID, networkInterfaceName string) string {
 func (p *Plugin) Apply(ctx context.Context, spec *api.NetworkInterfaceSpec, machine *api.Machine) (*providernetworkinterface.NetworkInterface, error) {
 	log := ctrl.LoggerFrom(ctx)
 
-	log.V(1).Info("Writing network interface dir")
-	if err := os.MkdirAll(p.host.MachineNetworkInterfaceDir(machine.ID, spec.Name), permFolder); err != nil {
-		return nil, err
-	}
-
 	apinetNamespace, apinetNetworkName, _, _, err := provider.ParseNetworkID(spec.NetworkId)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing ApiNet NetworkID %s: %w", spec.NetworkId, err)
+	}
+
+	apinetNicName := p.APInetNicName(machine.ID, spec.Name)
+
+	providerNic := &providernetworkinterface.NetworkInterface{
+		Handle: provider.GetNetworkInterfaceID(
+			apinetNamespace,
+			apinetNicName,
+			p.nodeName,
+			types.UID(""),
+		),
+	}
+
+	log.V(1).Info("Writing network interface dir")
+	if err := os.MkdirAll(p.host.MachineNetworkInterfaceDir(machine.ID, spec.Name), permFolder); err != nil {
+		return providerNic, err
 	}
 
 	log.V(1).Info("Writing APINet network interface config file")
 	if err := p.writeAPINetNetworkInterfaceConfig(machine.ID, spec.Name, &apiNetNetworkInterfaceConfig{
 		Namespace: apinetNamespace,
 	}); err != nil {
-		return nil, err
+		return providerNic, err
 	}
 
 	apinetNic := &apinetv1alpha1.NetworkInterface{
@@ -214,7 +226,7 @@ func (p *Plugin) Apply(ctx context.Context, spec *api.NetworkInterfaceSpec, mach
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: apinetNamespace,
-			Name:      p.APInetNicName(machine.ID, spec.Name),
+			Name:      apinetNicName,
 			Labels:    p.getLibvirtProviderLabel(),
 		},
 		Spec: apinetv1alpha1.NetworkInterfaceSpec{
@@ -230,70 +242,48 @@ func (p *Plugin) Apply(ctx context.Context, spec *api.NetworkInterfaceSpec, mach
 
 	log.V(1).Info("Applying apinet nic")
 	if err := p.apinetClient.Patch(ctx, apinetNic, client.Apply, fieldOwner, client.ForceOwnership); err != nil {
-		return nil, fmt.Errorf("error applying apinet network interface: %w", err)
+		return providerNic, fmt.Errorf("error applying apinet network interface: %w", err)
 	}
+
+	providerNic.Handle += string(apinetNic.UID)
 
 	hostDev, direct, err := getHostDevice(apinetNic)
 	if err != nil {
-		return nil, fmt.Errorf("error getting host device: %w", err)
+		return providerNic, fmt.Errorf("error getting host device: %w", err)
 	}
+
+	shouldGetInterfaceStatus := hostDev == nil && direct == nil
+
+	if shouldGetInterfaceStatus {
+		log.V(1).Info("Waiting for apinet network interface to become ready")
+		apinetNicKey := client.ObjectKeyFromObject(apinetNic)
+		if err := wait.PollUntilContextTimeout(ctx, p.pollingInterval, p.pollingDuration, true, func(ctx context.Context) (done bool, err error) {
+			if err := p.apinetClient.Get(ctx, apinetNicKey, apinetNic); err != nil {
+				return false, fmt.Errorf("error getting apinet nic %s: %w", apinetNicKey, err)
+			}
+
+			hostDev, direct, err = getHostDevice(apinetNic)
+			if err != nil {
+				return false, fmt.Errorf("error getting host device: %w", err)
+			}
+			return hostDev != nil || direct != nil, nil
+		}); err != nil {
+			return providerNic, fmt.Errorf("error waiting for nic to become ready: %w", err)
+		}
+	}
+
 	if hostDev != nil {
 		log.V(1).Info("Host device is ready", "HostDevice", hostDev)
-		return &providernetworkinterface.NetworkInterface{
-			Handle: provider.GetNetworkInterfaceID(
-				apinetNic.Namespace,
-				apinetNic.Name,
-				apinetNic.Spec.NodeRef.Name,
-				apinetNic.UID,
-			),
-			HostDevice: hostDev,
-		}, nil
+		providerNic.HostDevice = hostDev
+		return providerNic, nil
 	}
 
 	if direct != nil {
 		log.V(1).Info("Direct device is ready", "Direct", direct)
-		return &providernetworkinterface.NetworkInterface{
-			Handle: provider.GetNetworkInterfaceID(
-				apinetNic.Namespace,
-				apinetNic.Name,
-				apinetNic.Spec.NodeRef.Name,
-				apinetNic.UID,
-			),
-			Direct: direct,
-		}, nil
+		providerNic.Direct = direct
 	}
 
-	log.V(1).Info("Waiting for apinet network interface to become ready")
-	apinetNicKey := client.ObjectKeyFromObject(apinetNic)
-	if err := wait.PollUntilContextTimeout(ctx, p.pollingInterval, p.pollingDuration, true, func(ctx context.Context) (done bool, err error) {
-		if err := p.apinetClient.Get(ctx, apinetNicKey, apinetNic); err != nil {
-			return false, fmt.Errorf("error getting apinet nic %s: %w", apinetNicKey, err)
-		}
-
-		hostDev, direct, err = getHostDevice(apinetNic)
-		if err != nil {
-			return false, fmt.Errorf("error getting host device: %w", err)
-		}
-		return hostDev != nil || direct != nil, nil
-	}); err != nil {
-		return nil, fmt.Errorf("error waiting for nic to become ready: %w", err)
-	}
-
-	// Fetch the updated object to get the ID or any other updated fields
-	if err := p.apinetClient.Get(ctx, apinetNicKey, apinetNic); err != nil {
-		return nil, fmt.Errorf("error fetching updated apinet network interface: %w", err)
-	}
-
-	return &providernetworkinterface.NetworkInterface{
-		Handle: provider.GetNetworkInterfaceID(
-			apinetNic.Namespace,
-			apinetNic.Name,
-			apinetNic.Spec.NodeRef.Name,
-			apinetNic.UID,
-		),
-		HostDevice: hostDev,
-		Direct:     direct,
-	}, nil
+	return providerNic, nil
 }
 
 func getHostDevice(apinetNic *apinetv1alpha1.NetworkInterface) (*providernetworkinterface.HostDevice, *providernetworkinterface.Direct, error) {
