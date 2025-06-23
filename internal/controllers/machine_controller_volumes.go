@@ -91,10 +91,10 @@ func (r *MachineReconciler) reconcileVolumes(ctx context.Context, log logr.Logge
 
 	currentVolumeNames := sets.NewString()
 	// getting list of devices used by volumes
-	currentDevices := map[string]string{}
+	currentVolumeDevices := map[string]string{}
 	if err := attacher.ForEachVolume(func(volume *AttachVolume) bool {
 		currentVolumeNames.Insert(volume.Name)
-		currentDevices[volume.Device] = volume.Name
+		currentVolumeDevices[volume.Name] = volume.Device
 		return true
 	}); err != nil {
 		return nil, fmt.Errorf("error iterating attached volumes: %w", err)
@@ -115,9 +115,10 @@ func (r *MachineReconciler) reconcileVolumes(ctx context.Context, log logr.Logge
 	var errs []error
 	for volumeName := range currentVolumeNames {
 		if specVolume, ok := specVolumes[volumeName]; ok {
-			deviceVolumeName := currentDevices[computeVirtioDiskTargetDeviceName(specVolume.Device)]
+			currentlyAttachedDevice := currentVolumeDevices[volumeName]
 			// skip detaching if volume is without device or if volume is properly attached
-			if deviceVolumeName == VolumeWithoutDevice || volumeName == deviceVolumeName {
+			if currentlyAttachedDevice == VolumeWithoutDevice ||
+				currentlyAttachedDevice == computeVirtioDiskTargetDeviceName(specVolume.Device) {
 				continue
 			}
 		}
@@ -160,10 +161,12 @@ func (r *MachineReconciler) reconcileVolumes(ctx context.Context, log logr.Logge
 			}
 			volumeStatus[volume.Name] = status
 		}
-		deviceName := computeVirtioDiskTargetDeviceName(volume.Device)
-		deviceVolumeName := currentDevices[deviceName]
-		if deviceVolumeName != VolumeWithoutDevice && deviceVolumeName != volume.Name {
-			errs = append(errs, fmt.Errorf("[volume %s] error reconciling: device %s is used by another volume %s", volume.Name, deviceName, deviceVolumeName))
+
+		specDevice := computeVirtioDiskTargetDeviceName(volume.Device)
+		currentlyAttachedDevice := currentVolumeDevices[volume.Name]
+		// skip attaching of device under wrong device name
+		if currentlyAttachedDevice != VolumeWithoutDevice && currentlyAttachedDevice != specDevice {
+			errs = append(errs, fmt.Errorf("[volume %s] error reconciling: device %s is used by another volume", volume.Name, specDevice))
 			continue
 		}
 		volumeID, volumeSize, err := r.applyVolume(ctx, log, machine, volume, mounter, attacher)
