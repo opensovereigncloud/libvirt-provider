@@ -7,8 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 
 	"github.com/go-logr/logr"
+	"github.com/ironcore-dev/controller-utils/metautils"
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
 	api "github.com/ironcore-dev/libvirt-provider/api"
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/manager"
@@ -74,6 +76,12 @@ func (s *Server) createMachineFromIRIMachine(ctx context.Context, log logr.Logge
 	if err := api.SetObjectMetadata(machine, iriMachine.Metadata); err != nil {
 		return nil, fmt.Errorf("failed to set metadata: %w", err)
 	}
+
+	// we have to break reference between maps
+	iriMachineLabels := make(map[string]string, len(iriMachine.Metadata.Labels))
+	maps.Copy(iriMachineLabels, iriMachine.Metadata.Labels)
+	metautils.SetLabels(machine, iriMachineLabels)
+
 	api.SetClassLabel(machine, iriMachine.Spec.Class)
 	api.SetManagerLabel(machine, api.MachineManager)
 
