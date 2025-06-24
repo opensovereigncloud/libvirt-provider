@@ -423,7 +423,6 @@ func Run(ctx context.Context, opts Options) error {
 			Raw:                            rawInst,
 			VolumePluginManager:            volumePlugins,
 			NetworkInterfacePlugin:         nicPlugin,
-			PCIControllerTotal:             opts.Libvirt.PCIControllerTotal,
 			ResyncIntervalVolumeSize:       opts.ResyncIntervalVolumeSize,
 			ResyncIntervalGarbageCollector: opts.ResyncIntervalGarbageCollector,
 			GCVMGracefulShutdownTimeout:    opts.GCVMGracefulShutdownTimeout,

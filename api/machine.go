@@ -54,6 +54,8 @@ type MachineSpec struct {
 	ShutdownAt time.Time `json:"shutdownAt,omitempty"`
 
 	GuestAgent GuestAgent `json:"guestAgent"`
+
+	PCIControllerTotal int `json:"pciControllerTotal"`
 }
 
 func (m *MachineSpec) SortVolumes() {

@@ -24,7 +24,7 @@ func (s *Server) AttachVolume(ctx context.Context, req *iri.AttachVolumeRequest)
 		return nil, fmt.Errorf("failed to get machine: %w", err)
 	}
 
-	if api.GetExistingPCICount(apiMachine) >= s.pciControllerTotal {
+	if api.GetExistingPCICount(apiMachine) >= apiMachine.Spec.PCIControllerTotal {
 		return nil, api.ErrPCIControllerMaxedOut
 	}
 

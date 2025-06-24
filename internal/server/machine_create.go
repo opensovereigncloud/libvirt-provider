@@ -65,11 +65,12 @@ func (s *Server) createMachineFromIRIMachine(ctx context.Context, log logr.Logge
 			ID: s.idGen.Generate(),
 		},
 		Spec: api.MachineSpec{
-			Power:             power,
-			Volumes:           volumes,
-			Ignition:          iriMachine.Spec.IgnitionData,
-			NetworkInterfaces: networkInterfaces,
-			GuestAgent:        s.guestAgent,
+			Power:              power,
+			Volumes:            volumes,
+			Ignition:           iriMachine.Spec.IgnitionData,
+			NetworkInterfaces:  networkInterfaces,
+			GuestAgent:         s.guestAgent,
+			PCIControllerTotal: s.pciControllerTotal,
 		},
 	}
 

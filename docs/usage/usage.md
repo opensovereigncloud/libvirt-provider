@@ -198,6 +198,18 @@ You can access these services by connecting to their respective addresses.
 
 ---
 
+## PCI controllers limit
+
+The total number of PCI controllers to be configured in the domain XML can be set via flag `--libvirt-domain-pci-total`.
+This parameter determines how many `PCI root ports` are added during the creation of domain XML for each new virtual machine.
+However, adding PCI root ports to a running virtual machine requires modifications to its domain XML definition, which cannot be dynamically applied while the machine is running.
+Since `PCI root ports` are integral to the VM's hardware configuration, changes to them require a recreation of the virtual machine to ensure proper initialization and integration of the new PCI topology.
+If the `libvirt-provider` is restarted with a modified limit for PCI controllers, this new limit will not automatically apply to existing virtual machines.
+Each machine retains its own configured limit, and applying a new limit requires recreation of the machine.
+In cases where a machine has more PCI ports in use than the new limit would allow, it is necessary to adjust the configuration first (e.g., removing disks, NICs, etc.) before applying the new limit.
+
+---
+
 ## Logs and debugging
 
 The service logs are critical for troubleshooting issues. By default, the service uses the `zap` logging framework, which supports structured logging and multiple log levels.

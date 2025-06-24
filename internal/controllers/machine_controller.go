@@ -86,7 +86,6 @@ type MachineReconcilerOptions struct {
 	Raw                            raw.Raw
 	VolumePluginManager            *providervolume.PluginManager
 	NetworkInterfacePlugin         providernetworkinterface.Plugin
-	PCIControllerTotal             int
 	VolumeEvents                   event.Source[*api.Machine]
 	ResyncIntervalVolumeSize       time.Duration
 	ResyncIntervalGarbageCollector time.Duration
@@ -144,7 +143,6 @@ func NewMachineReconciler(
 		raw:                                     opts.Raw,
 		volumePluginManager:                     opts.VolumePluginManager,
 		networkInterfacePlugin:                  opts.NetworkInterfacePlugin,
-		pciControllerTotal:                      opts.PCIControllerTotal,
 		resyncIntervalVolumeSize:                opts.ResyncIntervalVolumeSize,
 		resyncIntervalGarbageCollector:          opts.ResyncIntervalGarbageCollector,
 		gcVMGracefulShutdownTimeout:             opts.GCVMGracefulShutdownTimeout,
@@ -167,8 +165,6 @@ type MachineReconciler struct {
 
 	volumePluginManager    *providervolume.PluginManager
 	networkInterfacePlugin providernetworkinterface.Plugin
-
-	pciControllerTotal int
 
 	machines      store.Store[*api.Machine]
 	machineEvents event.Source[*api.Machine]
@@ -833,7 +829,7 @@ func (r *MachineReconciler) domainFor(
 		return nil, nil, nil, err
 	}
 
-	if err := r.setDomainPCIControllers(domainDesc); err != nil {
+	if err := r.setDomainPCIControllers(domainDesc, machine.Spec.PCIControllerTotal); err != nil {
 		return nil, nil, nil, err
 	}
 
@@ -940,7 +936,7 @@ func (r *MachineReconciler) setDomainResources(machine *api.Machine, domain *lib
 
 // TODO: Investigate hotplugging the pcie-root-port controllers with disks.
 // Ref: https://libvirt.org/pci-hotplug.html#x86_64-q35
-func (r *MachineReconciler) setDomainPCIControllers(domain *libvirtxml.Domain) error {
+func (r *MachineReconciler) setDomainPCIControllers(domain *libvirtxml.Domain, pciControllerTotal int) error {
 	domain.Devices.Controllers = append(domain.Devices.Controllers, libvirtxml.DomainController{
 		Type:  "pci",
 		Model: "pcie-root",
@@ -949,7 +945,7 @@ func (r *MachineReconciler) setDomainPCIControllers(domain *libvirtxml.Domain) e
 	// Adding 3 more PCIe root ports because the root disk, memballoon, and rng each consume one PCIe slot by default.
 	const defaultDomainPCICount = 3
 
-	for i := 1; i <= r.pciControllerTotal+defaultDomainPCICount; i++ {
+	for i := 1; i <= pciControllerTotal+defaultDomainPCICount; i++ {
 		domain.Devices.Controllers = append(domain.Devices.Controllers, libvirtxml.DomainController{
 			Type:  "pci",
 			Model: "pcie-root-port",

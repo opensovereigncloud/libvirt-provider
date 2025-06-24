@@ -24,7 +24,7 @@ func (s *Server) AttachNetworkInterface(ctx context.Context, req *iri.AttachNetw
 		return nil, fmt.Errorf("failed to get machine: %w", err)
 	}
 
-	if api.GetExistingPCICount(apiMachine) >= s.pciControllerTotal {
+	if api.GetExistingPCICount(apiMachine) >= apiMachine.Spec.PCIControllerTotal {
 		return nil, api.ErrPCIControllerMaxedOut
 	}
 

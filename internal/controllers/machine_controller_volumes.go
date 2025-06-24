@@ -555,7 +555,7 @@ type VolumeMounter interface {
 	ForEachVolume(f func(*MountVolume) bool) error
 	ListVolumes() ([]MountVolume, error)
 	GetVolume(computeVolumeName string) (*MountVolume, error)
-	ApplyVolume(ctx context.Context, spec *api.VolumeSpec, pciControllerTotal int, onDelete func(*MountVolume) error) (string, *providervolume.Volume, error)
+	ApplyVolume(ctx context.Context, spec *api.VolumeSpec, onDelete func(*MountVolume) error) (string, *providervolume.Volume, error)
 	DeleteVolume(ctx context.Context, computeVolumeName string) error
 }
 
@@ -649,7 +649,7 @@ func (m *volumeMounter) DeleteVolume(ctx context.Context, computeVolumeName stri
 	return nil
 }
 
-func (m *volumeMounter) ApplyVolume(ctx context.Context, spec *api.VolumeSpec, pciControllerTotal int, onDelete func(*MountVolume) error) (string, *providervolume.Volume, error) {
+func (m *volumeMounter) ApplyVolume(ctx context.Context, spec *api.VolumeSpec, onDelete func(*MountVolume) error) (string, *providervolume.Volume, error) {
 	plugin, err := m.pluginManager.FindPluginBySpec(spec)
 	if err != nil {
 		return "", nil, err
@@ -693,7 +693,7 @@ func (r *MachineReconciler) applyVolume(
 	log.V(1).Info("Getting volume spec")
 
 	log.V(1).Info("Applying volume")
-	volumeID, providerVolume, err := mountedVolumes.ApplyVolume(ctx, desiredVolume, r.pciControllerTotal, func(outdated *MountVolume) error {
+	volumeID, providerVolume, err := mountedVolumes.ApplyVolume(ctx, desiredVolume, func(outdated *MountVolume) error {
 		log.V(1).Info("Detaching outdated mounted volume before deleting", "PluginName", outdated.PluginName)
 		if err := attacher.DetachVolume(outdated.ComputeVolumeName); err != nil && !errors.Is(err, ErrAttachedVolumeNotFound) {
 			return fmt.Errorf("error detaching volume: %w", err)
