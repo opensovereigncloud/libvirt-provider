@@ -4,16 +4,12 @@
 package api
 
 const (
-	LabelsAnnotation = "libvirt-provider.ironcore.dev/labels"
+	MachineManager   = "libvirt-provider"
+	LabelsPrefix     = MachineManager + ".ironcore.dev"
+	LabelsAnnotation = LabelsPrefix + "/labels"
 
-	AnnotationsAnnotation = "libvirt-provider.ironcore.dev/annotations"
-)
+	AnnotationsAnnotation = LabelsPrefix + "/annotations"
 
-const (
-	ManagerLabel = "libvirt-provider.ironcore.dev/manager"
-	ClassLabel   = "libvirt-provider.ironcore.dev/class"
-)
-
-const (
-	MachineManager = "libvirt-provider"
+	ManagerLabel = LabelsPrefix + "/manager"
+	ClassLabel   = LabelsPrefix + "/class"
 )

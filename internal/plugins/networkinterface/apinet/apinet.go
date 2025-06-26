@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	fieldOwner = client.FieldOwner("networking.ironcore.dev/libvirt-provider")
+	fieldOwner = client.FieldOwner("networking.ironcore.dev/" + api.MachineManager)
 
 	defaultAPINetConfigFile = "api-net.json"
 
@@ -44,7 +44,7 @@ const (
 
 	pluginAPInet = "apinet"
 
-	labelLibvirtProviderHostname = "libvirt-provider/hostname"
+	labelLibvirtProviderHostname = api.LabelsPrefix + "/hostname"
 )
 
 type Plugin struct {
