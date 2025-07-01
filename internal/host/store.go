@@ -31,6 +31,10 @@ const (
 	suffixSwpExtension = ".swp"
 )
 
+var (
+	ErrFileNameDifferentAsID = errors.New("file name is different as id inside")
+)
+
 type Options[E api.Object] struct {
 	//TODO
 	Dir            string
@@ -272,6 +276,10 @@ func (s *Store[E]) List(ctx context.Context) ([]E, error) {
 
 		object, err := s.Get(ctx, entry.Name())
 		if err != nil {
+			if errors.Is(err, ErrFileNameDifferentAsID) {
+				s.log.Error(err, "failed to read file from the store")
+				continue
+			}
 			return nil, fmt.Errorf("failed to read object: %w", err)
 		}
 
@@ -354,6 +362,10 @@ func (s *Store[E]) get(id string) (E, error) {
 	err = kjson.NewDecoderCaseSensitivePreserveInts(fd).Decode(&obj)
 	if err != nil {
 		return utils.Zero[E](), fmt.Errorf("failed to decode object from file %s: %w", id, err)
+	}
+
+	if id != obj.GetID() {
+		return utils.Zero[E](), fmt.Errorf("%s is different as id %s: %w", id, obj.GetID(), ErrFileNameDifferentAsID)
 	}
 
 	return obj, nil
