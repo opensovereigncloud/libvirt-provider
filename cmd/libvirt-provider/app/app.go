@@ -157,9 +157,9 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&o.Servers.HealthCheck.GracefulTimeout, "servers-health-check-gracefultimeout", HTTPServerGracefulTimeout, "Graceful timeout for shutdown health check server.")
 
 	fs.StringVar(&o.Servers.PPROF.Addr, "servers-pprof-address", "", "Address to listen on exposing of pprof. If address isn't set, server is disabled.")
-	fs.DurationVar(&o.Servers.Metrics.ReadTimeout, "servers-pprof-readtimeout", HTTPServerReadTimeout, "Read timeout for pprof server.")
-	fs.DurationVar(&o.Servers.Metrics.WriteTimeout, "servers-pprof-writetimeout", HTTPServerWriteTimeout, "Write timeout for pprof server.")
-	fs.DurationVar(&o.Servers.Metrics.IdleTimeout, "servers-pprof-idletimeout", HTTPServerIdleTimeout, "Idle timeout for connections to pprof server.")
+	fs.DurationVar(&o.Servers.PPROF.ReadTimeout, "servers-pprof-readtimeout", HTTPServerReadTimeout, "Read timeout for pprof server.")
+	fs.DurationVar(&o.Servers.PPROF.WriteTimeout, "servers-pprof-writetimeout", HTTPServerWriteTimeout, "Write timeout for pprof server.")
+	fs.DurationVar(&o.Servers.PPROF.IdleTimeout, "servers-pprof-idletimeout", HTTPServerIdleTimeout, "Idle timeout for connections to pprof server.")
 	fs.DurationVar(&o.Servers.PPROF.GracefulTimeout, "servers-pprof-gracefultimeout", HTTPServerGracefulTimeout, "Graceful timeout for shutdown pprof server.")
 
 	fs.StringVar(&o.RootDir, "libvirt-provider-dir", filepath.Join(homeDir, ".libvirt-provider"), "Path to the directory libvirt-provider manages its content at.")
