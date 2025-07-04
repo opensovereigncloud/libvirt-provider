@@ -189,7 +189,6 @@ e2e-tests:
   retry:
     max: 2
     when:
-      # Script failure doesn't work properly with libvirt executors
       - runner_system_failure
       - job_execution_timeout
   rules:
@@ -201,17 +200,34 @@ e2e-tests:
           - 'go.mod'
           - 'go.sum'
           - '**/hack/osc-pipeline-setup-e2e-env.sh'
+  variables:
+    TEST_REPORT_DIR: "e2e-test-reports"
   script:
     - bash ./hack/osc-pipeline-setup-e2e-env.sh
     - |
       set -e
+      mkdir -p "${TEST_REPORT_DIR}"
 
       export CEPH_MONITORS="[$(ceph config show osd.1 mon_host)]:6789"
       export CEPH_IMAGE="devpool/test-img"
       export CEPH_USERNAME="admin"
       export CEPH_USERKEY="$(ceph auth print-key client.admin)"
 
-      make integration-tests
+      go run github.com/onsi/ginkgo/v2/ginkgo run \
+        --label-filter="integration" \
+        --coverprofile=cover.out \
+        --junit-report="${TEST_REPORT_DIR}/report.xml" \
+        ./internal/server/...
+  artifacts:
+    untracked: false
+    when: always
+    access: all
+    expire_in: "7 days"
+    paths:
+      - cover.out
+      - "${TEST_REPORT_DIR}/report.xml"
+    reports:
+      junit: "${TEST_REPORT_DIR}/report.xml"
 
 build:
   extends: .run-on-go-change
