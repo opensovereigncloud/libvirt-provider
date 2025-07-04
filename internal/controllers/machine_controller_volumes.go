@@ -170,15 +170,19 @@ func (r *MachineReconciler) reconcileVolumes(ctx context.Context, log logr.Logge
 			continue
 		}
 		volumeID, volumeSize, err := r.applyVolume(ctx, log, machine, volume, mounter, attacher)
+		if volumeID != "" {
+			status.Handle = volumeID
+		}
+		if volumeSize != 0 {
+			status.Size = volumeSize
+		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("[volume %s] error reconciling: %w", volume.Name, err))
 			continue
 		}
 
 		volumeLog.V(1).Info("Successfully reconciled volume", "volumeID", volumeID)
-		status.Handle = volumeID
 		status.State = api.VolumeStateAttached
-		status.Size = volumeSize
 	}
 
 	volumeStatusList := convertVolumesMapToList(volumeStatus)
@@ -676,7 +680,7 @@ func (m *volumeMounter) ApplyVolume(ctx context.Context, spec *api.VolumeSpec, o
 
 	volume, err := plugin.Apply(ctx, spec, m.machine)
 	if err != nil {
-		return "", nil, err
+		return GetUniqueVolumeName(plugin.Name(), volumeID), nil, err
 	}
 
 	return GetUniqueVolumeName(plugin.Name(), volumeID), volume, nil
@@ -700,6 +704,9 @@ func (r *MachineReconciler) applyVolume(
 		}
 		return nil
 	})
+	if err != nil {
+		return volumeID, 0, fmt.Errorf("error applying volume mount: %w", err)
+	}
 
 	lastVolumeSize := getLastVolumeSize(machine, volumeID)
 
@@ -710,17 +717,13 @@ func (r *MachineReconciler) applyVolume(
 		volumeSize = lastVolumeSize
 	}
 
-	if err != nil {
-		return "", volumeSize, fmt.Errorf("error applying volume mount: %w", err)
-	}
-
 	log.V(1).Info("Ensuring volume is attached")
 	if err := attacher.AttachVolume(&AttachVolume{
 		Name:   desiredVolume.Name,
 		Device: desiredVolume.Device,
 		Spec:   *providerVolume,
 	}); err != nil && !errors.Is(err, ErrAttachedVolumeAlreadyExists) {
-		return "", volumeSize, fmt.Errorf("error ensuring volume is attached: %w", err)
+		return volumeID, volumeSize, fmt.Errorf("error ensuring volume is attached: %w", err)
 	}
 
 	//TODO do epsilon comparison
@@ -731,7 +734,7 @@ func (r *MachineReconciler) applyVolume(
 			Device: desiredVolume.Device,
 			Spec:   *providerVolume,
 		}); err != nil {
-			return "", volumeSize, fmt.Errorf("failed to resize volume: %w", err)
+			return volumeID, volumeSize, fmt.Errorf("failed to resize volume: %w", err)
 		}
 	}
 
