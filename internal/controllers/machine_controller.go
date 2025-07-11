@@ -18,8 +18,11 @@ import (
 
 	"github.com/digitalocean/go-libvirt"
 	"github.com/go-logr/logr"
+	apinetv1alpha1 "github.com/ironcore-dev/ironcore-net/api/core/v1alpha1"
 	core "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+
+	"github.com/ironcore-dev/libvirt-provider/internal/apinetwatcher"
 	"github.com/ironcore-dev/libvirt-provider/internal/event"
 	machineEvent "github.com/ironcore-dev/libvirt-provider/internal/event/machineevent"
 	providerhost "github.com/ironcore-dev/libvirt-provider/internal/host"
@@ -28,9 +31,11 @@ import (
 	libvirtutils "github.com/ironcore-dev/libvirt-provider/internal/libvirt/utils"
 	providerlibvirtxml "github.com/ironcore-dev/libvirt-provider/internal/libvirtxml"
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
+	"github.com/ironcore-dev/libvirt-provider/internal/networkinterfaceplugin"
 	providerimage "github.com/ironcore-dev/libvirt-provider/internal/oci"
 	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
+	"github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface/apinet"
 	providervolume "github.com/ironcore-dev/libvirt-provider/internal/plugins/volume"
 	"github.com/ironcore-dev/libvirt-provider/internal/raw"
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/manager"
@@ -93,6 +98,7 @@ type MachineReconcilerOptions struct {
 	VolumeCachePolicyCeph          string
 	OverrideDomainXML              *libvirtxml.Domain
 	Queue                          workqueue.TypedRateLimitingInterface[string]
+	WatcherEmitter                 apinetwatcher.EventEmitter[*apinetv1alpha1.NetworkInterface]
 }
 
 func NewMachineReconciler(
@@ -151,6 +157,7 @@ func NewMachineReconciler(
 		metricsReconcileDuration:                durationSummary,
 		metricsControllerRuntimeActiveWorker:    activeWorkerGauge,
 		metricsControllerRuntimeReconcileErrors: reconcileErrorsCounter,
+		watcherEmitter:                          opts.WatcherEmitter,
 	}, nil
 }
 
@@ -182,6 +189,8 @@ type MachineReconciler struct {
 	metricsControllerRuntimeReconcileErrors prometheus.Counter
 
 	overrideDomainXML *libvirtxml.Domain
+
+	watcherEmitter apinetwatcher.EventEmitter[*apinetv1alpha1.NetworkInterface]
 }
 
 func (r *MachineReconciler) Start(ctx context.Context) error {
@@ -214,6 +223,35 @@ func (r *MachineReconciler) Start(ctx context.Context) error {
 			}
 		},
 	})
+
+	if r.networkInterfacePlugin.Name() == networkinterfaceplugin.PluginAPINet {
+		err := r.watcherEmitter.AddHandler("watcher-apinet-nic", apinetwatcher.HandlerFunc[*apinetv1alpha1.NetworkInterface](func(evt apinetwatcher.Event[*apinetv1alpha1.NetworkInterface]) {
+			nic := evt.Object
+			if nic == nil {
+				return
+			}
+
+			machines, err := r.machines.List(ctx)
+			if err != nil {
+				r.log.Error(err, "failed to list machines")
+				return
+			}
+
+			for _, machine := range machines {
+				for _, iface := range machine.Spec.NetworkInterfaces {
+					machineID := machine.ID
+					computed := apinet.NICName(machineID, iface.Name)
+					if computed == nic.Name {
+						r.log.V(1).Info("Requeuing machine due to apinet NIC event", "machineID", machineID, "NICName", computed, "eventType", evt.Type)
+						r.queue.Add(machineID)
+					}
+				}
+			}
+		}))
+		if err != nil {
+			r.log.Error(err, "failed to register apinet NIC event handler")
+		}
+	}
 
 	imgEventReg, err := r.machineEvents.AddHandler(event.HandlerFunc[*api.Machine](func(evt event.Event[*api.Machine]) {
 		r.queue.Add(evt.Object.ID)

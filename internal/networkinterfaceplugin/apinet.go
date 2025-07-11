@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/pflag"
 
 	apinetv1alpha1 "github.com/ironcore-dev/ironcore-net/api/core/v1alpha1"
+	"github.com/ironcore-dev/libvirt-provider/internal/apinetwatcher"
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface/apinet"
 
@@ -23,24 +24,32 @@ import (
 
 var scheme = runtime.NewScheme()
 
+const PluginAPINet = "apinet"
+
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(apinetv1alpha1.AddToScheme(scheme))
 }
 
-type apinetOptions struct {
+type ApinetOptions struct {
 	APInetNodeName        string
 	ApinetKubeconfig      string
 	APInetPollingDuration time.Duration
 	APInetPollingInterval time.Duration
 	APInetCleanup         bool
+
+	watcher apinetwatcher.Watcher
 }
 
-func (o *apinetOptions) PluginName() string {
-	return "apinet"
+func (o *ApinetOptions) SetWatcher(watcher apinetwatcher.Watcher) {
+	o.watcher = watcher
 }
 
-func (o *apinetOptions) AddFlags(fs *pflag.FlagSet) {
+func (o *ApinetOptions) PluginName() string {
+	return PluginAPINet
+}
+
+func (o *ApinetOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.APInetNodeName, "apinet-node-name", "", "APInet node name")
 	fs.StringVar(&o.ApinetKubeconfig, "apinet-kubeconfig", "", "Path to the kubeconfig file for the apinet-cluster.")
 	fs.DurationVar(&o.APInetPollingDuration, "apinet-polling-duration", time.Second*30, "The maximum time the apinet plugin will wait until the networkinterface becomes ready.")
@@ -48,7 +57,7 @@ func (o *apinetOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.APInetCleanup, "apinet-cleanup", false, "Cleanup orphan apinet interfaces during startup.")
 }
 
-func (o *apinetOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, func(), error) {
+func (o *ApinetOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, func(), error) {
 	if o.APInetNodeName == "" {
 		return nil, nil, fmt.Errorf("must specify apinet-node-name")
 	}
@@ -74,9 +83,14 @@ func (o *apinetOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugi
 		return nil, nil, fmt.Errorf("failed to initialize api-net client: %w", err)
 	}
 
-	return apinet.NewPlugin(o.APInetNodeName, apinetClient, o.APInetPollingDuration, o.APInetPollingInterval, o.APInetCleanup), nil, nil
+	if o.watcher != nil {
+		o.watcher.SetNodeName(o.APInetNodeName)
+		o.watcher.SetAPINetConfig(apinetCfg)
+	}
+
+	return apinet.NewPlugin(o.APInetNodeName, apinetClient, o.APInetPollingDuration, o.APInetPollingInterval, o.APInetCleanup, o.watcher), nil, nil
 }
 
 func init() {
-	utilruntime.Must(DefaultPluginTypeRegistry.Register(&apinetOptions{}, 1))
+	utilruntime.Must(DefaultPluginTypeRegistry.Register(&ApinetOptions{}, 1))
 }

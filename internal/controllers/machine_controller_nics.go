@@ -16,6 +16,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/api"
 	providerhost "github.com/ironcore-dev/libvirt-provider/internal/host"
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
+	"github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface/apinet"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"libvirt.org/go/libvirtxml"
 )
@@ -72,8 +73,13 @@ func (r *MachineReconciler) setDomainNetworkInterfaces(
 		states = append(states, &state)
 
 		providerNic, err := r.networkInterfacePlugin.Apply(ctx, nic, machine)
-		state.Handle = providerNic.Handle
+		if providerNic != nil {
+			state.Handle = providerNic.Handle
+		}
 		if err != nil {
+			if errors.Is(err, apinet.ErrWaitingForNetworkInterface) {
+				continue
+			}
 			return states, fmt.Errorf("[network interface %s] %w", nic.Name, err)
 		}
 
@@ -187,6 +193,10 @@ func (r *MachineReconciler) reconcileNetworkInterfaces(
 			nicState.Handle = mountedNic.networkInterface.Handle
 		}
 		if err != nil {
+			if errors.Is(err, apinet.ErrWaitingForNetworkInterface) {
+				delete(machineNicByName, nicName) // Prevent unintended cleanup
+				continue
+			}
 			errs = append(errs, fmt.Errorf("[network interface %s] error reconciling: %w", nicName, err))
 			continue
 		}

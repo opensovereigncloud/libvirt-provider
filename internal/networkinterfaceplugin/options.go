@@ -82,7 +82,7 @@ func (r *TypeOptionsRegistry) PluginTypeOptsByName(pluginName string) (TypeOptio
 		return nil, fmt.Errorf("no plugin options for plugin name %q", pluginName)
 	}
 
-	return pluginOpts, nil
+	return pluginOpts.TypeOptions, nil
 }
 
 type Options struct {
@@ -116,6 +116,10 @@ func (o *Options) NetworkInterfacePlugin() (providernetworkinterface.Plugin, fun
 	}
 
 	return nicPlugin, cleanup, nil
+}
+
+func (o *Options) Registry() *TypeOptionsRegistry {
+	return o.registry
 }
 
 var (

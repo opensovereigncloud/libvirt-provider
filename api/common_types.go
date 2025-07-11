@@ -8,6 +8,8 @@ const (
 	LabelsPrefix     = MachineManager + ".ironcore.dev"
 	LabelsAnnotation = LabelsPrefix + "/labels"
 
+	LabelLibvirtProviderHostname = LabelsPrefix + "/hostname"
+
 	AnnotationsAnnotation = LabelsPrefix + "/annotations"
 
 	ManagerLabel = LabelsPrefix + "/manager"

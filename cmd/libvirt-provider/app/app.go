@@ -22,10 +22,13 @@ import (
 	grpcprometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/ironcore-dev/ironcore-image/oci/remote"
 	ocistore "github.com/ironcore-dev/ironcore-image/oci/store"
+	apinetv1alpha1 "github.com/ironcore-dev/ironcore-net/api/core/v1alpha1"
 	"github.com/ironcore-dev/ironcore/broker/common"
 	commongrpc "github.com/ironcore-dev/ironcore/broker/common/grpc"
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+
+	"github.com/ironcore-dev/libvirt-provider/internal/apinetwatcher"
 	"github.com/ironcore-dev/libvirt-provider/internal/console"
 	"github.com/ironcore-dev/libvirt-provider/internal/controllers"
 	"github.com/ironcore-dev/libvirt-provider/internal/event"
@@ -327,6 +330,23 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
+	var watcher apinetwatcher.Watcher
+
+	if opts.NicPlugin.PluginName == networkinterfaceplugin.PluginAPINet {
+		pluginOpts, err := opts.NicPlugin.Registry().PluginTypeOptsByName(networkinterfaceplugin.PluginAPINet)
+		if err != nil {
+			return fmt.Errorf("failed to get plugin registry options for %s: %w", networkinterfaceplugin.PluginAPINet, err)
+		}
+
+		apinetOpts, ok := pluginOpts.(*networkinterfaceplugin.ApinetOptions)
+		if !ok {
+			return fmt.Errorf("plugin options for %s are not of expected type", networkinterfaceplugin.PluginAPINet)
+		}
+
+		watcher = apinetwatcher.NewWatcher(log.WithName("apinet-NIC-watcher"))
+		apinetOpts.SetWatcher(watcher)
+	}
+
 	nicPlugin, nicPluginCleanup, err := opts.NicPlugin.NetworkInterfacePlugin()
 	if err != nil {
 		setupLog.Error(err, "failed to initialize network plugin")
@@ -342,6 +362,8 @@ func Run(ctx context.Context, opts Options) error {
 		setupLog.Error(err, "failed to initialize network plugin")
 		return err
 	}
+
+	watcherEmitter := apinetwatcher.NewEventEmitter[*apinetv1alpha1.NetworkInterface]()
 
 	setupLog.Info("Configuring machine store", "Directory", providerHost.MachineStoreDir())
 	machineStore, err := host.NewStore(host.Options[*api.Machine]{
@@ -429,6 +451,7 @@ func Run(ctx context.Context, opts Options) error {
 			VolumeCachePolicyCeph:          opts.VolumeCachePolicyCeph,
 			OverrideDomainXML:              overrideDomainXML,
 			Queue:                          queue,
+			WatcherEmitter:                 watcherEmitter,
 		},
 	)
 	if err != nil {
@@ -539,6 +562,21 @@ func Run(ctx context.Context, opts Options) error {
 		}
 		return nil
 	})
+
+	// Start watcher only if it's initialized (i.e. we're using apinet)
+	if watcher != nil {
+		watcher.SetEventEmitter(watcherEmitter)
+
+		g.Go(func() error {
+			setupLog.Info("Starting APINet watcher")
+			if err := watcher.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				setupLog.Error(err, "APINet watcher exited with error")
+				return err
+			}
+			setupLog.Info("APINet watcher exited gracefully")
+			return nil
+		})
+	}
 
 	return g.Wait()
 }
