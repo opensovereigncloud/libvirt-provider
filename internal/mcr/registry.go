@@ -9,9 +9,9 @@ import (
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
 )
 
-func NewMachineClassRegistry(classes []iri.MachineClass) (*Mcr, error) {
+func NewMachineClassRegistry(classes []*iri.MachineClass) (*Mcr, error) {
 	registry := Mcr{
-		classes: map[string]iri.MachineClass{},
+		classes: map[string]*iri.MachineClass{},
 	}
 
 	for _, class := range classes {
@@ -25,19 +25,19 @@ func NewMachineClassRegistry(classes []iri.MachineClass) (*Mcr, error) {
 }
 
 type Mcr struct {
-	classes map[string]iri.MachineClass
+	classes map[string]*iri.MachineClass
 }
 
 func (m *Mcr) Get(machineClassName string) (*iri.MachineClass, bool) {
 	class, found := m.classes[machineClassName]
-	return &class, found
+	return class, found
 }
 
 func (m *Mcr) List() []*iri.MachineClass {
 	var classes []*iri.MachineClass
 	for name := range m.classes {
 		class := m.classes[name]
-		classes = append(classes, &class)
+		classes = append(classes, class)
 	}
 
 	return classes

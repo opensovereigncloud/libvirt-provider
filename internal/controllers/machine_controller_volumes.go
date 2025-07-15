@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -27,6 +28,8 @@ import (
 )
 
 const VolumeWithoutDevice = ""
+
+var ErrNotAssignedDomain = errors.New("not assigned to domain")
 
 func (r *MachineReconciler) deleteVolumes(ctx context.Context, log logr.Logger, machine *api.Machine) error {
 	mounter := r.machineVolumeMounter(machine)
@@ -68,20 +71,41 @@ func (r *MachineReconciler) machineVolumeMounter(machine *api.Machine) VolumeMou
 	}
 }
 
-func getVolumeStatus(machine *api.Machine, volumeID string) *api.VolumeStatus {
-	for _, volumeStatus := range machine.Status.VolumeStatus {
-		if volumeID == volumeStatus.Handle {
-			return &volumeStatus
+func (r *MachineReconciler) getLastVolumeSize(machineID, deviceName string) (int64, error) {
+	domain, err := r.host.Libvirt().DomainLookupByUUID(libvirtutils.UUIDStringToBytes(machineID))
+	if err != nil {
+		if !libvirt.IsNotFound(err) {
+			return 0, fmt.Errorf("error getting blockInfo from domain for machine %s device %s: %w", machineID, deviceName, err)
 		}
+		return 0, nil
 	}
-	return nil
+
+	virtDeviceName := computeVirtioDiskTargetDeviceName(deviceName)
+	_, capacity, _, err := r.host.Libvirt().DomainGetBlockInfo(domain, virtDeviceName, 0)
+
+	if err != nil {
+		if IsNotAssignedDomainErr(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("error getting blockInfo from domain for machine %s device %s: %w", machineID, deviceName, err)
+	}
+	if capacity > math.MaxInt64 {
+		return 0, fmt.Errorf("disk capacity %d too large to fit in int64 for machine %s device %s", capacity, machineID, deviceName)
+	}
+
+	return int64(capacity), nil
 }
 
-func getLastVolumeSize(machine *api.Machine, volumeID string) int64 {
-	if status := getVolumeStatus(machine, volumeID); status != nil && status.Size != 0 {
-		return status.Size
+func IsNotAssignedDomainErr(err error) bool {
+	var lvErr libvirt.Error
+	if !errors.As(err, &lvErr) {
+		return false
 	}
-	return 0
+	if lvErr.Code == uint32(libvirt.ErrInvalidArg) && strings.Contains(lvErr.Message, ErrNotAssignedDomain.Error()) {
+		return true
+	}
+
+	return false
 }
 
 // reconcileVolumes is doing attaching, detaching, deleting of volumes and it manages status of volumes
@@ -514,7 +538,7 @@ func (a *libvirtVolumeAttacher) DetachVolume(name string) error {
 }
 
 func (a *libvirtVolumeAttacher) ResizeVolume(volume *AttachVolume) error {
-	return a.executor.ResizeDisk(volume.Device, volume.Spec.Size)
+	return a.executor.ResizeDisk(volume.Device, volume.Spec.EffectiveStorageBytesSize)
 }
 
 func (a *libvirtVolumeAttacher) GetVolume(name string) (*AttachVolume, error) {
@@ -708,11 +732,14 @@ func (r *MachineReconciler) applyVolume(
 		return volumeID, 0, fmt.Errorf("error applying volume mount: %w", err)
 	}
 
-	lastVolumeSize := getLastVolumeSize(machine, volumeID)
+	lastVolumeSize, err := r.getLastVolumeSize(machine.ID, desiredVolume.Device)
+	if err != nil {
+		return volumeID, 0, fmt.Errorf("error getting last volume size: %w", err)
+	}
 
 	var volumeSize int64
 	if providerVolume != nil {
-		volumeSize = providerVolume.Size
+		volumeSize = providerVolume.EffectiveStorageBytesSize
 	} else {
 		volumeSize = lastVolumeSize
 	}

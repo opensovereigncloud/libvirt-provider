@@ -33,12 +33,13 @@ type plugin struct {
 }
 
 type volumeData struct {
-	monitors      []volume.CephMonitor
-	image         string
-	handle        string
-	userID        string
-	userKey       string
-	encryptionKey *string
+	monitors              []volume.CephMonitor
+	image                 string
+	handle                string
+	userID                string
+	userKey               string
+	encryptionKey         *string
+	effectiveStorageBytes int64
 }
 
 func NewPlugin() volume.Plugin {
@@ -138,11 +139,6 @@ func (p *plugin) Apply(ctx context.Context, spec *api.VolumeSpec, machine *api.M
 		}
 	}
 
-	volumeSize, err := p.GetSize(ctx, spec)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get volume size: %w", err)
-	}
-
 	return &volume.Volume{
 		QCow2File: "",
 		RawFile:   "",
@@ -155,8 +151,8 @@ func (p *plugin) Apply(ctx context.Context, spec *api.VolumeSpec, machine *api.M
 			},
 			Encryption: cephEncryption,
 		},
-		Handle: volumeData.handle,
-		Size:   volumeSize,
+		Handle:                    volumeData.handle,
+		EffectiveStorageBytesSize: volumeData.effectiveStorageBytes,
 	}, nil
 }
 
@@ -178,6 +174,9 @@ func (p *plugin) getVolumeData(spec *api.VolumeSpec) (vData *volumeData, err err
 	if connection.Handle == "" {
 		return nil, fmt.Errorf("volume connection does not specify handle")
 	}
+	if connection.EffectiveStorageBytes <= 0 {
+		return nil, fmt.Errorf("volume connection does not specify effective storage bytes")
+	}
 	vData.handle = connection.Handle
 
 	vData.monitors, vData.image, err = readVolumeAttributes(connection.Attributes)
@@ -196,6 +195,8 @@ func (p *plugin) getVolumeData(spec *api.VolumeSpec) (vData *volumeData, err err
 			return nil, fmt.Errorf("error reading encryption data: %w", err)
 		}
 	}
+
+	vData.effectiveStorageBytes = spec.Connection.EffectiveStorageBytes
 
 	return vData, nil
 }

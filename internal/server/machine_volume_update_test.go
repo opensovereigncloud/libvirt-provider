@@ -16,14 +16,14 @@ import (
 	"libvirt.org/go/libvirtxml"
 )
 
-var _ = Describe("DetachVolume", func() {
-	It("should correctly detach volume from machine", func(ctx SpecContext) {
-		By("creating a machine with two empty disks and single ceph volume")
+var _ = Describe("UpdateVolume", func() {
+	It("should correctly update machine volume", func(ctx SpecContext) {
+		By("creating a machine with ceph volume")
 		createResp, err := machineClient.CreateMachine(ctx, &iri.CreateMachineRequest{
 			Machine: &iri.Machine{
 				Metadata: &irimeta.ObjectMetadata{
 					Labels: map[string]string{
-						"foo": "bar",
+						"test": "update-volume",
 					},
 				},
 				Spec: &iri.MachineSpec{
@@ -34,22 +34,8 @@ var _ = Describe("DetachVolume", func() {
 					Class: machineClassx3xlarge,
 					Volumes: []*iri.Volume{
 						{
-							Name: "disk-1",
-							EmptyDisk: &iri.EmptyDisk{
-								SizeBytes: emptyDiskSize,
-							},
-							Device: "oda",
-						},
-						{
-							Name: "disk-2",
-							EmptyDisk: &iri.EmptyDisk{
-								SizeBytes: emptyDiskSize,
-							},
-							Device: "odb",
-						},
-						{
 							Name:   "volume-1",
-							Device: "odc",
+							Device: "oda",
 							Connection: &iri.VolumeConnection{
 								Driver: "ceph",
 								Handle: "dummy",
@@ -114,16 +100,6 @@ var _ = Describe("DetachVolume", func() {
 		}).Should(SatisfyAll(
 			HaveField("Volumes", ContainElements(
 				&iri.VolumeStatus{
-					Name:   "disk-1",
-					Handle: "libvirt-provider.ironcore.dev/empty-disk/disk-1",
-					State:  iri.VolumeState_VOLUME_ATTACHED,
-				},
-				&iri.VolumeStatus{
-					Name:   "disk-2",
-					Handle: "libvirt-provider.ironcore.dev/empty-disk/disk-2",
-					State:  iri.VolumeState_VOLUME_ATTACHED,
-				},
-				&iri.VolumeStatus{
 					Name:   "volume-1",
 					Handle: "libvirt-provider.ironcore.dev/ceph/libvirt-provider.ironcore.dev/ceph^dummy",
 					State:  iri.VolumeState_VOLUME_ATTACHED,
@@ -131,7 +107,7 @@ var _ = Describe("DetachVolume", func() {
 			HaveField("State", Equal(iri.MachineState_MACHINE_RUNNING)),
 		))
 
-		By("ensuring both the empty disks and a ceph volume is attached to a machine domain")
+		By("ensuring the ceph volume is attached to a machine domain")
 		var disks []libvirtxml.DomainDisk
 		Eventually(func(g Gomega) int {
 			domainXMLData, err := libvirtConn.DomainGetXMLDesc(domain, 0)
@@ -140,57 +116,35 @@ var _ = Describe("DetachVolume", func() {
 			g.Expect(domainXML.Unmarshal(domainXMLData)).Should(Succeed())
 			disks = domainXML.Devices.Disks
 			return len(disks)
-		}).Should(Equal(4))
-		Expect(disks[0].Serial).To(HavePrefix("oda"))
-		Expect(disks[1].Serial).To(HavePrefix("odb"))
-		Expect(disks[2].Serial).To(HavePrefix("odc"))
-
-		// wait to complete machine reconciliation
-		time.Sleep(20 * time.Second)
-
-		By("detaching empty disk disk-1 from machine")
-		diskDetachResp, err := machineClient.DetachVolume(ctx, &iri.DetachVolumeRequest{
-			MachineId: createResp.Machine.Metadata.Id,
-			Name:      "disk-1",
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Expect(diskDetachResp).NotTo(BeNil())
-
-		By("ensuring empty disk disk-1 is unplugged from a machine domain")
-		Eventually(func(g Gomega) int {
-			domainXMLData, err := libvirtConn.DomainGetXMLDesc(domain, 0)
-			g.Expect(err).NotTo(HaveOccurred())
-			domainXML := &libvirtxml.Domain{}
-			err = domainXML.Unmarshal(domainXMLData)
-			g.Expect(err).NotTo(HaveOccurred())
-			disks = domainXML.Devices.Disks
-			return len(disks)
-		}).Should(Equal(3))
-
-		// wait to complete machine reconciliation
-		time.Sleep(20 * time.Second)
-
-		By("detaching ceph volume  volume-1 from machine")
-		volumeDetachResp, err := machineClient.DetachVolume(ctx, &iri.DetachVolumeRequest{
-			MachineId: createResp.Machine.Metadata.Id,
-			Name:      "volume-1",
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Expect(volumeDetachResp).NotTo(BeNil())
-
-		By("ensuring ceph volume volume-1 is unplugged from a machine domain")
-		Eventually(func(g Gomega) int {
-			domainXMLData, err := libvirtConn.DomainGetXMLDesc(domain, 0)
-			g.Expect(err).NotTo(HaveOccurred())
-			domainXML := &libvirtxml.Domain{}
-			err = domainXML.Unmarshal(domainXMLData)
-			g.Expect(err).NotTo(HaveOccurred())
-			disks = domainXML.Devices.Disks
-			return len(disks)
 		}).Should(Equal(2))
+		Expect(disks[0].Serial).To(HavePrefix("oda"))
 
-		By("ensuring detached disk and volume have been updated in machine status field")
-		Eventually(func(g Gomega) *iri.MachineStatus {
+		By("updating machine volume")
+		updateVolumeResp, err := machineClient.UpdateVolume(ctx, &iri.UpdateVolumeRequest{
+			MachineId: createResp.Machine.Metadata.Id,
+			Volume: &iri.Volume{
+				Name:   "volume-1",
+				Device: "oda",
+				Connection: &iri.VolumeConnection{
+					Driver: "ceph",
+					Handle: "dummy",
+					Attributes: map[string]string{
+						"image":    cephImage,
+						"monitors": cephMonitors,
+					},
+					SecretData: map[string][]byte{
+						"userID":  []byte(cephUsername),
+						"userKey": []byte(cephUserkey),
+					},
+					EffectiveStorageBytes: resource.NewQuantity(2*1024*1024*1024, resource.BinarySI).Value(),
+				},
+			},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(updateVolumeResp).NotTo(BeNil())
+
+		By("ensuring volume has been resized and updated in machine spec field")
+		Eventually(func(g Gomega) *iri.Volume {
 			listResp, err := machineClient.ListMachines(ctx, &iri.ListMachinesRequest{
 				Filter: &iri.MachineFilter{
 					Id: createResp.Machine.Metadata.Id,
@@ -199,15 +153,11 @@ var _ = Describe("DetachVolume", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(listResp.Machines).NotTo(BeEmpty())
 			g.Expect(listResp.Machines).Should(HaveLen(1))
-			return listResp.Machines[0].Status
+			return listResp.Machines[0].Spec.Volumes[0]
 		}).Should(SatisfyAll(
-			HaveField("Volumes", ContainElements(
-				&iri.VolumeStatus{
-					Name:   "disk-2",
-					Handle: "libvirt-provider.ironcore.dev/empty-disk/disk-2",
-					State:  iri.VolumeState_VOLUME_ATTACHED,
-				})),
-			HaveField("State", Equal(iri.MachineState_MACHINE_RUNNING)),
+			HaveField("Name", Equal("volume-1")),
+			HaveField("Device", Equal("oda")),
+			HaveField("Connection.EffectiveStorageBytes", Equal(resource.NewQuantity(2*1024*1024*1024, resource.BinarySI).Value())),
 		))
 	})
 })

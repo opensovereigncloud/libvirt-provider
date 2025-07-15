@@ -432,9 +432,9 @@ func (r *resourceManager) getAvailableMachineClasses() []*iri.MachineClassStatus
 	status := make([]*iri.MachineClassStatus, len(r.machineClasses))
 	for index, class := range r.machineClasses {
 		// break references between components
-		i := *class.iriClass
+		i := class.iriClass
 		classStatus := &iri.MachineClassStatus{
-			MachineClass: &i,
+			MachineClass: i,
 			Quantity:     class.available,
 		}
 
@@ -591,10 +591,10 @@ func (r *resourceManager) getAvailableResources() core.ResourceList {
 	return resourceList
 }
 
-func (r *resourceManager) getIRIMachineClasses() []iri.MachineClass {
-	iriClasses := make([]iri.MachineClass, 0, len(r.machineClasses))
+func (r *resourceManager) getIRIMachineClasses() []*iri.MachineClass {
+	iriClasses := make([]*iri.MachineClass, 0, len(r.machineClasses))
 	for _, class := range r.machineClasses {
-		iriClasses = append(iriClasses, *class.iriClass)
+		iriClasses = append(iriClasses, class.iriClass)
 	}
 
 	return iriClasses

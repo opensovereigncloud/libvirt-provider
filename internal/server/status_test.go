@@ -25,6 +25,24 @@ var _ = Describe("Status", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("validating machine class and calculated quantity in MachineClassStatus")
-		Expect(statusResp.MachineClassStatus).To(ContainElements(classesStatus[0], classesStatus[1]))
+		Expect(statusResp.MachineClassStatus).To(ContainElements(&iriv1alpha1.MachineClassStatus{
+			MachineClass: &iriv1alpha1.MachineClass{
+				Name: classesStatus[0].MachineClass.Name,
+				Capabilities: &iriv1alpha1.MachineClassCapabilities{
+					CpuMillis:   classesStatus[0].MachineClass.Capabilities.CpuMillis,
+					MemoryBytes: classesStatus[0].MachineClass.Capabilities.MemoryBytes,
+				},
+			},
+			Quantity: classesStatus[0].Quantity,
+		}, &iriv1alpha1.MachineClassStatus{
+			MachineClass: &iriv1alpha1.MachineClass{
+				Name: classesStatus[1].MachineClass.Name,
+				Capabilities: &iriv1alpha1.MachineClassCapabilities{
+					CpuMillis:   classesStatus[1].MachineClass.Capabilities.CpuMillis,
+					MemoryBytes: classesStatus[1].MachineClass.Capabilities.MemoryBytes,
+				},
+			},
+			Quantity: classesStatus[1].Quantity,
+		}))
 	})
 })

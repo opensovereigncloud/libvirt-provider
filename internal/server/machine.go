@@ -76,11 +76,12 @@ func (s *Server) getIRIVolumeSpec(machine *api.Machine) []*iri.Volume {
 		var connection *iri.VolumeConnection
 		if volumeConnection := volume.Connection; volumeConnection != nil {
 			connection = &iri.VolumeConnection{
-				Driver:         volumeConnection.Driver,
-				Handle:         volumeConnection.Handle,
-				Attributes:     volumeConnection.Attributes,
-				SecretData:     volumeConnection.SecretData,
-				EncryptionData: volumeConnection.EncryptionData,
+				Driver:                volumeConnection.Driver,
+				Handle:                volumeConnection.Handle,
+				Attributes:            volumeConnection.Attributes,
+				SecretData:            volumeConnection.SecretData,
+				EncryptionData:        volumeConnection.EncryptionData,
+				EffectiveStorageBytes: volumeConnection.EffectiveStorageBytes,
 			}
 		}
 
@@ -246,11 +247,12 @@ func (s *Server) getVolumeFromIRIVolume(iriVolume *iri.Volume) (*api.VolumeSpec,
 	var connectionSpec *api.VolumeConnection
 	if connection := iriVolume.Connection; connection != nil {
 		connectionSpec = &api.VolumeConnection{
-			Driver:         connection.Driver,
-			Handle:         connection.Handle,
-			Attributes:     connection.Attributes,
-			SecretData:     connection.SecretData,
-			EncryptionData: connection.EncryptionData,
+			Driver:                connection.Driver,
+			Handle:                connection.Handle,
+			Attributes:            connection.Attributes,
+			SecretData:            connection.SecretData,
+			EncryptionData:        connection.EncryptionData,
+			EffectiveStorageBytes: connection.EffectiveStorageBytes,
 		}
 	}
 

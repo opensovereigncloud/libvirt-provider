@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/gogo/protobuf/proto"
 	irievent "github.com/ironcore-dev/ironcore/iri/apis/event/v1alpha1"
 	irimeta "github.com/ironcore-dev/ironcore/iri/apis/meta/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
+	"google.golang.org/protobuf/proto"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 

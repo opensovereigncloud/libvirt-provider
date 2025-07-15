@@ -116,7 +116,6 @@ For a complete list of available make targets, refer to the [Makefile](../../Mak
 
 | Flag | Description | Default value |
 | --- | --- | --- |
-| `--volume-size-resync-interval` | The interval to determine volume size changes. | `1m` |
 | `--volume-cache-policy-ceph` | Policy to use when creating a remote disk. Available options: `none`, `writeback`, `writethrough`, `directsync`, `unsafe`. | `none` |
 | `--network-interface-plugin-name` | Specifies the network plugin to use for managing network interfaces. Available options:  `apinet`, `isolated`, `providernet` | `apinet` |
 | `--apinet-cleanup` | Cleanup orphan apinet interfaces during startup. | `false` |

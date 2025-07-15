@@ -58,7 +58,7 @@ func SetMachineClassesFilename(filename string) error {
 }
 
 // GetIRIMAchineClasses will return machineClasses of resource manager as IRI Machine Classes
-func GetIRIMachineClasses() []iri.MachineClass {
+func GetIRIMachineClasses() []*iri.MachineClass {
 	return mng.getIRIMachineClasses()
 }
 
