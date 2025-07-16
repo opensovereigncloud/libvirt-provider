@@ -13,7 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.1
 	github.com/ironcore-dev/controller-utils v0.9.9
-	github.com/ironcore-dev/ironcore v0.2.4-0.20250626115959-9223614b0845
+	github.com/ironcore-dev/ironcore v0.2.4-0.20250704085741-9036bfe3b718
 	github.com/ironcore-dev/ironcore-image v0.2.4
 	github.com/ironcore-dev/ironcore-net v0.2.3
 	github.com/moby/term v0.5.2

@@ -157,8 +157,10 @@ MAIN:
 		class.iriClass = &iri.MachineClass{
 			Name: class.Name,
 			Capabilities: &iri.MachineClassCapabilities{
-				CpuMillis:   cpu.MilliValue(),
-				MemoryBytes: mem.Value(),
+				Resources: map[string]int64{
+					string(core.ResourceCPU):    cpu.Value(),
+					string(core.ResourceMemory): mem.Value(),
+				},
 			},
 		}
 
@@ -336,7 +338,7 @@ func (r *resourceManager) allocate(machine *api.Machine, requiredResources core.
 
 	if r.numaScheduler != nil {
 		cpuQuantity := requiredResources[core.ResourceCPU]
-		err = r.numaScheduler.Pin(uint(cpuQuantity.Value()/1000), machine)
+		err = r.numaScheduler.Pin(uint(cpuQuantity.Value()), machine)
 		if err != nil {
 			return err
 		}
