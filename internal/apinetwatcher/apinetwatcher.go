@@ -16,7 +16,6 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/event"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
@@ -40,13 +39,6 @@ type watcher struct {
 	ready             atomic.Bool
 	dynClientOverride dynamic.Interface
 	log               logr.Logger
-}
-
-// GVR used to access NetworkInterface resources via dynamic client
-var nicGVR = schema.GroupVersionResource{
-	Group:    "core.apinet.ironcore.dev",
-	Version:  "v1alpha1",
-	Resource: "networkinterfaces",
 }
 
 func NewWatcher(log logr.Logger) *watcher {
@@ -104,7 +96,7 @@ func (w *watcher) run(ctx context.Context) error {
 		}
 	}
 
-	resourceClient := dynClient.Resource(nicGVR).Namespace(v1.NamespaceAll)
+	resourceClient := dynClient.Resource(apinetv1alpha1.SchemeGroupVersion.WithResource("networkinterfaces")).Namespace(v1.NamespaceAll)
 	labelSelector := fmt.Sprintf("%s=%s", api.LabelLibvirtProviderHostname, w.NodeName)
 
 	reconnectDelay := time.Second
