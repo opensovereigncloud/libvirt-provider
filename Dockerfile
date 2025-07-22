@@ -38,7 +38,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on \
-    go install github.com/ironcore-dev/ironcore/irictl-machine/cmd/irictl-machine@v0.2.1
+    go install github.com/ironcore-dev/ironcore/irictl-machine/cmd/irictl-machine@872f838a207513469e6c561eb8fd4446ec1ef45b
 
 # Ensure the binary is in a common location
 RUN if [ "$TARGETARCH" = "$BUILDARCH" ]; then \

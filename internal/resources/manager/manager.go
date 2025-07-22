@@ -143,24 +143,26 @@ func (r *resourceManager) initMachineClasses() error {
 
 MAIN:
 	for _, class := range classes {
-		cpu, ok := class.Capabilities[core.ResourceCPU]
+		_, ok := class.Capabilities[core.ResourceCPU]
 		if !ok {
 			return fmt.Errorf("required resource %s is missing in machine class file", core.ResourceCPU)
 		}
 
-		mem, ok := class.Capabilities[core.ResourceMemory]
+		_, ok = class.Capabilities[core.ResourceMemory]
 		if !ok {
 			return fmt.Errorf("required resource %s is missing in machine class file", core.ResourceMemory)
+		}
+
+		resources := make(map[string]int64, len(class.Capabilities))
+		for key, value := range class.Capabilities {
+			resources[string(key)] = value.Value()
 		}
 
 		// it is for minimize creation operations in status call
 		class.iriClass = &iri.MachineClass{
 			Name: class.Name,
 			Capabilities: &iri.MachineClassCapabilities{
-				Resources: map[string]int64{
-					string(core.ResourceCPU):    cpu.Value(),
-					string(core.ResourceMemory): mem.Value(),
-				},
+				Resources: resources,
 			},
 		}
 
