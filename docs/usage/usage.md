@@ -95,6 +95,7 @@ For a complete list of available make targets, refer to the [Makefile](../../Mak
 | --- | --- | --- |
 | `--gc-vm-graceful-shutdown-timeout` | Timeout for VM graceful shutdown during garbage collection. | `5m` |
 | `--gc-resync-interval` | Interval for resynchronizing the garbage collector. | `1m` |
+| `--event-list-watch-source-resync-duration` | Duration for resynchronizing the list and watch events of source. | `1m` |
 
 #### Guest capabilities
 
@@ -170,6 +171,7 @@ Below is an example of configuring and running `libvirt-provider` with various f
   --servers-health-check-address ":8080" \
   --gc-vm-graceful-shutdown-timeout 5m \
   --gc-resync-interval 1m \
+  --event-list-watch-source-resync-duration 1m \
   --network-interface-plugin-name "isolated" \
   --supported-machine-classes "/home/libvirt-provider/machine-classes.json"
 ```
