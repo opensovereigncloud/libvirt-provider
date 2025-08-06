@@ -21,7 +21,7 @@ import (
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/volume"
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
-	"github.com/ironcore-dev/libvirt-provider/internal/utils"
+	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -75,7 +75,7 @@ type Options struct {
 
 func setOptionsDefaults(o *Options) {
 	if o.IDGen == nil {
-		o.IDGen = utils.IdGenerateFunc(uuid.NewString)
+		o.IDGen = internalutils.IdGenerateFunc(uuid.NewString)
 	}
 }
 

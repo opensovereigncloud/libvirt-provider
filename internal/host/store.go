@@ -20,7 +20,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
 	utilssync "github.com/ironcore-dev/libvirt-provider/internal/sync"
-	"github.com/ironcore-dev/libvirt-provider/internal/utils"
+	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -89,10 +89,10 @@ func (s *Store[E]) Create(_ context.Context, obj E) (E, error) {
 	_, err := s.get(obj.GetID())
 	switch {
 	case err == nil:
-		return utils.Zero[E](), fmt.Errorf("object with id %q %w", obj.GetID(), store.ErrAlreadyExists)
+		return internalutils.Zero[E](), fmt.Errorf("object with id %q %w", obj.GetID(), store.ErrAlreadyExists)
 	case errors.Is(err, store.ErrNotFound):
 	default:
-		return utils.Zero[E](), fmt.Errorf("failed to get object with id %q %w", obj.GetID(), err)
+		return internalutils.Zero[E](), fmt.Errorf("failed to get object with id %q %w", obj.GetID(), err)
 	}
 
 	if s.createStrategy != nil {
@@ -106,7 +106,7 @@ func (s *Store[E]) Create(_ context.Context, obj E) (E, error) {
 
 	obj, err = s.set(obj)
 	if err != nil {
-		return utils.Zero[E](), err
+		return internalutils.Zero[E](), err
 	}
 
 	s.enqueue(store.WatchEvent[E]{
@@ -142,7 +142,7 @@ func (s *Store[E]) Get(_ context.Context, id string) (E, error) {
 
 	object, err := s.get(id)
 	if err != nil {
-		return utils.Zero[E](), fmt.Errorf("failed to read object: %w", err)
+		return internalutils.Zero[E](), fmt.Errorf("failed to read object: %w", err)
 	}
 
 	return object, nil
@@ -154,7 +154,7 @@ func (s *Store[E]) Update(_ context.Context, obj E) (E, error) {
 
 	if obj.GetDeletedAt() != nil && len(obj.GetFinalizers()) == 0 {
 		if err := s.delete(obj.GetID()); err != nil {
-			return utils.Zero[E](), fmt.Errorf("failed to delete object metadata: %w", err)
+			return internalutils.Zero[E](), fmt.Errorf("failed to delete object metadata: %w", err)
 		}
 
 		machineStateLabels := prometheus.Labels{metrics.LabelState: obj.GetState()}
@@ -181,11 +181,11 @@ func (s *Store[E]) Update(_ context.Context, obj E) (E, error) {
 
 	oldObj, err := s.get(obj.GetID())
 	if err != nil {
-		return utils.Zero[E](), err
+		return internalutils.Zero[E](), err
 	}
 
 	if oldObj.GetResourceVersion() != obj.GetResourceVersion() {
-		return utils.Zero[E](), fmt.Errorf("failed to update object: %w", store.ErrResourceVersionNotLatest)
+		return internalutils.Zero[E](), fmt.Errorf("failed to update object: %w", store.ErrResourceVersionNotLatest)
 	}
 
 	obj.Unify()
@@ -198,7 +198,7 @@ func (s *Store[E]) Update(_ context.Context, obj E) (E, error) {
 
 	obj, err = s.set(obj)
 	if err != nil {
-		return utils.Zero[E](), err
+		return internalutils.Zero[E](), err
 	}
 
 	previousState := oldObj.GetState()
@@ -351,21 +351,21 @@ func (s *Store[E]) get(id string) (E, error) {
 	fd, err := os.OpenFile(filePath, os.O_RDONLY, 0)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return utils.Zero[E](), fmt.Errorf("failed to read file: %w", err)
+			return internalutils.Zero[E](), fmt.Errorf("failed to read file: %w", err)
 		}
 
-		return utils.Zero[E](), fmt.Errorf("object with id %q %w", id, store.ErrNotFound)
+		return internalutils.Zero[E](), fmt.Errorf("object with id %q %w", id, store.ErrNotFound)
 	}
 	defer osutils.CloseWithErrorLogging(fd, fmt.Sprintf("failed to close file %s", filePath), &s.log)
 
 	obj := s.newFunc()
 	err = kjson.NewDecoderCaseSensitivePreserveInts(fd).Decode(&obj)
 	if err != nil {
-		return utils.Zero[E](), fmt.Errorf("failed to decode object from file %s: %w", id, err)
+		return internalutils.Zero[E](), fmt.Errorf("failed to decode object from file %s: %w", id, err)
 	}
 
 	if id != obj.GetID() {
-		return utils.Zero[E](), fmt.Errorf("%s is different as id %s: %w", id, obj.GetID(), ErrFileNameDifferentAsID)
+		return internalutils.Zero[E](), fmt.Errorf("%s is different as id %s: %w", id, obj.GetID(), ErrFileNameDifferentAsID)
 	}
 
 	return obj, nil
@@ -376,24 +376,24 @@ func (s *Store[E]) set(obj E) (E, error) {
 	swpFilePath := filePath + suffixSwpExtension
 	fd, err := os.OpenFile(swpFilePath, os.O_CREATE|os.O_WRONLY, permFile)
 	if err != nil {
-		return utils.Zero[E](), fmt.Errorf("failed to open file: %w", err)
+		return internalutils.Zero[E](), fmt.Errorf("failed to open file: %w", err)
 	}
 
 	defer osutils.CloseWithErrorLogging(fd, fmt.Sprintf("file %s cannot be closed properly", swpFilePath), &s.log)
 
 	err = json.NewEncoder(fd).Encode(obj)
 	if err != nil {
-		return utils.Zero[E](), fmt.Errorf("failed to encode obj: %w", err)
+		return internalutils.Zero[E](), fmt.Errorf("failed to encode obj: %w", err)
 	}
 
 	err = fd.Sync()
 	if err != nil {
-		return utils.Zero[E](), fmt.Errorf("failed to sync file: %w", err)
+		return internalutils.Zero[E](), fmt.Errorf("failed to sync file: %w", err)
 	}
 
 	err = os.Rename(swpFilePath, filePath)
 	if err != nil {
-		return utils.Zero[E](), err
+		return internalutils.Zero[E](), err
 	}
 
 	return obj, nil

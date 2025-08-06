@@ -13,7 +13,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/api"
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
-	"github.com/ironcore-dev/libvirt-provider/internal/utils"
+	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/util/workqueue"
@@ -136,7 +136,7 @@ func HandleEvents(ctx context.Context, log logr.Logger, clnt *libvirt.Libvirt, m
 }
 
 func processEvent(log logr.Logger, event any, machineStore store.Store[*api.Machine], queue workqueue.TypedRateLimitingInterface[string]) error {
-	defer utils.Recover(log, "libvirtutils.processEvent")
+	defer internalutils.Recover(log, "libvirtutils.processEvent")
 
 	var domainName, reason string
 	var libvirtEventTotalMetric prometheus.Counter
@@ -185,7 +185,7 @@ func processEvent(log logr.Logger, event any, machineStore store.Store[*api.Mach
 	err := machineStore.Exists(domainName)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			log.V(2).Info("Skipped: not managed by libvirt-provider", "machineID", domainName)
+			log.V(2).Info("Skipped: not managed by libvirt-provider", internalutils.LogKeyMachineID, domainName)
 			return nil
 		}
 		return fmt.Errorf("failed to check existence of machine %s: %w", domainName, err)
@@ -197,7 +197,7 @@ func processEvent(log logr.Logger, event any, machineStore store.Store[*api.Mach
 
 	libvirtEventTotalMetric.Inc()
 
-	log.V(1).Info("requeue machine by event message: "+reason, "machineID", domainName)
+	log.V(1).Info("requeue machine by event message: "+reason, internalutils.LogKeyMachineID, domainName)
 	queue.AddRateLimited(domainName)
 
 	return nil

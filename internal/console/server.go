@@ -11,7 +11,7 @@ import (
 	utilshttp "github.com/ironcore-dev/ironcore/utils/http"
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/server"
-	"github.com/ironcore-dev/libvirt-provider/internal/utils"
+	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -35,7 +35,7 @@ func NewHandler(srv *server.Server, opts HandlerOptions) (http.Handler, error) {
 	router.Use(utilshttp.InjectLogger(opts.Log))
 	router.Use(utilshttp.LogRequest)
 	router.Use(metrics.NewHTTPMetricsMiddlewareHandler(log, "streaming"))
-	router.Use(utils.RecoveryMiddleware(opts.Log, "middleware"))
+	router.Use(internalutils.RecoveryMiddleware(opts.Log, "middleware"))
 
 	for _, method := range []string{http.MethodHead, http.MethodGet, http.MethodPost} {
 		router.MethodFunc(method, "/exec/{token}", func(w http.ResponseWriter, req *http.Request) {

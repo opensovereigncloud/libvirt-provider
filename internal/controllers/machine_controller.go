@@ -42,7 +42,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
 	"github.com/ironcore-dev/libvirt-provider/internal/sgx"
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
-	"github.com/ironcore-dev/libvirt-provider/internal/utils"
+	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
@@ -238,7 +238,7 @@ func (r *MachineReconciler) Start(ctx context.Context) error {
 					machineID := machine.ID
 					computed := apinet.NICName(machineID, iface.Name)
 					if computed == nic.Name {
-						r.log.V(1).Info("Requeuing machine due to apinet NIC event", "machineID", machineID, "NICName", computed, "eventType", evt.Type)
+						r.log.V(1).Info("Requeuing machine due to apinet NIC event", internalutils.LogKeyMachineID, machineID, "NICName", computed, "eventType", evt.Type)
 						r.queue.Add(machineID)
 					}
 				}
@@ -307,7 +307,7 @@ func (r *MachineReconciler) startGarbageCollector(ctx context.Context) error {
 			opsDuration.Observe(float64(time.Since(startTime).Milliseconds()) / 1000)
 		}()
 
-		defer utils.Recover(r.log, "startGarbageCollector")
+		defer internalutils.Recover(r.log, "startGarbageCollector")
 
 		machines, err := r.machines.List(ctx)
 		if err != nil {
@@ -321,7 +321,7 @@ func (r *MachineReconciler) startGarbageCollector(ctx context.Context) error {
 				continue
 			}
 
-			logger := log.WithValues("machineID", machine.ID)
+			logger := log.WithValues(internalutils.LogKeyMachineID, machine.ID)
 			if err := r.processMachineDeletion(ctx, logger, machine); err != nil {
 				opsErrors.Inc()
 				logger.Error(err, "failed to garbage collect machine")
@@ -371,7 +371,7 @@ func (r *MachineReconciler) processMachineDeletion(ctx context.Context, log logr
 	}
 	log.V(1).Info("Resources were deallocated")
 
-	machine.Finalizers = utils.DeleteSliceElement(machine.Finalizers, MachineFinalizer)
+	machine.Finalizers = internalutils.DeleteSliceElement(machine.Finalizers, MachineFinalizer)
 	if _, err := r.machines.Update(ctx, machine); store.IgnoreErrNotFound(err) != nil {
 		return fmt.Errorf("failed to update machine metadata: %w", err)
 	}
@@ -442,7 +442,7 @@ func (r *MachineReconciler) shutdownMachine(log logr.Logger, machine *api.Machin
 }
 
 func (r *MachineReconciler) processNextWorkItem(ctx context.Context, log logr.Logger) bool {
-	defer utils.Recover(r.log, "processNextWorkItem")
+	defer internalutils.Recover(r.log, "processNextWorkItem")
 
 	id, shutdown := r.queue.Get()
 	if shutdown {
@@ -456,7 +456,11 @@ func (r *MachineReconciler) processNextWorkItem(ctx context.Context, log logr.Lo
 		r.metricsControllerRuntimeActiveWorker.Dec()
 	}()
 
-	log = log.WithValues("machineID", id)
+	reconcileID, err := internalutils.GenerateUUIDv7()
+	if err != nil {
+		log.Error(err, "failed to generate reconcile ID")
+	}
+	log = log.WithValues(internalutils.LogKeyMachineID, id, "reconcileID", reconcileID)
 	ctx = logr.NewContext(ctx, log)
 
 	startTime := time.Now()

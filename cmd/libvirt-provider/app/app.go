@@ -50,7 +50,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
 	"github.com/ironcore-dev/libvirt-provider/internal/server"
 	"github.com/ironcore-dev/libvirt-provider/internal/strategy"
-	"github.com/ironcore-dev/libvirt-provider/internal/utils"
+	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
@@ -231,7 +231,7 @@ func Command() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			defer func() {
 				if r := recover(); r != nil {
-					utils.LogPanic(ctrl.Log, r, "RunE")
+					internalutils.LogPanic(ctrl.Log, r, "RunE")
 					err = errors.Join(err, fmt.Errorf("%v", r))
 				}
 			}()
@@ -608,7 +608,7 @@ func runGRPCServer(ctx context.Context, setupLog, log logr.Logger, srv *server.S
 			commongrpc.InjectLogger(iriLog),
 			commongrpc.LogRequest,
 			grpcMetrics.UnaryServerInterceptor(),
-			utils.RecoveryInterceptor(iriLog, "interceptor"),
+			internalutils.RecoveryInterceptor(iriLog, "interceptor"),
 		),
 		grpc.ConnectionTimeout(opts.ConnectionTimeout),
 	)
@@ -625,7 +625,7 @@ func runGRPCServer(ctx context.Context, setupLog, log logr.Logger, srv *server.S
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer utils.Recover(iriLog, "shutdown")
+		defer internalutils.Recover(iriLog, "shutdown")
 		<-ctx.Done()
 		setupLog.Info("Shutting down grpc server")
 		grpcSrv.GracefulStop()
@@ -664,7 +664,7 @@ func runStreamingServer(ctx context.Context, setupLog, log logr.Logger, srv *ser
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer utils.Recover(serverLog, "shutdown")
+		defer internalutils.Recover(serverLog, "shutdown")
 		<-ctx.Done()
 		setupLog.Info("Shutting down streaming server")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), opts.GracefulTimeout)
@@ -699,7 +699,7 @@ func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServer
 	serverLog := ctrl.Log.WithName("metrics-server")
 
 	router := chi.NewRouter()
-	router.Use(utils.RecoveryMiddleware(serverLog, "middleware"))
+	router.Use(internalutils.RecoveryMiddleware(serverLog, "middleware"))
 	router.Handle("/metrics", promhttp.Handler())
 
 	srv := http.Server{
@@ -714,7 +714,7 @@ func runMetricsServer(ctx context.Context, setupLog logr.Logger, opts HTTPServer
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer utils.Recover(serverLog, "shutdown")
+		defer internalutils.Recover(serverLog, "shutdown")
 
 		<-ctx.Done()
 		setupLog.Info("Shutting down metrics server")
@@ -752,7 +752,7 @@ func runPPROFServer(ctx context.Context, setupLog, log logr.Logger, opts HTTPSer
 
 	router := chi.NewRouter()
 	router.Use(metrics.NewHTTPMetricsMiddlewareHandler(log, "pprof"))
-	router.Use(utils.RecoveryMiddleware(serverLog, "middleware"))
+	router.Use(internalutils.RecoveryMiddleware(serverLog, "middleware"))
 
 	router.Get("/debug/pprof/", pprof.Index)
 	router.Get("/debug/pprof/cmdline", pprof.Cmdline)
@@ -774,7 +774,7 @@ func runPPROFServer(ctx context.Context, setupLog, log logr.Logger, opts HTTPSer
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer utils.Recover(serverLog, "shutdown")
+		defer internalutils.Recover(serverLog, "shutdown")
 
 		<-ctx.Done()
 		setupLog.Info("Shutting down pprof server")
@@ -807,7 +807,7 @@ func runHealthCheckServer(ctx context.Context, setupLog, log logr.Logger, health
 
 	router := chi.NewRouter()
 	router.Use(metrics.NewHTTPMetricsMiddlewareHandler(log, "healthcheck"))
-	router.Use(utils.RecoveryMiddleware(serverLog, "middleware"))
+	router.Use(internalutils.RecoveryMiddleware(serverLog, "middleware"))
 
 	router.Get("/healthz", healthCheck.HealthCheckHandler)
 	srv := http.Server{
@@ -822,7 +822,7 @@ func runHealthCheckServer(ctx context.Context, setupLog, log logr.Logger, health
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer utils.Recover(serverLog, "shutdown")
+		defer internalutils.Recover(serverLog, "shutdown")
 
 		<-ctx.Done()
 		setupLog.Info("Shutting down health check server")

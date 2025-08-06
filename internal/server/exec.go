@@ -21,6 +21,7 @@ import (
 	libvirtutils "github.com/ironcore-dev/libvirt-provider/internal/libvirt/utils"
 	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
+	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
 	"github.com/moby/term"
 	"k8s.io/client-go/tools/remotecommand"
 	"libvirt.org/go/libvirtxml"
@@ -39,7 +40,7 @@ type executorExec struct {
 }
 
 func (s *Server) Exec(ctx context.Context, req *iri.ExecRequest) (*iri.ExecResponse, error) {
-	log := s.loggerFrom(ctx, "MachineID", req.MachineId)
+	log := s.loggerFrom(ctx, internalutils.LogKeyMachineID, req.MachineId)
 	log.V(1).Info("Verifying machine in the store")
 	if _, err := s.machineStore.Get(ctx, req.MachineId); err != nil {
 		return nil, convertInternalErrorToGRPC(fmt.Errorf("error getting machine: %w", err))

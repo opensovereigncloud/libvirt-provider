@@ -5,7 +5,11 @@ package utils
 
 import (
 	"slices"
+
+	"github.com/google/uuid"
 )
+
+const LogKeyMachineID = "machineID"
 
 func Zero[E any]() E {
 	var zero E
@@ -25,4 +29,12 @@ type IdGenerateFunc func() string
 
 func (g IdGenerateFunc) Generate() string {
 	return g()
+}
+
+func GenerateUUIDv7() (string, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return "", err
+	}
+	return id.String(), nil
 }
