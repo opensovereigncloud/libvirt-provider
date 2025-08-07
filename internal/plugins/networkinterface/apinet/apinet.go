@@ -234,9 +234,19 @@ func (p *Plugin) Apply(ctx context.Context, spec *api.NetworkInterfaceSpec, mach
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: apinetNamespace,
 			Name:      nicName,
-			Labels:    p.getLibvirtProviderLabel(),
 		},
-		Spec: apinetv1alpha1.NetworkInterfaceSpec{
+	}
+
+	apinetNicKey := client.ObjectKeyFromObject(apinetNic)
+
+	err = p.apinetClient.Get(ctx, apinetNicKey, apinetNic)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to get existing NIC: %w", err)
+		}
+
+		apinetNic.Labels = p.getLibvirtProviderLabel()
+		apinetNic.Spec = apinetv1alpha1.NetworkInterfaceSpec{
 			NetworkRef: corev1.LocalObjectReference{
 				Name: apinetNetworkName,
 			},
@@ -244,24 +254,15 @@ func (p *Plugin) Apply(ctx context.Context, spec *api.NetworkInterfaceSpec, mach
 				Name: p.nodeName,
 			},
 			IPs: ironcoreIPsToAPInetIPs(spec.Ips),
-		},
-	}
+		}
 
-	apinetNicKey := client.ObjectKeyFromObject(apinetNic)
+		log.V(1).Info("Creating apinet nic")
+		if err := p.apinetClient.Create(ctx, apinetNic, fieldOwner); err != nil {
+			return providerNic, fmt.Errorf("error applying apinet network interface: %w", err)
+		}
 
-	existingNic := &apinetv1alpha1.NetworkInterface{}
-	err = p.apinetClient.Get(ctx, apinetNicKey, existingNic)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return nil, fmt.Errorf("failed to get existing NIC: %w", err)
-	}
-
-	// Preserve status from existing object, else it will be deleted post reconcile.
-	// TODO: need to revisit on the behaviour of libvity-provider towards apinet NIC and remove this workaround.
-	apinetNic.Status = existingNic.Status
-
-	log.V(1).Info("Applying apinet nic")
-	if err := p.apinetClient.Patch(ctx, apinetNic, client.Apply, fieldOwner, client.ForceOwnership); err != nil {
-		return providerNic, fmt.Errorf("error applying apinet network interface: %w", err)
+		// nic won't be ready immediately after creation
+		return providerNic, ErrWaitingForNetworkInterface
 	}
 
 	providerNic.Handle += string(apinetNic.UID)

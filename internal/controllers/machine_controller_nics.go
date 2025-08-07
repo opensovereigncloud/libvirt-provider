@@ -194,7 +194,7 @@ func (r *MachineReconciler) reconcileNetworkInterfaces(
 		}
 		if err != nil {
 			if errors.Is(err, apinet.ErrWaitingForNetworkInterface) {
-				delete(machineNicByName, nicName) // Prevent unintended cleanup
+				delete(machineNicByName, nicName) // skip cleanup using nic
 				continue
 			}
 			errs = append(errs, fmt.Errorf("[network interface %s] error reconciling: %w", nicName, err))
@@ -213,6 +213,10 @@ func (r *MachineReconciler) reconcileNetworkInterfaces(
 
 	for nicName, machineNic := range machineNicByName {
 		if _, ok := mountedNics[nicName]; ok {
+			continue
+		}
+
+		if _, ok := desiredNics[nicName]; ok {
 			continue
 		}
 

@@ -9,6 +9,7 @@ import (
 
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
 )
 
 func (s *Server) DetachNetworkInterface(
@@ -16,11 +17,12 @@ func (s *Server) DetachNetworkInterface(
 	req *iri.DetachNetworkInterfaceRequest,
 ) (*iri.DetachNetworkInterfaceResponse, error) {
 	log := s.loggerFrom(ctx)
-	log.V(1).Info("Detaching nic from machine")
 
 	if req == nil {
 		return nil, convertInternalErrorToGRPC(fmt.Errorf("DetachNetworkInterface is nil: %w", ErrInvalidRequest))
 	}
+
+	log.V(1).Info("Detaching nic from machine", internalutils.LogKeyMachineID, req.MachineId, "nicName", req.Name)
 
 	apiMachine, err := s.machineStore.Get(ctx, req.MachineId)
 	if err != nil {
