@@ -28,33 +28,45 @@ import (
 )
 
 const (
-	SourcePCI           = "pci"
+	SourcePCI = "pci"
+
 	sysPCIDevicesFolder = "/sys/bus/pci/devices"
 
-	attributeVendor = "vendor"
-	attributeClass  = "class"
+	attributeVendor          = "vendor"
+	attributeClass           = "class"
+	attributeDevice          = "device"
+	attributeSubsystemVendor = "subsystem_vendor"
+	attributeSubsystemDevice = "subsystem_device"
+	attributeRevision        = "revision"
 )
 
 type HexID = string
 
 // DeviceList holds a list of vendors and validates unique IDs
 type DeviceList struct {
-	Vendors []*Vendor `yaml:"vendors" validate:"unique=ID"`
+	Vendors []*Vendor `yaml:"vendors" validate:"unique=ID,dive"`
 }
 
 // Vendor represents a PCI vendor with a list of devices
 type Vendor struct {
 	ID            HexID     `yaml:"id" validate:"required,hexadecimal"`
 	Name          string    `yaml:"name" validate:"required"`
-	Devices       []*Device `yaml:"devices" validate:"required,unique=Name"`
+	Devices       []*Device `yaml:"devices" validate:"required,dive"`
 	loadedDevices map[HexID]*Device
 }
 
 // Device represents a PCI device
 type Device struct {
-	ID   HexID  `yaml:"id" validate:"required,hexadecimal"`
-	Name string `yaml:"name" validate:"required"`
-	Type string `yaml:"type" validate:"required"`
+	ID              HexID  `yaml:"id" validate:"required,hexadecimal"`
+	Name            string `yaml:"name" validate:"required"`
+	Type            string `yaml:"type" validate:"required"`
+	SubsystemVendor HexID  `yaml:"subsystemVendor,omitempty" validate:"required_with=SubsystemDevice,omitempty,hexadecimal"`
+	SubsystemDevice HexID  `yaml:"subsystemDevice,omitempty" validate:"required_with=Revision,omitempty,hexadecimal"`
+	Revision        HexID  `yaml:"revision,omitempty" validate:"required_with=SubsystemVendor,omitempty,hexadecimal"`
+}
+
+func (d *Device) getKey() string {
+	return d.ID + d.SubsystemVendor + d.SubsystemDevice + d.Revision
 }
 
 // PCI manages the allocation and deallocation of PCI devices and their resources.
@@ -89,7 +101,7 @@ func (p *PCI) CalculateMachineClassQuantity(resource core.ResourceName, quantity
 }
 
 func (p *PCI) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
-	err := p.discoverDevices()
+	err := p.discoverDevices(sysPCIDevicesFolder)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +200,8 @@ func (p *PCI) loadSupportedDevices() (map[HexID]*Vendor, error) {
 		return nil, err
 	}
 
-	err = validator.New().Struct(devices)
+	validate := validator.New()
+	err = validate.Struct(devices)
 	if err != nil {
 		return nil, err
 	}
@@ -199,29 +212,29 @@ func (p *PCI) loadSupportedDevices() (map[HexID]*Vendor, error) {
 		deviceMap[vendor.ID] = vendor
 
 		for _, device := range vendor.Devices {
-			vendor.loadedDevices[device.ID] = device
+			vendor.loadedDevices[device.getKey()] = device
 		}
 	}
 
 	return deviceMap, nil
 }
 
-func (p *PCI) discoverDevices() error {
+func (p *PCI) discoverDevices(pciDevicesPath string) error {
 	supportedDevices, err := p.loadSupportedDevices()
 	if err != nil {
 		return err
 	}
 
-	dirEntries, err := os.ReadDir(sysPCIDevicesFolder)
+	dirEntries, err := os.ReadDir(pciDevicesPath)
 	if err != nil {
 		return fmt.Errorf("error reading PCI devices: %w", err)
 	}
 
 	for _, entry := range dirEntries {
-		devicePath := filepath.Join(sysPCIDevicesFolder, entry.Name())
+		devicePath := filepath.Join(pciDevicesPath, entry.Name())
 		err = p.processPCIDevice(supportedDevices, devicePath)
 		if err != nil {
-			p.log.Error(err, "error processing PCI device", "device", entry.Name())
+			p.log.V(2).Info("error processing PCI device", "hostDevice", entry.Name(), "error", err)
 		}
 	}
 
@@ -239,21 +252,52 @@ func (p *PCI) processPCIDevice(supportedDevices map[HexID]*Vendor, deviceFolder 
 		return fmt.Errorf("unsupported vendor ID: %s", vendorID)
 	}
 
-	classID, err := p.readPCIAttribute(deviceFolder, attributeClass)
+	deviceID, err := p.readPCIAttribute(deviceFolder, attributeDevice)
 	if err != nil {
 		return err
 	}
 
-	device, deviceExists := vendor.loadedDevices[HexID(classID)]
-	if !deviceExists {
-		return fmt.Errorf("unsupported class ID: %s for vendor: %s", classID, vendor.Name)
+	subsystemDeviceID, err := p.readPCIAttribute(deviceFolder, attributeSubsystemDevice)
+	if err != nil {
+		return err
 	}
 
+	subsystemVendorID, err := p.readPCIAttribute(deviceFolder, attributeSubsystemVendor)
+	if err != nil {
+		return err
+	}
+
+	revision, err := p.readPCIAttribute(deviceFolder, attributeRevision)
+	if err != nil {
+		return err
+	}
+
+	key := (&Device{
+		ID:              deviceID,
+		SubsystemDevice: subsystemDeviceID,
+		SubsystemVendor: subsystemVendorID,
+		Revision:        revision,
+	}).getKey()
+
+	device, exists := vendor.loadedDevices[key]
+	if !exists {
+		// fallback for legacy YAML
+		classID, err := p.readPCIAttribute(deviceFolder, attributeClass)
+		if err != nil {
+			return err
+		}
+		device, exists = vendor.loadedDevices[classID]
+		if !exists {
+			return fmt.Errorf(
+				"unsupported YAML device: "+
+					"vendorID=%s, deviceID=%s, subsystemVendorID=%s, subsystemDeviceID=%s, revision=%s, classID=%s",
+				vendorID, deviceID, subsystemVendorID, subsystemDeviceID, revision, classID)
+		}
+	}
 	pciAddr, err := parsePCIAddress(filepath.Base(deviceFolder))
 	if err != nil {
 		return err
 	}
-
 	resourceName := core.ResourceName(fmt.Sprintf("%s.%s/%s", device.Type, vendor.Name, device.Name))
 	p.devices[resourceName] = append(p.devices[resourceName], pciAddr)
 	return nil
