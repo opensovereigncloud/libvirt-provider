@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/google/uuid"
 	apinetv1alpha1 "github.com/ironcore-dev/ironcore-net/api/core/v1alpha1"
@@ -49,23 +48,19 @@ var (
 )
 
 type Plugin struct {
-	nodeName        string
-	host            providerhost.LibvirtHost
-	apinetClient    client.Client
-	pollingInterval time.Duration
-	pollingDuration time.Duration
-	enableCleanup   bool
-	watcher         apinetwatcher.Watcher
+	nodeName      string
+	host          providerhost.LibvirtHost
+	apinetClient  client.Client
+	enableCleanup bool
+	watcher       apinetwatcher.Watcher
 }
 
-func NewPlugin(nodeName string, client client.Client, duration, interval time.Duration, cleanup bool, watcher apinetwatcher.Watcher) providernetworkinterface.Plugin {
+func NewPlugin(nodeName string, client client.Client, cleanup bool, watcher apinetwatcher.Watcher) providernetworkinterface.Plugin {
 	return &Plugin{
-		nodeName:        nodeName,
-		apinetClient:    client,
-		pollingDuration: duration,
-		pollingInterval: interval,
-		enableCleanup:   cleanup,
-		watcher:         watcher,
+		nodeName:      nodeName,
+		apinetClient:  client,
+		enableCleanup: cleanup,
+		watcher:       watcher,
 	}
 }
 

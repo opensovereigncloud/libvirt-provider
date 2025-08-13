@@ -5,7 +5,6 @@ package networkinterfaceplugin
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/spf13/pflag"
 
@@ -32,11 +31,9 @@ func init() {
 }
 
 type ApinetOptions struct {
-	APInetNodeName        string
-	ApinetKubeconfig      string
-	APInetPollingDuration time.Duration
-	APInetPollingInterval time.Duration
-	APInetCleanup         bool
+	APInetNodeName   string
+	ApinetKubeconfig string
+	APInetCleanup    bool
 
 	watcher apinetwatcher.Watcher
 }
@@ -52,8 +49,6 @@ func (o *ApinetOptions) PluginName() string {
 func (o *ApinetOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.APInetNodeName, "apinet-node-name", "", "APInet node name")
 	fs.StringVar(&o.ApinetKubeconfig, "apinet-kubeconfig", "", "Path to the kubeconfig file for the apinet-cluster.")
-	fs.DurationVar(&o.APInetPollingDuration, "apinet-polling-duration", time.Second*30, "The maximum time the apinet plugin will wait until the networkinterface becomes ready.")
-	fs.DurationVar(&o.APInetPollingInterval, "apinet-polling-interval", time.Second*1, "The polling interval the apinet plugin uses to check if the networkinterface became ready.")
 	fs.BoolVar(&o.APInetCleanup, "apinet-cleanup", false, "Cleanup orphan apinet interfaces during startup.")
 }
 
@@ -88,7 +83,7 @@ func (o *ApinetOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugi
 		o.watcher.SetAPINetConfig(apinetCfg)
 	}
 
-	return apinet.NewPlugin(o.APInetNodeName, apinetClient, o.APInetPollingDuration, o.APInetPollingInterval, o.APInetCleanup, o.watcher), nil, nil
+	return apinet.NewPlugin(o.APInetNodeName, apinetClient, o.APInetCleanup, o.watcher), nil, nil
 }
 
 func init() {

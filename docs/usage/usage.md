@@ -122,8 +122,6 @@ For a complete list of available make targets, refer to the [Makefile](../../Mak
 | `--apinet-cleanup` | Cleanup orphan apinet interfaces during startup. | `false` |
 | `--apinet-node-name` | APInet node name. | `""` |
 | `--apinet-kubeconfig` | Path to the kubeconfig file for the apinet-cluster. | `""` |
-| `--apinet-polling-duration` | The maximum time the apinet plugin will wait until the networkinterface becomes ready. | `30s` |
-| `--apinet-polling-interval` | The polling interval the apinet plugin uses to check if the networkinterface became ready. | `1s` |
 
 #### Resource manager
 
