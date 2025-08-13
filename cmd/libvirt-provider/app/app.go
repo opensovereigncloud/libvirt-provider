@@ -299,7 +299,7 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
-	imgCache, err := oci.NewLocalCache(log, reg, ociStore)
+	imgCache, err := oci.NewLocalCache(log.WithName("oci-local-cache"), reg, ociStore)
 	if err != nil {
 		setupLog.Error(err, "failed to initialize oci manager")
 		return err
@@ -343,7 +343,7 @@ func Run(ctx context.Context, opts Options) error {
 			return fmt.Errorf("plugin options for %s are not of expected type", networkinterfaceplugin.PluginAPINet)
 		}
 
-		watcher = apinetwatcher.NewWatcher(log.WithName("apinet-NIC-watcher"))
+		watcher = apinetwatcher.NewWatcher(log.WithName("apinet-nic-watcher"))
 		apinetOpts.SetWatcher(watcher)
 	}
 
@@ -411,6 +411,7 @@ func Run(ctx context.Context, opts Options) error {
 		machineStore.Watch,
 		event.ListWatchSourceOptions{
 			ResyncDuration: opts.EventListWatchSourceResyncDuration,
+			Logger:         log.WithName("machine-events"),
 		},
 	)
 	if err != nil {
@@ -418,7 +419,7 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
-	eventStore := machineevent.NewEventStore(log, opts.MachineEventStore)
+	eventStore := machineevent.NewEventStore(log.WithName("iri-event-store"), opts.MachineEventStore)
 
 	overrideDomainXML, err := providerlibvirtxml.LoadOverrideDomainXML(opts.Libvirt.OverrideDomainXML)
 	if err != nil {
@@ -915,5 +916,5 @@ func initMetrics(ctx context.Context, log logr.Logger, listMachines func(context
 	if err != nil {
 		return fmt.Errorf("failed to get machinestate metric: %w", err)
 	}
-	return metrics.InitializeMachineClassesMetrics(log, machines)
+	return metrics.InitializeMachineClassesMetrics(log.WithName("machine-classes-metrics"), machines)
 }

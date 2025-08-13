@@ -108,6 +108,8 @@ The machine store is a persistent storage component used to manage the lifecycle
 
 ## Machine Events
 
+**Logger name:** machine-events
+
 The machine events component performs two functions to ensure the correct state of VMs.
 
 - It periodically retrieves a list of machines from the machine store to reconcile VMs.
@@ -115,9 +117,13 @@ The machine events component performs two functions to ensure the correct state 
 
 ## IRI Event Store
 
+**Logger name:** iri-event-store
+
 The IRI event store system captures and stores important events related to VMs, such as status changes or errors. It provides a way for other components to record events. The event store maintains a recent history of events, enabling IRI clients and monitoring tools to retrieve and respond to them.
 
 ## OCI Image Cache
+
+**Logger name:** oci-local-cache
 
 The OCI image registry is used to store and retrieve VM images. The image cache manages downloading, storing, and serving these images to other components. When an image is needed, the cache ensures it is available locally and notifies interested components when the image is ready, enabling smooth VM creation.
 

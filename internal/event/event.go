@@ -49,6 +49,7 @@ type Event[E api.Object] struct {
 
 type ListWatchSourceOptions struct {
 	ResyncDuration time.Duration
+	Logger         logr.Logger
 }
 
 func setListWatchSourceOptionsDefaults(o *ListWatchSourceOptions) {
@@ -65,6 +66,7 @@ func NewListWatchSource[E api.Object](listFunc func(ctx context.Context) ([]E, e
 		watchFunc:      watchFunc,
 		handles:        sets.New[*handle[E]](),
 		resyncDuration: opts.ResyncDuration,
+		log:            opts.Logger,
 	}, nil
 }
 
@@ -76,10 +78,10 @@ type ListWatchSource[E api.Object] struct {
 	handles   sets.Set[*handle[E]]
 
 	resyncDuration time.Duration
+	log            logr.Logger
 }
 
 func (s *ListWatchSource[E]) Start(ctx context.Context) error {
-	log := logr.FromContextOrDiscard(ctx)
 	var wg sync.WaitGroup
 
 	watch, err := s.watchFunc(ctx)
@@ -99,7 +101,7 @@ func (s *ListWatchSource[E]) Start(ctx context.Context) error {
 			case evt := <-watch.Events():
 				eventType, err := typeFromWatchType(evt.Type)
 				if err != nil {
-					log.Error(err, "error converting watch event type")
+					s.log.Error(err, "error converting watch event type")
 					continue
 				}
 
@@ -118,7 +120,7 @@ func (s *ListWatchSource[E]) Start(ctx context.Context) error {
 		wait.UntilWithContext(ctx, func(ctx context.Context) {
 			objs, err := s.listFunc(ctx)
 			if err != nil {
-				log.Error(err, "failed to list objects")
+				s.log.Error(err, "failed to list objects")
 				return
 			}
 
