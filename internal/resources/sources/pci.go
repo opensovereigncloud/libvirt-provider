@@ -5,15 +5,12 @@ package sources
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"maps"
 	"math"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/go-playground/validator/v10"
@@ -21,6 +18,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/api"
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
+	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -29,8 +27,6 @@ import (
 
 const (
 	SourcePCI = "pci"
-
-	sysPCIDevicesFolder = "/sys/bus/pci/devices"
 
 	attributeVendor          = "vendor"
 	attributeClass           = "class"
@@ -101,7 +97,7 @@ func (p *PCI) CalculateMachineClassQuantity(resource core.ResourceName, quantity
 }
 
 func (p *PCI) Init(ctx context.Context) (sets.Set[core.ResourceName], error) {
-	err := p.discoverDevices(sysPCIDevicesFolder)
+	err := p.discoverDevices(internalutils.FolderSysPCIDevices)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +238,7 @@ func (p *PCI) discoverDevices(pciDevicesPath string) error {
 }
 
 func (p *PCI) processPCIDevice(supportedDevices map[HexID]*Vendor, deviceFolder string) error {
-	vendorID, err := p.readPCIAttribute(deviceFolder, attributeVendor)
+	vendorID, err := internalutils.ReadPCIAttribute(&p.log, deviceFolder, attributeVendor)
 	if err != nil {
 		return err
 	}
@@ -252,22 +248,22 @@ func (p *PCI) processPCIDevice(supportedDevices map[HexID]*Vendor, deviceFolder 
 		return fmt.Errorf("unsupported vendor ID: %s", vendorID)
 	}
 
-	deviceID, err := p.readPCIAttribute(deviceFolder, attributeDevice)
+	deviceID, err := internalutils.ReadPCIAttribute(&p.log, deviceFolder, attributeDevice)
 	if err != nil {
 		return err
 	}
 
-	subsystemDeviceID, err := p.readPCIAttribute(deviceFolder, attributeSubsystemDevice)
+	subsystemDeviceID, err := internalutils.ReadPCIAttribute(&p.log, deviceFolder, attributeSubsystemDevice)
 	if err != nil {
 		return err
 	}
 
-	subsystemVendorID, err := p.readPCIAttribute(deviceFolder, attributeSubsystemVendor)
+	subsystemVendorID, err := internalutils.ReadPCIAttribute(&p.log, deviceFolder, attributeSubsystemVendor)
 	if err != nil {
 		return err
 	}
 
-	revision, err := p.readPCIAttribute(deviceFolder, attributeRevision)
+	revision, err := internalutils.ReadPCIAttribute(&p.log, deviceFolder, attributeRevision)
 	if err != nil {
 		return err
 	}
@@ -282,7 +278,7 @@ func (p *PCI) processPCIDevice(supportedDevices map[HexID]*Vendor, deviceFolder 
 	device, exists := vendor.loadedDevices[key]
 	if !exists {
 		// fallback for legacy YAML
-		classID, err := p.readPCIAttribute(deviceFolder, attributeClass)
+		classID, err := internalutils.ReadPCIAttribute(&p.log, deviceFolder, attributeClass)
 		if err != nil {
 			return err
 		}
@@ -301,33 +297,6 @@ func (p *PCI) processPCIDevice(supportedDevices map[HexID]*Vendor, deviceFolder 
 	resourceName := core.ResourceName(fmt.Sprintf("%s.%s/%s", device.Type, vendor.Name, device.Name))
 	p.devices[resourceName] = append(p.devices[resourceName], pciAddr)
 	return nil
-}
-
-func (p *PCI) readPCIAttribute(devicePath, attributeName string) (string, error) {
-	attributePath := filepath.Join(devicePath, attributeName)
-	file, err := os.Open(attributePath)
-	if err != nil {
-		return "", err
-	}
-
-	defer osutils.CloseWithErrorLogging(file, fmt.Sprintf("error closing file. Path: %s", file.Name()), &p.log)
-
-	// attributeFileSize is higher as file content can be.
-	const attributeFileSize = 16
-	buff := make([]byte, attributeFileSize)
-
-	n, err := file.Read(buff)
-	if err != nil && !errors.Is(err, io.EOF) {
-		return "", err
-	}
-
-	if n == attributeFileSize {
-		return "", fmt.Errorf("file %s has bigger content as expected", file.Name())
-	}
-
-	s := string(buff[:n])
-
-	return strings.ToLower(strings.TrimSpace(s)), nil
 }
 
 func parsePCIAddress(address string) (*api.PCIAddress, error) {

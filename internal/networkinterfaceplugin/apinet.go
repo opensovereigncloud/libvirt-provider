@@ -35,6 +35,10 @@ type ApinetOptions struct {
 	ApinetKubeconfig string
 	APInetCleanup    bool
 
+	MellanoxVirtFnMetrics bool
+
+	DPSvcMetricsV2Format bool
+
 	watcher apinetwatcher.Watcher
 }
 
@@ -50,6 +54,8 @@ func (o *ApinetOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.APInetNodeName, "apinet-node-name", "", "APInet node name")
 	fs.StringVar(&o.ApinetKubeconfig, "apinet-kubeconfig", "", "Path to the kubeconfig file for the apinet-cluster.")
 	fs.BoolVar(&o.APInetCleanup, "apinet-cleanup", false, "Cleanup orphan apinet interfaces during startup.")
+	fs.BoolVar(&o.MellanoxVirtFnMetrics, "apinet-mellanox-virtfn-metrics", false, "Expose assignment of mellanox virtual functions to machine.")
+	fs.BoolVar(&o.DPSvcMetricsV2Format, "apinet-dpservice-metrics-v2-format", true, "Generate virtual function name label in v2 format.")
 }
 
 func (o *ApinetOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, func(), error) {
@@ -83,7 +89,9 @@ func (o *ApinetOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugi
 		o.watcher.SetAPINetConfig(apinetCfg)
 	}
 
-	return apinet.NewPlugin(o.APInetNodeName, apinetClient, o.APInetCleanup, o.watcher), nil, nil
+	return apinet.NewPlugin(o.APInetNodeName, apinetClient, o.APInetCleanup,
+			o.MellanoxVirtFnMetrics, o.DPSvcMetricsV2Format, o.watcher),
+		nil, nil
 }
 
 func init() {

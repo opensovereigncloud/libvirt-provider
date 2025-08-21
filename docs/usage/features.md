@@ -51,6 +51,7 @@ Please order features alphabetically A→Z in tables.
 | Providernet | Managing network over libvirt daemon networks | f8ef1e6 | 🟢stable |                                |
 | APINet      | Managing network over APINet                  | f8ef1e6 | 🟢stable |                                |
 | APINet NIC watcher | Watches NetworkInterface objects in APINet cluster and triggers corresponding VM reconciliation via events | 01e1318 | 🟡beta | Ensures event-driven reconciliation for APINet NICs instead of polling |
+| APINet nic assignment metrics | Expose metric which can be use for linking machine to network traffic metrics from dp-service | `to-be-updated-post-merge` | 🔴wip | |
 
 ### Volume related
 

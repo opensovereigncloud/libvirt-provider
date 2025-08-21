@@ -18,19 +18,25 @@ const (
 	subsystemOperation         = "operation"
 	subsystemWorkQueue         = "workqueue"
 
-	LabelName         = "name"
-	LabelController   = "controller"
-	LabelOperation    = "operation"
-	LabelEventID      = "event_id"
-	LabelEventType    = "event_type"
-	LabelServer       = "server"
-	LabelMethod       = "method"
-	LabelPath         = "path"
-	LabelStatus       = "status"
-	LabelState        = "state"
-	LabelMachineclass = "machineclass"
-	LabelSource       = "source"
-	LabelResource     = "resource"
+	LabelName                 = "name"
+	LabelController           = "controller"
+	LabelOperation            = "operation"
+	LabelEventID              = "event_id"
+	LabelEventType            = "event_type"
+	LabelServer               = "server"
+	LabelMethod               = "method"
+	LabelPath                 = "path"
+	LabelStatus               = "status"
+	LabelState                = "state"
+	LabelMachineclass         = "machineclass"
+	LabelSource               = "source"
+	LabelResource             = "resource"
+	LabelMachineID            = "machine_id"
+	LabelNic                  = "nic"
+	LabelRootMachineName      = "root_machine_name"
+	LabelRootMachineNamespace = "root_machine_namespace"
+
+	LabelValueUnknown = "unknown"
 
 	LogKeyLabels = "labels"
 )
@@ -159,6 +165,8 @@ func RegisterAllMetrics() error {
 		MachineClassesSkipped,
 		MachinesAvailable,
 		MachinesTotal,
+
+		APINetNicsVirtFn,
 	}
 
 	for i := range collectors {
