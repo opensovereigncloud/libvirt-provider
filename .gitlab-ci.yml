@@ -4,7 +4,6 @@ stages:
   - test
   - build
   - e2e
-  - post-processing
 
 variables:
   CI_LINTER_IMG: "mtr.devops.telekom.de/osc/common/pipeline-community/osc-gitlab-runner-linter:alpine-latest-0.8"
@@ -237,16 +236,6 @@ build:
     entrypoint: ["/bin/ash", "-c"]
   script:
     - make build-only
-
-# Skipping post-processing for the MRs because the pipeline fails when the scheduled upstream-synchronization pipeline creates MRs.
-include:
-  - component: 'gitlab.devops.telekom.de/cas-devs/osc/common/pipeline-community/components/mtr/configure-repo@stable'
-    inputs:
-      image-list-type: 'none'
-      version: 'stable'
-      stage: 'post-processing'
-    rules:
-      - if: $CI_PIPELINE_SOURCE != 'merge_request_event' && $CI_PIPELINE_SOURCE != 'schedule'
 
 check-dependabot-commits:
   stage: check-and-create-mr
