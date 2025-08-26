@@ -1062,7 +1062,7 @@ func (r *MachineReconciler) updateAPIMachineStatus(ctx context.Context, machine 
 	if requireUpdate {
 		_, err := r.machines.Update(ctx, machine)
 		if err != nil {
-			return fmt.Errorf("failed to update machine status: %w", err)
+			return err
 		}
 	}
 
