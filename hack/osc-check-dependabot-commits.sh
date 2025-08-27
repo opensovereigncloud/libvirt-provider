@@ -86,7 +86,7 @@ function cleanup_orphan_branch() {
 }
 
 echo "Setting up Git configuration..."
-git config --global user.email "users.noreply.gitlab.com"
+git config --global user.email "noreply@gitlab.devops.telekom.de"
 git config --global user.name "sync user"
 git remote set-url origin "https://oauth2:${CI_PUSH_TOKEN}@gitlab.devops.telekom.de/cas-devs/osc/upstream/ironcore-dev/libvirt-provider.git"
 git fetch --all --quiet
