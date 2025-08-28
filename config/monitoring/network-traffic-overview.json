@@ -1,0 +1,918 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Overview of libvirt-provider state per node",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": 84,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "datasource": {
+        "uid": "${datasource}"
+      },
+      "description": "Table of machine names for conversion between USER API and libvirt-provider",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto",
+              "wrapText": false
+            },
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 16,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": true,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "11.6.1",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum (\n    libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", root_machine_namespace=~\"${root_machine_namespace}\", root_machine_name=~\"${root_machine_name}\", machine_id=~\"${machine_id}\"}\n) by (cluster, machine_id, root_machine_namespace, root_machine_name)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Machine names",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "root_machine_namespace"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true
+            },
+            "includeByName": {},
+            "indexByName": {
+              "Time": 0,
+              "Value": 5,
+              "cluster": 1,
+              "machine_id": 4,
+              "root_machine_name": 3,
+              "root_machine_namespace": 2
+            },
+            "renameByName": {
+              "cluster": "cluster",
+              "machine_id": "libvirt-provider machine name",
+              "root_machine_name": "user api machine name",
+              "root_machine_namespace": "user api cluster namespace"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "default": false,
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Legend format:\nmachineID nicName valueType",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "axisBorderShow": true,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "cps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 11
+      },
+      "id": 18,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Name",
+          "sortDesc": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.6.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    rate(\n        dpdk_ethdev_errors_total{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", stat=~\"rx.*\"}[${resolution}]\n    )\n) by (cluster, name, stat)\n* on(cluster, name) group_left(nic, root_machine_name, root_machine_namespace, machine_id)\nsum (\n    libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", root_machine_namespace=~\"${root_machine_namespace}\", root_machine_name=~\"${root_machine_name}\", machine_id=~\"${machine_id}\"} == 1\n) by (cluster, name, nic, root_machine_name, root_machine_namespace, machine_id)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{machine_id}} {{nic}} {{stat}}",
+          "range": true,
+          "refId": "activeWorkers"
+        }
+      ],
+      "title": "Network device RX errors",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "default": false,
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Legend format:\nmachineID nicName valueType",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "axisBorderShow": true,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "cps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 11
+      },
+      "id": 19,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.6.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    rate(\n        dpdk_ethdev_errors_total{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", stat=~\"tx.*\"}[${resolution}]\n    )\n) by (cluster, name, stat)\n* on(cluster, name) group_left(nic, root_machine_name, root_machine_namespace, machine_id)\nsum (\n    libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", root_machine_namespace=~\"${root_machine_namespace}\", root_machine_name=~\"${root_machine_name}\", machine_id=~\"${machine_id}\"} == 1\n) by (cluster, name, nic, root_machine_name, root_machine_namespace, machine_id)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{machine_id}} {{nic}} {{stat}}",
+          "range": true,
+          "refId": "activeWorkers"
+        }
+      ],
+      "title": "Network device TX errors",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "default": false,
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Inbound/Outbound traffic\nLegend format:\nmachineID nicName direction",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "axisBorderShow": true,
+            "axisCenteredZero": true,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "binBps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "id": 21,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Name",
+          "sortDesc": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.6.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    rate(\n        dpdk_ethdev_bytes_total{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", stat=\"rx_good_bytes\"}[${resolution}]\n    )\n) by (cluster, name, stat)\n* on(cluster, name) group_left(nic, root_machine_name, root_machine_namespace, machine_id)\nsum (\n    libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", root_machine_namespace=~\"${root_machine_namespace}\", root_machine_name=~\"${root_machine_name}\", machine_id=~\"${machine_id}\"} == 1\n) by (cluster, name, nic, root_machine_name, root_machine_namespace, machine_id)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{machine_id}} {{nic}} RX",
+          "range": true,
+          "refId": "activeWorkers"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "-sum(\n    rate(\n        dpdk_ethdev_bytes_total{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", stat=\"tx_good_bytes\"}[5m]\n    )\n) by (cluster, name, stat)\n* on(cluster, name) group_left(nic, root_machine_name, root_machine_namespace, machine_id)\nsum (\n    libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", root_machine_namespace=~\"${root_machine_namespace}\", root_machine_name=~\"${root_machine_name}\", machine_id=~\"${machine_id}\"} == 1\n) by (cluster, name, nic, root_machine_name, root_machine_namespace, machine_id)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{machine_id}} {{nic}} TX",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Network traffic",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "default": false,
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Inbound/Outbound vport traffic per VM interface\nLegend format:\nmachineID nicName direction",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "axisBorderShow": true,
+            "axisCenteredZero": true,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "binBps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "id": 17,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Name",
+          "sortDesc": false
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.6.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    rate(\n        dpdk_ethdev_bytes_total{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", stat=\"rx_vport_bytes\"}[${resolution}]\n    )\n) by (cluster, name, stat)\n* on(cluster, name) group_left(nic, root_machine_name, root_machine_namespace, machine_id)\nsum (\n    libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", root_machine_namespace=~\"${root_machine_namespace}\", root_machine_name=~\"${root_machine_name}\", machine_id=~\"${machine_id}\"} == 1\n) by (cluster, name, nic, root_machine_name, root_machine_namespace, machine_id)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{machine_id}} {{nic}} RX",
+          "range": true,
+          "refId": "activeWorkers"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "-sum(\n    rate(\n        dpdk_ethdev_bytes_total{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", stat=\"tx_vport_bytes\"}[5m]\n    )\n) by (cluster, name, stat)\n* on(cluster, name) group_left(nic, root_machine_name, root_machine_namespace, machine_id)\nsum (\n    libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", root_machine_namespace=~\"${root_machine_namespace}\", root_machine_name=~\"${root_machine_name}\", machine_id=~\"${machine_id}\"} == 1\n) by (cluster, name, nic, root_machine_name, root_machine_namespace, machine_id)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{machine_id}} {{nic}} TX",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Network traffic vport",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "default": false,
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Inbound/Outbound packets\nLegend format:\nmachineID nicName direction",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "axisBorderShow": true,
+            "axisCenteredZero": true,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "pps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 29
+      },
+      "id": 20,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Name",
+          "sortDesc": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "pluginVersion": "11.6.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n    rate(\n        dpdk_ethdev_packets_total{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", stat=\"rx_good_packets\"}[${resolution}]\n    )\n) by (cluster, name, stat)\n* on (cluster, name) group_left(nic, root_machine_name, root_machine_namespace, machine_id)\nsum (\n    libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", root_machine_namespace=~\"${root_machine_namespace}\", root_machine_name=~\"${root_machine_name}\", machine_id=~\"${machine_id}\"} == 1\n) by (cluster, name, nic, root_machine_name, root_machine_namespace, machine_id)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{machine_id}} {{nic}} RX",
+          "range": true,
+          "refId": "activeWorkers"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "-sum(\n    rate(\n        dpdk_ethdev_packets_total{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", stat=\"tx_good_packets\"}[5m]\n    )\n) by (cluster, name, stat)\n* on(cluster, name) group_left(nic, root_machine_name, root_machine_namespace, machine_id)\nsum (\n    libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"${tenant}\", cluster=~\"${cluster}\", root_machine_namespace=~\"${root_machine_namespace}\", root_machine_name=~\"${root_machine_name}\", machine_id=~\"${machine_id}\"} == 1\n) by (cluster, name, nic, root_machine_name, root_machine_namespace, machine_id)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{machine_id}} {{nic}} TX",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Network packets",
+      "type": "timeseries"
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 41,
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "^libvirt-provider-controller-manager-.+",
+          "value": "^libvirt-provider-controller-manager-.+"
+        },
+        "description": "",
+        "hide": 2,
+        "name": "pods",
+        "query": "^libvirt-provider-controller-manager-.+",
+        "skipUrlSync": true,
+        "type": "constant"
+      },
+      {
+        "current": {
+          "text": "OSC-Mimir",
+          "value": "OSC-Mimir"
+        },
+        "includeAll": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "text": "lab",
+          "value": "lab"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kube_pod_info,__tenant_id__)",
+        "description": "",
+        "label": "tenant",
+        "name": "tenant",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(kube_pod_info,__tenant_id__)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kube_pod_info{__tenant_id__=\"$tenant\", pod=~\"$pods\"},cluster)",
+        "description": "Optional. Filtering metrics from specific compute cluster.",
+        "includeAll": true,
+        "label": "cluster",
+        "name": "cluster",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(kube_pod_info{__tenant_id__=\"$tenant\", pod=~\"$pods\"},cluster)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"$tenant\", cluster=~\"$cluster\"},root_machine_namespace)",
+        "description": "Optional. It represent namespace for USER API cluster.",
+        "includeAll": true,
+        "name": "root_machine_namespace",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"$tenant\", cluster=~\"$cluster\"},root_machine_namespace)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "definition": "label_values(libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"$tenant\", cluster=~\"$cluster\", root_machine_namespace=~\"$root_machine_namespace\"},root_machine_name)",
+        "description": "Optional. It represent machine name from USER API cluster",
+        "includeAll": true,
+        "multi": true,
+        "name": "root_machine_name",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"$tenant\", cluster=~\"$cluster\", root_machine_namespace=~\"$root_machine_namespace\"},root_machine_name)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "definition": "label_values(libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"$tenant\", cluster=~\"$cluster\"},machine_id)",
+        "description": "Optional. It represent name of virtual machine in libvirt-provider",
+        "includeAll": true,
+        "multi": true,
+        "name": "machine_id",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(libvirtprovider_apinet_nics_virtfn{__tenant_id__=\"$tenant\", cluster=~\"$cluster\"},machine_id)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "auto": false,
+        "auto_count": 30,
+        "auto_min": "10s",
+        "current": {
+          "text": "3m",
+          "value": "3m"
+        },
+        "name": "resolution",
+        "options": [
+          {
+            "selected": false,
+            "text": "1m",
+            "value": "1m"
+          },
+          {
+            "selected": true,
+            "text": "3m",
+            "value": "3m"
+          },
+          {
+            "selected": false,
+            "text": "5m10m",
+            "value": "5m10m"
+          },
+          {
+            "selected": false,
+            "text": "30m",
+            "value": "30m"
+          },
+          {
+            "selected": false,
+            "text": "1h",
+            "value": "1h"
+          }
+        ],
+        "query": "1m,3m,5m10m,30m,1h",
+        "refresh": 2,
+        "type": "interval"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "15s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "browser",
+  "title": "Cluster / Libvirt-provider Network traffic Overview",
+  "uid": "bew2plhyy251cc",
+  "version": 4
+}
