@@ -52,15 +52,7 @@ type ListWatchSourceOptions struct {
 	Logger         logr.Logger
 }
 
-func setListWatchSourceOptionsDefaults(o *ListWatchSourceOptions) {
-	if o.ResyncDuration == 0 {
-		o.ResyncDuration = 1 * time.Hour
-	}
-}
-
 func NewListWatchSource[E api.Object](listFunc func(ctx context.Context) ([]E, error), watchFunc func(ctx context.Context) (store.Watch[E], error), opts ListWatchSourceOptions) (*ListWatchSource[E], error) {
-	setListWatchSourceOptionsDefaults(&opts)
-
 	return &ListWatchSource[E]{
 		listFunc:       listFunc,
 		watchFunc:      watchFunc,
@@ -113,26 +105,31 @@ func (s *ListWatchSource[E]) Start(ctx context.Context) error {
 		}
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	if s.resyncDuration > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 
-		wait.UntilWithContext(ctx, func(ctx context.Context) {
-			objs, err := s.listFunc(ctx)
-			if err != nil {
-				s.log.Error(err, "failed to list objects")
-				return
-			}
+			wait.UntilWithContext(ctx, func(ctx context.Context) {
+				objs, err := s.listFunc(ctx)
+				if err != nil {
+					s.log.Error(err, "failed to list objects")
+					return
+				}
 
-			for _, obj := range objs {
-				s.enqueue(Event[E]{
-					Type:   TypeGeneric,
-					Object: obj,
-				})
-			}
-		}, s.resyncDuration)
-	}()
+				for _, obj := range objs {
+					s.enqueue(Event[E]{
+						Type:   TypeGeneric,
+						Object: obj,
+					})
+				}
+			}, s.resyncDuration)
+		}()
+	} else {
+		s.log.Info("List-watch event source resynchronization disabled (resyncDuration <= 0)")
+	}
 
+	wg.Wait()
 	return nil
 }
 

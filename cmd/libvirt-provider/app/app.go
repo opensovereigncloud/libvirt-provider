@@ -187,7 +187,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 
 	fs.DurationVar(&o.GCVMGracefulShutdownTimeout, "gc-vm-graceful-shutdown-timeout", 5*time.Minute, "Duration to wait for the VM to gracefully shut down. If the VM does not shut down within this period, it will be forcibly destroyed by garbage collector.")
 	fs.DurationVar(&o.ResyncIntervalGarbageCollector, "gc-resync-interval", 1*time.Minute, "Interval for resynchronizing the garbage collector.")
-	fs.DurationVar(&o.EventListWatchSourceResyncDuration, "event-list-watch-source-resync-duration", 1*time.Minute, "Duration for resynchronizing the list and watch events of source.")
+	fs.DurationVar(&o.EventListWatchSourceResyncDuration, "event-list-watch-source-resync-duration", 1*time.Hour, "Duration for resynchronizing the list and watch events of source. Set 0 or negative to disable resync.")
 
 	fs.StringSliceVar(&o.ResourceManagerOptions.Sources, "resource-manager-sources", []string{"cpu", "memory"}, fmt.Sprintf("Sources for loading resources. Available: %v", manager.GetSourcesAvailable()))
 	fs.Float64Var(&o.ResourceManagerOptions.OvercommitVCPU, "resource-manager-overcommit-vcpu", 1.0, "Sets the overcommit ratio for vCPUs, enabling higher VM density per CPU core.")

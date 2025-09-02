@@ -95,7 +95,7 @@ For a complete list of available make targets, refer to the [Makefile](../../Mak
 | --- | --- | --- |
 | `--gc-vm-graceful-shutdown-timeout` | Timeout for VM graceful shutdown during garbage collection. | `5m` |
 | `--gc-resync-interval` | Interval for resynchronizing the garbage collector. | `1m` |
-| `--event-list-watch-source-resync-duration` | Duration for resynchronizing the list and watch events of source. | `1m` |
+| `--event-list-watch-source-resync-duration` | Duration for resynchronizing the list and watch events of source. Set 0 or negative to disable resync. | `1h` |
 
 #### Guest capabilities
 
