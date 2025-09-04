@@ -58,9 +58,9 @@ func (o *ApinetOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.DPSvcMetricsV2Format, "apinet-dpservice-metrics-v2-format", true, "Generate virtual function name label in v2 format.")
 }
 
-func (o *ApinetOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, func(), error) {
+func (o *ApinetOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, error) {
 	if o.APInetNodeName == "" {
-		return nil, nil, fmt.Errorf("must specify apinet-node-name")
+		return nil, fmt.Errorf("must specify apinet-node-name")
 	}
 
 	// Check if apinetKubeconfig is provided
@@ -69,19 +69,19 @@ func (o *ApinetOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugi
 	if o.ApinetKubeconfig != "" {
 		apinetCfg, err = clientcmd.BuildConfigFromFlags("", o.ApinetKubeconfig)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create config from apinet-kubeconfig: %w", err)
+			return nil, fmt.Errorf("failed to create config from apinet-kubeconfig: %w", err)
 		}
 	} else {
 		// assuming in-cluster config
 		apinetCfg, err = rest.InClusterConfig()
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create apinet in-cluster-config: %w", err)
+			return nil, fmt.Errorf("failed to create apinet in-cluster-config: %w", err)
 		}
 	}
 
 	apinetClient, err := client.New(apinetCfg, client.Options{Scheme: scheme})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize api-net client: %w", err)
+		return nil, fmt.Errorf("failed to initialize api-net client: %w", err)
 	}
 
 	if o.watcher != nil {
@@ -90,8 +90,7 @@ func (o *ApinetOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugi
 	}
 
 	return apinet.NewPlugin(o.APInetNodeName, apinetClient, o.APInetCleanup,
-			o.MellanoxVirtFnMetrics, o.DPSvcMetricsV2Format, o.watcher),
-		nil, nil
+		o.MellanoxVirtFnMetrics, o.DPSvcMetricsV2Format, o.watcher), nil
 }
 
 func init() {

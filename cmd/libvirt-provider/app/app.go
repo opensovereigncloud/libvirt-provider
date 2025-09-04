@@ -347,13 +347,10 @@ func Run(ctx context.Context, opts Options) error {
 		apinetOpts.SetWatcher(watcher)
 	}
 
-	nicPlugin, nicPluginCleanup, err := opts.NicPlugin.NetworkInterfacePlugin()
+	nicPlugin, err := opts.NicPlugin.NetworkInterfacePlugin()
 	if err != nil {
 		setupLog.Error(err, "failed to initialize network plugin")
 		return err
-	}
-	if nicPluginCleanup != nil {
-		defer nicPluginCleanup()
 	}
 
 	setupLog.Info("Initializing network interface plugin")

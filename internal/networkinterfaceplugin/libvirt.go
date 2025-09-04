@@ -18,8 +18,8 @@ func (o *libvirtNetworkOptions) PluginName() string {
 	return "providernet"
 }
 
-func (o *libvirtNetworkOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, func(), error) {
-	return providernetwork.NewPlugin(), nil, nil
+func (o *libvirtNetworkOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, error) {
+	return providernetwork.NewPlugin(), nil
 }
 
 func init() {

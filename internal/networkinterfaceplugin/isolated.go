@@ -18,8 +18,8 @@ func (o *isolatedOptions) PluginName() string {
 	return "isolated"
 }
 
-func (o *isolatedOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, func(), error) {
-	return isolated.NewPlugin(), nil, nil
+func (o *isolatedOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, error) {
+	return isolated.NewPlugin(), nil
 }
 
 func init() {

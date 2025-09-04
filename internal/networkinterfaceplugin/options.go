@@ -14,7 +14,7 @@ import (
 type TypeOptions interface {
 	PluginName() string
 	AddFlags(fs *pflag.FlagSet)
-	NetworkInterfacePlugin() (providernetworkinterface.Plugin, func(), error)
+	NetworkInterfacePlugin() (providernetworkinterface.Plugin, error)
 }
 
 type TypeOptionsRegistry struct {
@@ -104,18 +104,18 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	})
 }
 
-func (o *Options) NetworkInterfacePlugin() (providernetworkinterface.Plugin, func(), error) {
+func (o *Options) NetworkInterfacePlugin() (providernetworkinterface.Plugin, error) {
 	pluginOpts, err := o.registry.PluginTypeOptsByName(o.PluginName)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	nicPlugin, cleanup, err := pluginOpts.NetworkInterfacePlugin()
+	nicPlugin, err := pluginOpts.NetworkInterfacePlugin()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return nicPlugin, cleanup, nil
+	return nicPlugin, nil
 }
 
 func (o *Options) Registry() *TypeOptionsRegistry {
