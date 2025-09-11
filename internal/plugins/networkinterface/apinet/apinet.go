@@ -22,7 +22,6 @@ import (
 	apinet "github.com/ironcore-dev/ironcore-net/apimachinery/api/net"
 	"github.com/ironcore-dev/ironcore-net/apinetlet/provider"
 	"github.com/ironcore-dev/libvirt-provider/api"
-	"github.com/ironcore-dev/libvirt-provider/internal/apinetwatcher"
 	providerhost "github.com/ironcore-dev/libvirt-provider/internal/host"
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
@@ -73,7 +72,6 @@ type Plugin struct {
 	host                          providerhost.LibvirtHost
 	apinetClient                  client.Client
 	enableCleanup                 bool
-	watcher                       apinetwatcher.Watcher
 	mellanoxVirtFnMetricsDisabled bool
 	virtualFunctions              map[string]VirtualFunction
 	generateVirtFnLabel           func(VirtualFunction) string
@@ -81,7 +79,7 @@ type Plugin struct {
 }
 
 func NewPlugin(nodeName string, client client.Client,
-	cleanup, mellanoxVirtFnMetrics, dpSvcMetricsV2Format bool, watcher apinetwatcher.Watcher) providernetworkinterface.Plugin {
+	cleanup, mellanoxVirtFnMetrics, dpSvcMetricsV2Format bool) providernetworkinterface.Plugin {
 	generateFunc := generateDPSvcFormatV1Label
 	if dpSvcMetricsV2Format {
 		generateFunc = generateDPSvcFormatV2Label
@@ -91,7 +89,6 @@ func NewPlugin(nodeName string, client client.Client,
 		nodeName:                      nodeName,
 		apinetClient:                  client,
 		enableCleanup:                 cleanup,
-		watcher:                       watcher,
 		mellanoxVirtFnMetricsDisabled: !mellanoxVirtFnMetrics,
 		generateVirtFnLabel:           generateFunc,
 	}
@@ -242,10 +239,6 @@ func (p *Plugin) Apply(ctx context.Context, spec *api.NetworkInterfaceSpec, mach
 			p.nodeName,
 			types.UID(""),
 		),
-	}
-
-	if !p.watcher.IsReady() {
-		return providerNic, apinetwatcher.ErrAPINetWatcherNotReady
 	}
 
 	log.V(1).Info("Writing network interface dir")
@@ -411,10 +404,6 @@ func (p *Plugin) Delete(ctx context.Context, computeNicName, machineID string) e
 		Name:      NICName(machineID, computeNicName),
 	}
 	log = log.WithValues("APInetNetworkInterfaceKey", apinetNicKey)
-
-	if !p.watcher.IsReady() {
-		return apinetwatcher.ErrAPINetWatcherNotReady
-	}
 
 	if err := p.apinetClient.Delete(ctx, &apinetv1alpha1.NetworkInterface{
 		ObjectMeta: metav1.ObjectMeta{

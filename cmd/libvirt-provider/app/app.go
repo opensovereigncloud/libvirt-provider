@@ -330,24 +330,7 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
-	var watcher apinetwatcher.Watcher
-
-	if opts.NicPlugin.PluginName == networkinterfaceplugin.PluginAPINet {
-		pluginOpts, err := opts.NicPlugin.Registry().PluginTypeOptsByName(networkinterfaceplugin.PluginAPINet)
-		if err != nil {
-			return fmt.Errorf("failed to get plugin registry options for %s: %w", networkinterfaceplugin.PluginAPINet, err)
-		}
-
-		apinetOpts, ok := pluginOpts.(*networkinterfaceplugin.ApinetOptions)
-		if !ok {
-			return fmt.Errorf("plugin options for %s are not of expected type", networkinterfaceplugin.PluginAPINet)
-		}
-
-		watcher = apinetwatcher.NewWatcher(log.WithName("apinet-nic-watcher"))
-		apinetOpts.SetWatcher(watcher)
-	}
-
-	nicPlugin, err := opts.NicPlugin.NetworkInterfacePlugin()
+	nicPlugin, watcher, err := opts.NicPlugin.NetworkInterfacePlugin()
 	if err != nil {
 		setupLog.Error(err, "failed to initialize network plugin")
 		return err
@@ -359,8 +342,6 @@ func Run(ctx context.Context, opts Options) error {
 		setupLog.Error(err, "failed to initialize network plugin")
 		return err
 	}
-
-	watcherEmitter := apinetwatcher.NewEventEmitter[*apinetv1alpha1.NetworkInterface]()
 
 	setupLog.Info("Configuring machine store", "Directory", providerHost.MachineStoreDir())
 	machineStore, err := host.NewStore(host.Options[*api.Machine]{
@@ -433,6 +414,11 @@ func Run(ctx context.Context, opts Options) error {
 		},
 	)
 
+	var watcherEmitter apinetwatcher.EventEmitter[*apinetv1alpha1.NetworkInterface]
+	if watcher != nil {
+		watcherEmitter = apinetwatcher.NewEventEmitter[*apinetv1alpha1.NetworkInterface]()
+	}
+
 	machineReconciler, err := controllers.NewMachineReconciler(
 		controllerLogger,
 		providerHost,
@@ -480,6 +466,25 @@ func Run(ctx context.Context, opts Options) error {
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
+
+	// Start watcher only if it's initialized (i.e. we're using apinet)
+	if watcher != nil {
+		g.Go(func() error {
+			setupLog.Info("Starting APINet watcher")
+			locErr := watcher.Start(ctx, watcherEmitter)
+			if locErr != nil {
+				return fmt.Errorf("error running APINet watcher: %w", locErr)
+			}
+			return nil
+		})
+
+		// Ensure informer caches are fully synced before processing events.
+		// Prevents acting on stale/empty data during startup.
+		err = watcher.WaitForCacheSync(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to synchronize apinet client cache: %w", err)
+		}
+	}
 
 	g.Go(func() error {
 		return runMetricsServer(ctx, setupLog, opts.Servers.Metrics)
@@ -561,21 +566,6 @@ func Run(ctx context.Context, opts Options) error {
 		}
 		return nil
 	})
-
-	// Start watcher only if it's initialized (i.e. we're using apinet)
-	if watcher != nil {
-		watcher.SetEventEmitter(watcherEmitter)
-
-		g.Go(func() error {
-			setupLog.Info("Starting APINet watcher")
-			if err := watcher.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
-				setupLog.Error(err, "APINet watcher exited with error")
-				return err
-			}
-			setupLog.Info("APINet watcher exited gracefully")
-			return nil
-		})
-	}
 
 	return g.Wait()
 }

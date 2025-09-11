@@ -4,6 +4,7 @@
 package networkinterfaceplugin
 
 import (
+	"github.com/ironcore-dev/libvirt-provider/internal/apinetwatcher"
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface/providernetwork"
 	"github.com/spf13/pflag"
@@ -18,8 +19,8 @@ func (o *libvirtNetworkOptions) PluginName() string {
 	return "providernet"
 }
 
-func (o *libvirtNetworkOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, error) {
-	return providernetwork.NewPlugin(), nil
+func (o *libvirtNetworkOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, apinetwatcher.Watcher, error) {
+	return providernetwork.NewPlugin(), nil, nil
 }
 
 func init() {

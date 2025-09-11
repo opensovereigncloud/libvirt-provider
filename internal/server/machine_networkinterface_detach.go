@@ -22,7 +22,7 @@ func (s *Server) DetachNetworkInterface(
 		return nil, convertInternalErrorToGRPC(fmt.Errorf("DetachNetworkInterface is nil: %w", ErrInvalidRequest))
 	}
 
-	log.V(1).Info("Detaching nic from machine", internalutils.LogKeyMachineID, req.MachineId, "nicName", req.Name)
+	log.V(1).Info("Detaching nic from machine", internalutils.LogKeyMachineID, req.MachineId, internalutils.LogKeyNICName, req.Name)
 
 	apiMachine, err := s.machineStore.Get(ctx, req.MachineId)
 	if err != nil {

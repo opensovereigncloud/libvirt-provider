@@ -4,6 +4,7 @@
 package networkinterfaceplugin
 
 import (
+	"github.com/ironcore-dev/libvirt-provider/internal/apinetwatcher"
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface/isolated"
 	"github.com/spf13/pflag"
@@ -18,8 +19,8 @@ func (o *isolatedOptions) PluginName() string {
 	return "isolated"
 }
 
-func (o *isolatedOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, error) {
-	return isolated.NewPlugin(), nil
+func (o *isolatedOptions) NetworkInterfacePlugin() (providernetworkinterface.Plugin, apinetwatcher.Watcher, error) {
+	return isolated.NewPlugin(), nil, nil
 }
 
 func init() {

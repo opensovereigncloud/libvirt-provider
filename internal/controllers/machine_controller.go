@@ -31,7 +31,6 @@ import (
 	libvirtutils "github.com/ironcore-dev/libvirt-provider/internal/libvirt/utils"
 	providerlibvirtxml "github.com/ironcore-dev/libvirt-provider/internal/libvirtxml"
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
-	"github.com/ironcore-dev/libvirt-provider/internal/networkinterfaceplugin"
 	providerimage "github.com/ironcore-dev/libvirt-provider/internal/oci"
 	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
@@ -220,7 +219,7 @@ func (r *MachineReconciler) Start(ctx context.Context) error {
 		},
 	})
 
-	if r.networkInterfacePlugin.Name() == networkinterfaceplugin.PluginAPINet {
+	if r.watcherEmitter != nil {
 		err := r.watcherEmitter.AddHandler("watcher-apinet-nic", apinetwatcher.HandlerFunc[*apinetv1alpha1.NetworkInterface](func(evt apinetwatcher.Event[*apinetv1alpha1.NetworkInterface]) {
 			nic := evt.Object
 			if nic == nil {
@@ -238,7 +237,7 @@ func (r *MachineReconciler) Start(ctx context.Context) error {
 					machineID := machine.ID
 					computed := apinet.NICName(machineID, iface.Name)
 					if computed == nic.Name {
-						r.log.V(1).Info("Requeuing machine due to apinet NIC event", internalutils.LogKeyMachineID, machineID, "NICName", computed, "eventType", evt.Type)
+						r.log.V(1).Info("Requeuing machine due to apinet NIC event", internalutils.LogKeyMachineID, machineID, internalutils.LogKeyNICName, computed, "eventType", evt.Type)
 						r.queue.Add(machineID)
 					}
 				}

@@ -7,209 +7,164 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-logr/logr"
 	apinetv1alpha1 "github.com/ironcore-dev/ironcore-net/api/core/v1alpha1"
-	"github.com/ironcore-dev/libvirt-provider/api"
 	"github.com/ironcore-dev/libvirt-provider/internal/event"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/rest"
+	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
+
+	"k8s.io/apimachinery/pkg/api/equality"
+	clientgoCache "k8s.io/client-go/tools/cache"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 )
 
-var ErrAPINetWatcherNotReady = errors.New("apinet watcher is not ready")
+var (
+	ErrCacheSync = fmt.Errorf("failed to sync cache")
+)
 
 type Watcher interface {
-	SetNodeName(string)
-	SetAPINetConfig(*rest.Config)
-	SetEventEmitter(EventEmitter[*apinetv1alpha1.NetworkInterface])
-	Start(context.Context) error
-	IsReady() bool
-	SetDynamicClientOverride(dynamic.Interface)
+	// Start begins the informer cache event loop for the watcher.
+	//
+	// The underlying informer cache runs in its own goroutines, where it performs
+	// LIST/WATCH requests against the API server to maintain an up-to-date local
+	// cache of the watched resources. Calling Start is what actually launches this
+	// machinery. Without it, the cache would remain idle and no events would flow.
+	//
+	// This method also wires up the provided EventEmitter, which the watcher uses
+	// later to forward resource events (create/update/delete) to the controller’s
+	// reconciliation logic.
+	//
+	// Start will block until the context is canceled or an unrecoverable error occurs.
+	Start(context.Context, EventEmitter[*apinetv1alpha1.NetworkInterface]) error
+
+	// WaitForCacheSync blocks until the cache has successfully observed the initial
+	// state of all watched resources or until the provided context times out/cancels.
+	// This guarantees that the controller has a consistent view of cluster state
+	// before processing any events. Without this step, the controller could attempt
+	// to act on incomplete data, leading to subtle race conditions and hard-to-debug errors.
+	WaitForCacheSync(context.Context) error
 }
 
 type watcher struct {
-	NodeName          string
-	apinetCfg         *rest.Config
-	emitter           EventEmitter[*apinetv1alpha1.NetworkInterface]
-	ready             atomic.Bool
-	dynClientOverride dynamic.Interface
-	log               logr.Logger
+	emitter          EventEmitter[*apinetv1alpha1.NetworkInterface]
+	log              logr.Logger
+	cache            cache.Cache
+	cacheSyncTimeout time.Duration
 }
 
-func NewWatcher(log logr.Logger) *watcher {
-	return &watcher{log: log}
+type relaventNICStatus struct {
+	State      apinetv1alpha1.NetworkInterfaceState
+	PCIAddress apinetv1alpha1.PCIAddress
+	TAPDevice  apinetv1alpha1.TAPDevice
 }
 
-func (w *watcher) SetNodeName(name string) {
-	w.NodeName = name
+func NewWatcher(ctx context.Context, cache cache.Cache, timeout time.Duration) (*watcher, error) {
+	w := &watcher{
+		log:              ctrl.Log.WithName("apinet-nic-watcher"),
+		cache:            cache,
+		cacheSyncTimeout: timeout,
+	}
+	informer, err := w.cache.GetInformer(ctx, &apinetv1alpha1.NetworkInterface{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct informer: %w", err)
+	}
+
+	_, err = informer.AddEventHandler(clientgoCache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj any) {
+			// Skipping NIC Add events intentionally.
+			// Reason:
+			// 1. libvirt-provider is the one creating these objects, so reconciling on creation
+			//    would just cause us to react to our own writes. The objects only become meaningful
+			//    after they are updated by the relevant controllers (e.g. with State, PCIAddress, etc.).
+			// 2. When the application starts, the informer replays all existing objects as "add" events.
+			//    Handling those would trigger a storm of unnecessary reconciliations at startup.
+		},
+		UpdateFunc: func(oldObj, newObj any) {
+			oldNIC, okOld := oldObj.(*apinetv1alpha1.NetworkInterface)
+			newNIC, okNew := newObj.(*apinetv1alpha1.NetworkInterface)
+			if !okOld || !okNew {
+				return
+			}
+			w.handleNICUpdate(oldNIC, newNIC)
+		},
+		DeleteFunc: func(obj any) {
+			nic, ok := obj.(*apinetv1alpha1.NetworkInterface)
+			if ok {
+				w.emitAPINetNICEvent(event.TypeDeleted, nic)
+			}
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to add event handler to informer: %w", err)
+	}
+	return w, nil
 }
 
-func (w *watcher) SetAPINetConfig(cfg *rest.Config) {
-	w.apinetCfg = cfg
-}
-
-func (w *watcher) SetDynamicClientOverride(c dynamic.Interface) {
-	w.dynClientOverride = c
-}
-
-func (w *watcher) SetEventEmitter(em EventEmitter[*apinetv1alpha1.NetworkInterface]) {
+func (w *watcher) Start(ctx context.Context, em EventEmitter[*apinetv1alpha1.NetworkInterface]) error {
 	w.emitter = em
-}
 
-// IsReady returns whether the watcher has successfully established a connection
-// and is actively receiving events.
-//
-// This check should be used before creating or deleting NetworkInterface objects
-// to avoid losing events that occur while the watcher is not yet connected.
-// Once ready, the watcher is guaranteed to observe all future events.
-//
-// The watcher may not be ready during:
-// - Initial startup (before first successful Watch)
-// - API server unavailability
-// - etcd compaction or flushing delays
-// - Network partitions or DNS issues
-// - Temporary authentication failures
-func (w *watcher) IsReady() bool {
-	return w.ready.Load()
-}
-
-func (w *watcher) Start(ctx context.Context) error {
-	return w.run(ctx)
-}
-
-func (w *watcher) run(ctx context.Context) error {
-	var dynClient dynamic.Interface
-	var err error
-
-	// Use test/mocked client if injected for testing, otherwise create one from config
-	if w.dynClientOverride != nil {
-		dynClient = w.dynClientOverride
-	} else {
-		dynClient, err = dynamic.NewForConfig(w.apinetCfg)
-		if err != nil {
-			return fmt.Errorf("failed to create dynamic client: %w", err)
-		}
+	err := w.cache.Start(ctx)
+	if err != nil && !errors.Is(err, context.Canceled) {
+		return fmt.Errorf("cache.Start failed: %w", err)
 	}
 
-	resourceClient := dynClient.Resource(apinetv1alpha1.SchemeGroupVersion.WithResource("networkinterfaces")).Namespace(v1.NamespaceAll)
-	labelSelector := fmt.Sprintf("%s=%s", api.LabelLibvirtProviderHostname, w.NodeName)
+	return nil
+}
 
-	reconnectDelay := time.Second
+func (w *watcher) handleNICUpdate(oldNIC, newNIC *apinetv1alpha1.NetworkInterface) {
+	nicName := newNIC.Name
 
-watchLoop:
-	for {
-		// Marks the watcher as not ready (e.g. during reconnects or watch failures)
-		w.ready.Store(false)
+	oldStatus := relaventNICStatus{
+		State: oldNIC.Status.State,
+	}
+	if oldNIC.Status.PCIAddress != nil {
+		oldStatus.PCIAddress = *oldNIC.Status.PCIAddress
+	}
+	if oldNIC.Status.TAPDevice != nil {
+		oldStatus.TAPDevice = *oldNIC.Status.TAPDevice
+	}
 
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
+	newStatus := relaventNICStatus{
+		State: newNIC.Status.State,
+	}
+	if newNIC.Status.PCIAddress != nil {
+		newStatus.PCIAddress = *newNIC.Status.PCIAddress
+	}
+	if newNIC.Status.TAPDevice != nil {
+		newStatus.TAPDevice = *newNIC.Status.TAPDevice
+	}
 
-		// Initial list to get current resourceVersion
-		list, err := resourceClient.List(ctx, v1.ListOptions{
-			LabelSelector: labelSelector,
+	// Skip if no meaningful change
+	if equality.Semantic.DeepEqual(oldStatus, newStatus) {
+		w.log.V(2).Info("No meaningful NIC change; skipping", internalutils.LogKeyNICName, nicName)
+		return
+	}
+
+	w.log.V(1).Info("NIC updated", internalutils.LogKeyNICName, nicName)
+	w.emitAPINetNICEvent(event.TypeUpdated, newNIC)
+}
+
+func (w *watcher) emitAPINetNICEvent(eventType event.Type, obj *apinetv1alpha1.NetworkInterface) {
+	if w.emitter != nil {
+		w.emitter.Fire(Event[*apinetv1alpha1.NetworkInterface]{
+			Type:   string(eventType),
+			Object: obj,
 		})
-		if err != nil {
-			w.log.Error(err, "failed to list objects")
-		}
-
-		resourceVersion := ""
-		if list != nil {
-			resourceVersion = list.GetResourceVersion()
-		}
-
-		// Start the Watch stream from the latest resourceVersion
-		watcher, err := resourceClient.Watch(ctx, v1.ListOptions{
-			LabelSelector:   labelSelector,
-			ResourceVersion: resourceVersion,
-		})
-		if err != nil {
-			w.log.Error(err, "failed to start apinet NIC watcher")
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(reconnectDelay):
-				// Exponential backoff on watch failure
-				reconnectDelay = minDuration(reconnectDelay*2, 3*time.Minute)
-				continue
-			}
-		}
-
-		w.log.V(1).Info("APINet NIC watcher connected")
-
-		// Marks the watcher as ready after a successful Watch connection
-		w.ready.Store(true)
-
-		// Reset delay on success
-		reconnectDelay = time.Second
-
-		ch := watcher.ResultChan()
-		for {
-			select {
-			case <-ctx.Done():
-				watcher.Stop()
-				return ctx.Err()
-			case evt, ok := <-ch:
-				if !ok {
-					w.log.V(1).Info("Watch channel closed, reconnecting")
-					watcher.Stop()
-					continue watchLoop
-				}
-
-				unstructuredObj, ok := evt.Object.(runtime.Unstructured)
-				if !ok {
-					continue
-				}
-
-				obj := &apinetv1alpha1.NetworkInterface{}
-				if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObj.UnstructuredContent(), obj); err != nil {
-					w.log.Error(err, "failed to convert to NetworkInterface")
-					continue
-				}
-
-				// Skip events for NICs that are not yet ready
-				if obj.Status.State != apinetv1alpha1.NetworkInterfaceStateReady {
-					w.log.V(2).Info("APINet NIC is not ready; skipping reconciliation", "name", obj.Name)
-					continue
-				}
-
-				eventType := convertType(evt.Type)
-
-				if w.emitter != nil {
-					w.emitter.Fire(Event[*apinetv1alpha1.NetworkInterface]{
-						Type:   string(eventType),
-						Object: obj,
-					})
-				}
-			}
-		}
 	}
 }
 
-// convertType converts raw Kubernetes watch event types to internal event types
-func convertType(t watch.EventType) event.Type {
-	switch t {
-	case watch.Added:
-		return event.TypeCreated
-	case watch.Modified:
-		return event.TypeUpdated
-	case watch.Deleted:
-		return event.TypeDeleted
-	default:
-		return event.TypeGeneric
-	}
-}
+func (w *watcher) WaitForCacheSync(ctx context.Context) error {
+	w.log.Info("Waiting for cache synchronization.")
 
-func minDuration(a, b time.Duration) time.Duration {
-	if a < b {
-		return a
+	locCtx, locCtxCancel := context.WithTimeout(ctx, w.cacheSyncTimeout)
+	defer locCtxCancel()
+
+	if !w.cache.WaitForCacheSync(locCtx) {
+		return locCtx.Err()
 	}
-	return b
+
+	w.log.Info("Cache synchronization completed.")
+	return nil
 }

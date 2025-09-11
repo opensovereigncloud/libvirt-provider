@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/ironcore-dev/libvirt-provider/internal/apinetwatcher"
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
 	"github.com/spf13/pflag"
 )
@@ -14,7 +15,7 @@ import (
 type TypeOptions interface {
 	PluginName() string
 	AddFlags(fs *pflag.FlagSet)
-	NetworkInterfacePlugin() (providernetworkinterface.Plugin, error)
+	NetworkInterfacePlugin() (providernetworkinterface.Plugin, apinetwatcher.Watcher, error)
 }
 
 type TypeOptionsRegistry struct {
@@ -104,18 +105,13 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	})
 }
 
-func (o *Options) NetworkInterfacePlugin() (providernetworkinterface.Plugin, error) {
+func (o *Options) NetworkInterfacePlugin() (providernetworkinterface.Plugin, apinetwatcher.Watcher, error) {
 	pluginOpts, err := o.registry.PluginTypeOptsByName(o.PluginName)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	nicPlugin, err := pluginOpts.NetworkInterfacePlugin()
-	if err != nil {
-		return nil, err
-	}
-
-	return nicPlugin, nil
+	return pluginOpts.NetworkInterfacePlugin()
 }
 
 func (o *Options) Registry() *TypeOptionsRegistry {

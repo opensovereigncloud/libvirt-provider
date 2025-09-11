@@ -122,6 +122,7 @@ For a complete list of available make targets, refer to the [Makefile](../../Mak
 | `--apinet-cleanup` | Cleanup orphan apinet interfaces during startup. | `false` |
 | `--apinet-node-name` | APInet node name. | `""` |
 | `--apinet-kubeconfig` | Path to the kubeconfig file for the apinet-cluster. | `""` |
+| `--apinet-cache-sync-timeout` | Timeout for apinet kubernetes client cache synchronization. Set this based on the expected cache size. | `30s` |
 
 #### Resource manager
 

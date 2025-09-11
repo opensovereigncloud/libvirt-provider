@@ -19,6 +19,7 @@ import (
 
 const (
 	LogKeyMachineID = "machineID"
+	LogKeyNICName   = "nicName"
 
 	FolderSysPCIDevices = "/sys/bus/pci/devices"
 )
