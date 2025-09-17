@@ -85,12 +85,13 @@ const (
 )
 
 type MachineStatus struct {
-	VolumeStatus           []VolumeStatus           `json:"volumeStatus"`
-	NetworkInterfaceStatus []NetworkInterfaceStatus `json:"networkInterfaceStatus"`
-	State                  MachineState             `json:"state"`
-	ImageRef               string                   `json:"imageRef"`
-	GuestAgentStatus       *GuestAgentStatus        `json:"guestAgentStatus,omitempty"`
-	PCIDevices             []PCIDevice              `json:"pciDevices"`
+	VolumeStatus            []VolumeStatus           `json:"volumeStatus"`
+	NetworkInterfaceStatus  []NetworkInterfaceStatus `json:"networkInterfaceStatus"`
+	State                   MachineState             `json:"state"`
+	ImageRef                string                   `json:"imageRef"`
+	GuestAgentStatus        *GuestAgentStatus        `json:"guestAgentStatus,omitempty"`
+	PCIDevices              []PCIDevice              `json:"pciDevices"`
+	PCIControllersAllocated int                      `json:"pciControllersAllocated"`
 }
 
 func (m *MachineStatus) SortPCIDevices() {

@@ -1058,6 +1058,12 @@ func (r *MachineReconciler) updateAPIMachineStatus(ctx context.Context, machine 
 		machine.Status.NetworkInterfaceStatus = nics
 	}
 
+	pciControllersAllocated := api.GetExistingPCICount(machine)
+	if pciControllersAllocated != machine.Status.PCIControllersAllocated {
+		requireUpdate = true
+		machine.Status.PCIControllersAllocated = pciControllersAllocated
+	}
+
 	if requireUpdate {
 		_, err := r.machines.Update(ctx, machine)
 		if err != nil {
