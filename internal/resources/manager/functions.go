@@ -57,11 +57,6 @@ func SetMachineClassesFilename(filename string) error {
 	return mng.setMachineClassesFilename(filename)
 }
 
-// GetIRIMAchineClasses will return machineClasses of resource manager as IRI Machine Classes
-func GetIRIMachineClasses() []*iri.MachineClass {
-	return mng.getIRIMachineClasses()
-}
-
 // SetVMLimit just registers maximum limit for VMs
 func SetVMLimit(maxVMsLimit uint64) error {
 	return mng.setVMLimit(maxVMsLimit)

@@ -43,8 +43,6 @@ type Server struct {
 
 	pciControllerTotal int
 
-	machineClasses MachineClassRegistry
-
 	execRequestCache request.Cache[*iri.ExecRequest]
 	activeConsoles   sync.Map
 	libvirt          *libvirt.Libvirt
@@ -62,8 +60,6 @@ type Options struct {
 
 	MachineStore store.Store[*api.Machine]
 	EventStore   machineevent.EventStore
-
-	MachineClasses MachineClassRegistry
 
 	VolumePlugins  *volume.PluginManager
 	NetworkPlugins providernetworkinterface.Plugin
@@ -96,7 +92,6 @@ func New(opts Options) (*Server, error) {
 		volumePlugins:          opts.VolumePlugins,
 		networkInterfacePlugin: opts.NetworkPlugins,
 		pciControllerTotal:     opts.PCIControllerTotal,
-		machineClasses:         opts.MachineClasses,
 		guestAgent:             opts.GuestAgent,
 		execRequestCache:       request.NewCache[*iri.ExecRequest](),
 		activeConsoles:         sync.Map{},
@@ -105,11 +100,6 @@ func New(opts Options) (*Server, error) {
 
 func (s *Server) loggerFrom(ctx context.Context, keysWithValues ...interface{}) logr.Logger {
 	return ctrl.LoggerFrom(ctx, keysWithValues...)
-}
-
-type MachineClassRegistry interface {
-	Get(volumeClassName string) (*iri.MachineClass, bool)
-	List() []*iri.MachineClass
 }
 
 func (s *Server) buildURL(method string, token string) string {

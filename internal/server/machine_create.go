@@ -28,9 +28,9 @@ func (s *Server) createMachineFromIRIMachine(ctx context.Context, log logr.Logge
 		return nil, fmt.Errorf("iri machine metadata is nil")
 	}
 
-	_, found := s.machineClasses.Get(iriMachine.Spec.Class)
-	if !found {
-		return nil, fmt.Errorf("machine class '%s' not supported", iriMachine.Spec.Class)
+	requiredResources, err := manager.GetMachineClassRequiredResources(iriMachine.Spec.Class)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get class resources: %w", err)
 	}
 	log.V(2).Info("Validated class")
 
@@ -91,11 +91,6 @@ func (s *Server) createMachineFromIRIMachine(ctx context.Context, log logr.Logge
 	}
 
 	log.V(2).Info("allocating machine with machineclass:" + iriMachine.Spec.Class)
-	requiredResources, err := manager.GetMachineClassRequiredResources(iriMachine.Spec.Class)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get class resources: %w", err)
-	}
-
 	err = manager.Allocate(machine, requiredResources)
 	if err != nil {
 		return nil, fmt.Errorf("cannot allocate resources: %w", err)

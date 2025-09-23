@@ -38,7 +38,6 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/libvirt/guest"
 	libvirtutils "github.com/ironcore-dev/libvirt-provider/internal/libvirt/utils"
 	providerlibvirtxml "github.com/ironcore-dev/libvirt-provider/internal/libvirtxml"
-	"github.com/ironcore-dev/libvirt-provider/internal/mcr"
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/networkinterfaceplugin"
 	"github.com/ironcore-dev/libvirt-provider/internal/oci"
@@ -378,12 +377,6 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
-	machineClasses, err := mcr.NewMachineClassRegistry(manager.GetIRIMachineClasses())
-	if err != nil {
-		setupLog.Error(err, "failed to initialize machine class registry")
-		return err
-	}
-
 	machineEvents, err := event.NewListWatchSource[*api.Machine](
 		machineStore.List,
 		machineStore.Watch,
@@ -449,7 +442,6 @@ func Run(ctx context.Context, opts Options) error {
 		Libvirt:            libvirt,
 		MachineStore:       machineStore,
 		EventStore:         eventStore,
-		MachineClasses:     machineClasses,
 		VolumePlugins:      volumePlugins,
 		NetworkPlugins:     nicPlugin,
 		PCIControllerTotal: opts.Libvirt.PCIControllerTotal,

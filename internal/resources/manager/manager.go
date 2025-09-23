@@ -190,6 +190,8 @@ MAIN:
 		}
 	}
 
+	// NOTE: r.machineClasses must be sorted by name before calling slices.BinarySearchFunc in getMachineClass.
+	// Removing or updating this sort may impact binary serch lookup.
 	slices.SortFunc(r.machineClasses, func(i, j *MachineClass) int {
 		return strings.Compare(i.Name, j.Name)
 	})
@@ -509,12 +511,14 @@ func (r *resourceManager) checkContext() error {
 }
 
 func (r *resourceManager) getMachineClass(name string) (*MachineClass, error) {
-	for _, class := range r.machineClasses {
-		if class.Name == name {
-			return class, nil
-		}
+	index, found := slices.BinarySearchFunc(r.machineClasses, name,
+		func(mc *MachineClass, target string) int {
+			return strings.Compare(mc.Name, target)
+		},
+	)
+	if found {
+		return r.machineClasses[index], nil
 	}
-
 	return nil, ErrMachineClassMissing
 }
 
@@ -593,15 +597,6 @@ func (r *resourceManager) getAvailableResources() core.ResourceList {
 		maps.Copy(resourceList, s.GetAvailableResources())
 	}
 	return resourceList
-}
-
-func (r *resourceManager) getIRIMachineClasses() []*iri.MachineClass {
-	iriClasses := make([]*iri.MachineClass, 0, len(r.machineClasses))
-	for _, class := range r.machineClasses {
-		iriClasses = append(iriClasses, class.iriClass)
-	}
-
-	return iriClasses
 }
 
 // reset internal state of manager and allow reinit
