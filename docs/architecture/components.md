@@ -54,7 +54,7 @@ The Machine Reconciler in the `libvirt-provider` project is a core controller re
 
 **Logger name:** garbage-collector
 
-The garbage collector is a background process within the machine reconciler. It periodically scans for VMs marked for deletion and handles everything related to machine graceful shutdown/deletion: the cleanup of resources associated with these machines, such as deallocating host resources and removing related files from the host file system. If the machine fails to shut down gracefully within the pre-configured grace period, domain is forcefully destroyed. The garbage collector runs in a loop with configurable interval. Flags for configuration are described [here](../usage/usage.md#garbage-collection).
+The garbage collector is a background process within the machine reconciler. It periodically scans for VMs marked for deletion and handles everything related to machine graceful shutdown/deletion: the cleanup of resources associated with these machines, such as deallocating host resources and removing related files from the host file system. If the machine fails to shut down gracefully within the pre-configured grace period, domain is forcefully destroyed. The garbage collector runs in a loop with configurable interval. Flags for configuration are described in the usage document under [garbage collection](../usage/usage.md#garbage-collection).
 
 ### Work Queue
 
@@ -81,7 +81,7 @@ Volume plugins provide an interface for managing storage volumes in this project
 
 The resource manager serves as a manager of sources (described below) and provides unified interface for tracking, allocating, and managing host resources. It utilizes sources to get the current state of all managed machines, updates resource assignments, and more. It ensures that resource usage is accurately reflected and that new VMs can only be created if sufficient resources are available, helping to prevent overcommitment of resources (overcommitment of CPUs is supported) and maintain system stability.
 
-Resource manager-specific features can be found [here](../usage/features.md#resource-manager-related) and its configuration flags are described [here](../usage/usage.md#resource-manager).
+Resource manager-specific features are described in the [features guide](../usage/features.md#resource-manager-related), and its configuration flags are documented under [resource manager](../usage/usage.md#resource-manager) in the usage guide.
 
 ### Sources
 
@@ -129,19 +129,19 @@ The OCI image registry is used to store and retrieve VM images. The image cache 
 
 ## Servers
 
-Several servers are initiated and started during startup of the `libvirt-provider` application. They listen on configurable addresses and support graceful shutdown. Their settings can be changed via flags, which are documented [here](../usage/usage.md#server-and-health-monitoring).
+Several servers are initiated and started during startup of the `libvirt-provider` application. They listen on configurable addresses and support graceful shutdown. Their settings can be changed via flags, which are documented under [server and health monitoring](../usage/usage.md#server-and-health-monitoring) in the usage guide.
 
 ### Metrics Server
 
 **Logger name:** metrics-server
 
-The metrics server exposes internal `libvirt-provider` metrics in Prometheus format. These metrics can be visualized in Grafana dashboards. An overview of exposed metrics can be found [here](../usage/metrics.md). For clarity, connections to the metrics server are omitted from the component diagram.
+The metrics server exposes internal `libvirt-provider` metrics in Prometheus format. These metrics can be visualized in Grafana dashboards. An overview of exposed metrics is provided in the [metrics guide](../usage/metrics.md). For clarity, connections to the metrics server are omitted from the component diagram.
 
 ### gRPC (IRI) Server
 
 **Logger name:** iri-server
 
-The gRPC server handles IRI requests for managing VMs and related resources. It allows clients to create, delete, and list machines, as well as attach or detach volumes and network interfaces, among other operations. The server implements the gRPC protocol defined [here](https://github.com/ironcore-dev/ironcore/blob/main/iri/apis/machine/v1alpha1/api.proto) and listens on a configurable Unix socket.
+The gRPC server handles IRI requests for managing VMs and related resources. It allows clients to create, delete, and list machines, as well as attach or detach volumes and network interfaces, among other operations. The server implements the gRPC protocol defined in the [Machine API protobuf](https://github.com/ironcore-dev/ironcore/blob/main/iri/apis/machine/v1alpha1/api.proto) and listens on a configurable Unix socket.
 
 ### Streaming Server
 
@@ -163,4 +163,4 @@ The PPROF server is used for debugging. It serves runtime profiling data in the 
 
 ## Related Components
 
-A high-level architecture design of components related to the `libvirt-provider` can be found [here](./README.md).
+A high-level architecture design of components related to the `libvirt-provider` can be found in the [architecture overview](./README.md).

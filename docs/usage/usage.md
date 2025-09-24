@@ -9,7 +9,7 @@ This guide provides a comprehensive usage flow, including configuration, flags, 
 
 ## Prerequisites
 
-Before you begin, make sure you have the prerequisites described [here](../development/dev_setup.md#prerequisites).
+Before you begin, make sure you have the prerequisites described in the [development setup guide](../development/dev_setup.md#prerequisites).
 
 ---
 
@@ -149,7 +149,7 @@ For a complete list of available make targets, refer to the [Makefile](../../Mak
 
 The following flags are required for the application to run properly:
 
-`--supported-machine-classes` (Path to the supported machine classes file). Sample `machine-classes.json` can be found [here](../../config/development/machineclasses.json).
+`--supported-machine-classes` (Path to the supported machine classes file). See the [sample machine-classes.json](../../config/development/machineclasses.json) for reference.
 
 ---
 

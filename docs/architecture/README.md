@@ -16,7 +16,7 @@ It implements the [MachineRuntime][machineRuntime].
 
 It is responsible for managing virtual machines over the libvirt daemon.
 
-Component diagram with description can be found [here](./components.md)
+The component diagram with descriptions is available in the [components guide](./components.md)
 
 ### Libvirt (Daemon)
 
