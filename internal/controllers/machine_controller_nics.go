@@ -61,8 +61,9 @@ func (r *MachineReconciler) setDomainNetworkInterfaces(
 	}
 
 	var (
-		specNicNames = sets.NewString()
-		states       []*api.NetworkInterfaceStatus
+		specNicNames        = sets.NewString()
+		states              []*api.NetworkInterfaceStatus
+		waitingForAPINetNIC bool
 	)
 	for _, nic := range machine.Spec.NetworkInterfaces {
 		specNicNames.Insert(nic.Name)
@@ -78,6 +79,7 @@ func (r *MachineReconciler) setDomainNetworkInterfaces(
 		}
 		if err != nil {
 			if errors.Is(err, apinet.ErrWaitingForNetworkInterface) {
+				waitingForAPINetNIC = true
 				continue
 			}
 			return states, fmt.Errorf("[network interface %s] %w", nic.Name, err)
@@ -109,6 +111,11 @@ func (r *MachineReconciler) setDomainNetworkInterfaces(
 			return states, fmt.Errorf("[network interface %s] %w", machineNic.NetworkInterfaceName, err)
 		}
 	}
+
+	if waitingForAPINetNIC {
+		return states, apinet.ErrWaitingForNetworkInterface
+	}
+
 	return states, nil
 }
 
@@ -158,9 +165,7 @@ func (r *MachineReconciler) reconcileNetworkInterfaces(
 		}
 	}
 
-	var (
-		errs []error
-	)
+	var errs []error
 
 	for nicName, actualNic := range mountedNics {
 		if _, ok := desiredNics[nicName]; ok {
@@ -175,6 +180,8 @@ func (r *MachineReconciler) reconcileNetworkInterfaces(
 			log.V(1).Info("Successfully called detach of network interface", "NetworkInterfaceName", nicName)
 		}
 	}
+
+	var waitingForAPINetNIC bool
 
 	for nicName, desiredNic := range desiredNics {
 		locLog := log.WithValues("NetworkInterfaceName", nicName)
@@ -194,7 +201,7 @@ func (r *MachineReconciler) reconcileNetworkInterfaces(
 		}
 		if err != nil {
 			if errors.Is(err, apinet.ErrWaitingForNetworkInterface) {
-				delete(machineNicByName, nicName) // skip cleanup using nic
+				waitingForAPINetNIC = true
 				continue
 			}
 			errs = append(errs, fmt.Errorf("[network interface %s] error reconciling: %w", nicName, err))
@@ -234,6 +241,11 @@ func (r *MachineReconciler) reconcileNetworkInterfaces(
 	if len(errs) > 0 {
 		return newNicsStatus, fmt.Errorf("attach / detach error(s): %v", errs)
 	}
+
+	if waitingForAPINetNIC {
+		return newNicsStatus, apinet.ErrWaitingForNetworkInterface
+	}
+
 	return newNicsStatus, nil
 }
 

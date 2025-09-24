@@ -250,13 +250,6 @@ func (c *LocalCache) pullImage(ctx context.Context, ref string) error {
 
 var ErrImagePulling = errors.New("oci pulling")
 
-func IgnoreImagePulling(err error) error {
-	if errors.Is(err, ErrImagePulling) {
-		return nil
-	}
-	return err
-}
-
 func setupMediaTypeKeyPrefixes(ctx context.Context) context.Context {
 	mediaTypeToPrefix := map[string]string{
 		ironcoreimage.ConfigMediaType:         "config",

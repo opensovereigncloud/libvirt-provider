@@ -512,7 +512,7 @@ func (r *MachineReconciler) reconcileMachine(ctx context.Context, id string) err
 	log.V(1).Info("Reconciling domain")
 	state, volumeStates, nicStates, err := r.reconcileDomain(ctx, log, machine)
 	if err != nil {
-		err = providerimage.IgnoreImagePulling(err)
+		err = ignoreResourceNotReady(err)
 		locErr := r.updateAPIMachineStatus(ctx, machine, state, volumeStates, nicStates)
 		if locErr != nil {
 			if err == nil {
@@ -823,7 +823,9 @@ func (r *MachineReconciler) domainFor(
 	nicStatesAsPointers, err := r.setDomainNetworkInterfaces(ctx, machine, domainDesc)
 	nicStates := removePointerFromNicsStatusArray(nicStatesAsPointers)
 	if err != nil {
-		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "setDomainNetworkInterfaces", "Setting domain network interface failed with error: %s", err)
+		if !errors.Is(err, apinet.ErrWaitingForNetworkInterface) {
+			r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "setDomainNetworkInterfaces", "Setting domain network interface failed with error: %s", err)
+		}
 		return nil, volumeStates, nicStates, err
 	}
 	if machine.Spec.NetworkInterfaces != nil {
@@ -1086,4 +1088,11 @@ func removePointerFromNicsStatusArray(nics []*api.NetworkInterfaceStatus) []api.
 		result = append(result, *(nics[index]))
 	}
 	return result
+}
+
+func ignoreResourceNotReady(err error) error {
+	if errors.Is(err, providerimage.ErrImagePulling) || errors.Is(err, apinet.ErrWaitingForNetworkInterface) {
+		return nil
+	}
+	return err
 }
