@@ -18,9 +18,10 @@ import (
 )
 
 const (
-	LogKeyMachineID = "machineID"
-	LogKeyNICName   = "nicName"
-
+	LogKeyMachineID     = "machineID"
+	LogKeyReqMachineID  = "requestMachineID"
+	LogKeyNICName       = "nicName"
+	LogKeyVolumeName    = "volumeName"
 	FolderSysPCIDevices = "/sys/bus/pci/devices"
 )
 

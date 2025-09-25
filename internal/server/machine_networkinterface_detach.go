@@ -16,17 +16,16 @@ func (s *Server) DetachNetworkInterface(
 	ctx context.Context,
 	req *iri.DetachNetworkInterfaceRequest,
 ) (*iri.DetachNetworkInterfaceResponse, error) {
-	log := s.loggerFrom(ctx)
 
 	if req == nil {
-		return nil, convertInternalErrorToGRPC(fmt.Errorf("DetachNetworkInterface is nil: %w", ErrInvalidRequest))
+		return nil, convertInternalErrorToGRPC(wrapErrorRequestIsNil(ErrInvalidRequest))
 	}
-
-	log.V(1).Info("Detaching nic from machine", internalutils.LogKeyMachineID, req.MachineId, internalutils.LogKeyNICName, req.Name)
+	log := s.loggerFrom(ctx, internalutils.LogKeyMachineID, req.MachineId, internalutils.LogKeyNICName, req.Name)
+	log.V(1).Info("Requesting to detach nic")
 
 	apiMachine, err := s.machineStore.Get(ctx, req.MachineId)
 	if err != nil {
-		return nil, convertInternalErrorToGRPC(fmt.Errorf("failed to get machine '%s': %w", req.MachineId, err))
+		return nil, convertInternalErrorToGRPC(wrapErrorFailedToGetMachine(err))
 	}
 
 	var updatedNICS []*api.NetworkInterfaceSpec
@@ -40,7 +39,7 @@ func (s *Server) DetachNetworkInterface(
 	}
 
 	if !found {
-		return nil, convertInternalErrorToGRPC(fmt.Errorf("nic '%s' not found in machine '%s': %w", req.Name, req.MachineId, ErrNicNotFound))
+		return nil, convertInternalErrorToGRPC(fmt.Errorf("nic '%s' not found in machine: %w", req.Name, ErrNicNotFound))
 	}
 
 	apiMachine.Spec.NetworkInterfaces = updatedNICS

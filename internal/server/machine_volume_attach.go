@@ -9,19 +9,20 @@ import (
 
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
 )
 
 func (s *Server) AttachVolume(ctx context.Context, req *iri.AttachVolumeRequest) (*iri.AttachVolumeResponse, error) {
-	log := s.loggerFrom(ctx)
-	log.V(1).Info("Attaching volume to machine")
-
 	if req == nil || req.MachineId == "" || req.Volume == nil {
-		return nil, convertInternalErrorToGRPC(ErrInvalidRequest)
+		return nil, convertInternalErrorToGRPC(wrapErrorRequestIsNil(ErrInvalidRequest))
 	}
 
+	log := s.loggerFrom(ctx, internalutils.LogKeyMachineID, req.MachineId, internalutils.LogKeyVolumeName, req.Volume.Name)
+
+	log.V(1).Info("Requesting to attach volume")
 	apiMachine, err := s.machineStore.Get(ctx, req.MachineId)
 	if err != nil {
-		return nil, convertInternalErrorToGRPC(fmt.Errorf("failed to get machine '%s': %w", req.MachineId, err))
+		return nil, convertInternalErrorToGRPC(wrapErrorFailedToGetMachine(err))
 	}
 
 	if api.GetExistingPCICount(apiMachine) >= apiMachine.Spec.PCIControllerTotal {

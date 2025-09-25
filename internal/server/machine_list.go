@@ -8,9 +8,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/go-logr/logr"
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
 	"github.com/ironcore-dev/libvirt-provider/api"
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
+	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -52,11 +54,13 @@ func (s *Server) listMachines(ctx context.Context) ([]*iri.Machine, error) {
 	return res, nil
 }
 
-func (s *Server) filterMachines(machines []*iri.Machine, filter *iri.MachineFilter) []*iri.Machine {
+func (s *Server) filterMachines(machines []*iri.Machine, filter *iri.MachineFilter, log logr.Logger) []*iri.Machine {
 	if filter == nil {
+		log.V(1).Info("Listing all machines")
 		return machines
 	}
 
+	log.V(1).Info("List machines based on labels")
 	var (
 		res []*iri.Machine
 		sel = labels.SelectorFromSet(filter.LabelSelector)
@@ -81,7 +85,9 @@ func (s *Server) getMachine(ctx context.Context, id string) (*iri.Machine, error
 }
 
 func (s *Server) ListMachines(ctx context.Context, req *iri.ListMachinesRequest) (*iri.ListMachinesResponse, error) {
+	log := s.loggerFrom(ctx)
 	if filter := req.Filter; filter != nil && filter.Id != "" {
+		log.V(1).Info("List machine based on machine id", internalutils.LogKeyMachineID, filter.Id)
 		machine, err := s.getMachine(ctx, filter.Id)
 		if err != nil {
 			if !errors.Is(err, ErrMachineNotFound) && !errors.Is(err, ErrMachineIsntManaged) {
@@ -102,7 +108,7 @@ func (s *Server) ListMachines(ctx context.Context, req *iri.ListMachinesRequest)
 		return nil, convertInternalErrorToGRPC(err)
 	}
 
-	machines = s.filterMachines(machines, req.Filter)
+	machines = s.filterMachines(machines, req.Filter, log)
 
 	return &iri.ListMachinesResponse{
 		Machines: machines,

@@ -40,16 +40,19 @@ type executorExec struct {
 }
 
 func (s *Server) Exec(ctx context.Context, req *iri.ExecRequest) (*iri.ExecResponse, error) {
+	if req == nil {
+		return nil, convertInternalErrorToGRPC(wrapErrorRequestIsNil(ErrInvalidRequest))
+	}
 	log := s.loggerFrom(ctx, internalutils.LogKeyMachineID, req.MachineId)
 	log.V(1).Info("Verifying machine in the store")
 	if _, err := s.machineStore.Get(ctx, req.MachineId); err != nil {
-		return nil, convertInternalErrorToGRPC(fmt.Errorf("error getting machine: %w", err))
+		return nil, convertInternalErrorToGRPC(wrapErrorFailedToGetMachine(err))
 	}
 
 	log.V(1).Info("Inserting request into cache")
 	token, err := s.execRequestCache.Insert(req)
 	if err != nil {
-		return nil, err
+		return nil, convertInternalErrorToGRPC(fmt.Errorf("error in executing request cache: %w", err))
 	}
 
 	log.V(1).Info("Returning url with token")

@@ -14,9 +14,10 @@ import (
 	iri "github.com/ironcore-dev/ironcore/iri/apis/machine/v1alpha1"
 	api "github.com/ironcore-dev/libvirt-provider/api"
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/manager"
+	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
 )
 
-func (s *Server) createMachineFromIRIMachine(ctx context.Context, log logr.Logger, iriMachine *iri.Machine) (*api.Machine, error) {
+func (s *Server) createMachineFromIRIMachine(ctx context.Context, log logr.Logger, iriMachine *iri.Machine, machineID string) (*api.Machine, error) {
 	log.V(2).Info("Getting libvirt machine config")
 
 	switch {
@@ -62,7 +63,7 @@ func (s *Server) createMachineFromIRIMachine(ctx context.Context, log logr.Logge
 
 	machine := &api.Machine{
 		Metadata: api.Metadata{
-			ID: s.idGen.Generate(),
+			ID: machineID,
 		},
 		Spec: api.MachineSpec{
 			Power:              power,
@@ -117,10 +118,13 @@ func (s *Server) createMachineFromIRIMachine(ctx context.Context, log logr.Logge
 }
 
 func (s *Server) CreateMachine(ctx context.Context, req *iri.CreateMachineRequest) (res *iri.CreateMachineResponse, retErr error) {
-	log := s.loggerFrom(ctx)
-
+	if req == nil {
+		return nil, convertInternalErrorToGRPC(wrapErrorRequestIsNil(ErrInvalidRequest))
+	}
+	machineID := s.idGen.Generate()
+	log := s.loggerFrom(ctx, internalutils.LogKeyReqMachineID, req.Machine.Metadata.Id, internalutils.LogKeyMachineID, machineID)
 	log.V(1).Info("Creating machine from iri machine")
-	machine, err := s.createMachineFromIRIMachine(ctx, log, req.Machine)
+	machine, err := s.createMachineFromIRIMachine(ctx, log, req.Machine, machineID)
 	if err != nil {
 		return nil, convertInternalErrorToGRPC(fmt.Errorf("unable to get libvirt machine config: %w", err))
 	}

@@ -4,6 +4,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/ironcore-dev/libvirt-provider/internal/store"
 	"google.golang.org/grpc/codes"
@@ -20,6 +21,14 @@ var (
 	ErrActiveConsoleSessionExists = errors.New("active console session exists for this domain")
 	ErrInvalidRequest             = errors.New("invalid request")
 )
+
+func wrapErrorFailedToGetMachine(err error) error {
+	return fmt.Errorf("failed to get machine: %w", err)
+}
+
+func wrapErrorRequestIsNil(err error) error {
+	return fmt.Errorf("request is nil: %w", err)
+}
 
 func convertInternalErrorToGRPC(err error) error {
 	_, ok := status.FromError(err)
