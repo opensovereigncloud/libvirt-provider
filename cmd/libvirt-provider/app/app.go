@@ -335,13 +335,6 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
-	setupLog.Info("Initializing network interface plugin")
-
-	if err := nicPlugin.Init(ctx, providerHost); err != nil {
-		setupLog.Error(err, "failed to initialize network plugin")
-		return err
-	}
-
 	setupLog.Info("Configuring machine store", "Directory", providerHost.MachineStoreDir())
 	machineStore, err := host.NewStore(host.Options[*api.Machine]{
 		NewFunc:        func() *api.Machine { return &api.Machine{} },
@@ -476,6 +469,13 @@ func Run(ctx context.Context, opts Options) error {
 		if err != nil {
 			return fmt.Errorf("failed to synchronize apinet client cache: %w", err)
 		}
+	}
+
+	setupLog.Info("Initializing network interface plugin")
+
+	if err := nicPlugin.Init(ctx, providerHost); err != nil {
+		setupLog.Error(err, "failed to initialize network plugin")
+		return err
 	}
 
 	g.Go(func() error {
