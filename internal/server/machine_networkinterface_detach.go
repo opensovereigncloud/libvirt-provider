@@ -16,10 +16,6 @@ func (s *Server) DetachNetworkInterface(
 	ctx context.Context,
 	req *iri.DetachNetworkInterfaceRequest,
 ) (*iri.DetachNetworkInterfaceResponse, error) {
-
-	if req == nil {
-		return nil, convertInternalErrorToGRPC(wrapErrorRequestIsNil(ErrInvalidRequest))
-	}
 	log := s.loggerFrom(ctx, internalutils.LogKeyMachineID, req.MachineId, internalutils.LogKeyNICName, req.Name)
 	log.V(1).Info("Requesting to detach nic")
 

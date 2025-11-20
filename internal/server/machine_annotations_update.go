@@ -25,9 +25,6 @@ func (s *Server) updateAnnotations(ctx context.Context, machine *api.Machine, an
 }
 
 func (s *Server) UpdateMachineAnnotations(ctx context.Context, req *iri.UpdateMachineAnnotationsRequest) (*iri.UpdateMachineAnnotationsResponse, error) {
-	if req == nil {
-		return nil, convertInternalErrorToGRPC(wrapErrorRequestIsNil(ErrInvalidRequest))
-	}
 	log := s.loggerFrom(ctx, internalutils.LogKeyMachineID, req.MachineId)
 	log.V(1).Info("Requesting to update annotations")
 	machine, err := s.machineStore.Get(ctx, req.MachineId)

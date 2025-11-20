@@ -14,7 +14,7 @@ import (
 )
 
 func (s *Server) UpdateVolume(ctx context.Context, req *iri.UpdateVolumeRequest) (*iri.UpdateVolumeResponse, error) {
-	if req == nil || req.MachineId == "" || req.Volume == nil {
+	if req.MachineId == "" || req.Volume == nil {
 		return nil, convertInternalErrorToGRPC(wrapErrorRequestIsNil(ErrInvalidRequest))
 	}
 	log := s.loggerFrom(ctx, internalutils.LogKeyMachineID, req.MachineId, internalutils.LogKeyVolumeName, req.Volume.Name)

@@ -12,9 +12,6 @@ import (
 )
 
 func (s *Server) DeleteMachine(ctx context.Context, req *iri.DeleteMachineRequest) (*iri.DeleteMachineResponse, error) {
-	if req == nil {
-		return nil, convertInternalErrorToGRPC(wrapErrorRequestIsNil(ErrInvalidRequest))
-	}
 	log := s.loggerFrom(ctx, internalutils.LogKeyMachineID, req.MachineId)
 
 	log.V(1).Info("Deleting machine")

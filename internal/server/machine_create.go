@@ -114,9 +114,6 @@ func (s *Server) createMachineFromIRIMachine(ctx context.Context, log logr.Logge
 }
 
 func (s *Server) CreateMachine(ctx context.Context, req *iri.CreateMachineRequest) (res *iri.CreateMachineResponse, retErr error) {
-	if req == nil {
-		return nil, convertInternalErrorToGRPC(wrapErrorRequestIsNil(ErrInvalidRequest))
-	}
 	machineID := s.idGen.Generate()
 	log := s.loggerFrom(ctx, internalutils.LogKeyReqMachineID, req.Machine.Metadata.Id, internalutils.LogKeyMachineID, machineID)
 	log.V(1).Info("Creating machine from iri machine")

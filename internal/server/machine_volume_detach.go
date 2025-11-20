@@ -14,7 +14,7 @@ import (
 
 func (s *Server) DetachVolume(ctx context.Context, req *iri.DetachVolumeRequest) (*iri.DetachVolumeResponse, error) {
 
-	if req == nil || req.MachineId == "" || req.Name == "" {
+	if req.MachineId == "" || req.Name == "" {
 		return nil, convertInternalErrorToGRPC(wrapErrorRequestIsNil(ErrInvalidRequest))
 	}
 

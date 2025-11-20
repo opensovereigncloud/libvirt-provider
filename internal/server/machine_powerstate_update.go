@@ -28,9 +28,6 @@ func (s *Server) updatePowerState(ctx context.Context, machine *api.Machine, iri
 }
 
 func (s *Server) UpdateMachinePower(ctx context.Context, req *iri.UpdateMachinePowerRequest) (*iri.UpdateMachinePowerResponse, error) {
-	if req == nil {
-		return nil, convertInternalErrorToGRPC(wrapErrorRequestIsNil(ErrInvalidRequest))
-	}
 	log := s.loggerFrom(ctx, internalutils.LogKeyMachineID, req.MachineId)
 	log.V(1).Info("Requesting to update power state")
 	machine, err := s.machineStore.Get(ctx, req.MachineId)

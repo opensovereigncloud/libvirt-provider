@@ -40,9 +40,6 @@ type executorExec struct {
 }
 
 func (s *Server) Exec(ctx context.Context, req *iri.ExecRequest) (*iri.ExecResponse, error) {
-	if req == nil {
-		return nil, convertInternalErrorToGRPC(wrapErrorRequestIsNil(ErrInvalidRequest))
-	}
 	log := s.loggerFrom(ctx, internalutils.LogKeyMachineID, req.MachineId)
 	log.V(1).Info("Verifying machine in the store")
 	if _, err := s.machineStore.Get(ctx, req.MachineId); err != nil {

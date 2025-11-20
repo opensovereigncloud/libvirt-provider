@@ -13,7 +13,7 @@ import (
 )
 
 func (s *Server) AttachVolume(ctx context.Context, req *iri.AttachVolumeRequest) (*iri.AttachVolumeResponse, error) {
-	if req == nil || req.MachineId == "" || req.Volume == nil {
+	if req.MachineId == "" || req.Volume == nil {
 		return nil, convertInternalErrorToGRPC(wrapErrorRequestIsNil(ErrInvalidRequest))
 	}
 
