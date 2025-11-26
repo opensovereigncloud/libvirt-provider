@@ -31,12 +31,14 @@ import (
 	libvirtutils "github.com/ironcore-dev/libvirt-provider/internal/libvirt/utils"
 	providerlibvirtxml "github.com/ironcore-dev/libvirt-provider/internal/libvirtxml"
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
-	providerimage "github.com/ironcore-dev/libvirt-provider/internal/oci"
+	"github.com/ironcore-dev/libvirt-provider/internal/oci"
+
 	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface/apinet"
 	providervolume "github.com/ironcore-dev/libvirt-provider/internal/plugins/volume"
 	"github.com/ironcore-dev/libvirt-provider/internal/raw"
+
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/manager"
 	"github.com/ironcore-dev/libvirt-provider/internal/resources/sources"
 	"github.com/ironcore-dev/libvirt-provider/internal/sgx"
@@ -44,6 +46,7 @@ import (
 	internalutils "github.com/ironcore-dev/libvirt-provider/internal/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/workqueue"
@@ -86,7 +89,7 @@ var (
 
 type MachineReconcilerOptions struct {
 	GuestCapabilities              guest.Capabilities
-	ImageCache                     providerimage.Cache
+	ImageCache                     oci.Cache
 	Raw                            raw.Raw
 	VolumePluginManager            *providervolume.PluginManager
 	NetworkInterfacePlugin         providernetworkinterface.Plugin
@@ -164,7 +167,7 @@ type MachineReconciler struct {
 
 	guestCapabilities guest.Capabilities
 	host              providerhost.LibvirtHost
-	imageCache        providerimage.Cache
+	imageCache        oci.Cache
 	raw               raw.Raw
 
 	volumePluginManager    *providervolume.PluginManager
@@ -201,8 +204,8 @@ func (r *MachineReconciler) Start(ctx context.Context) error {
 	}
 	maxConcurrentReconcilesGauge.Set(float64(workerSize))
 
-	r.imageCache.AddListener(providerimage.ListenerFuncs{
-		HandlePullDoneFunc: func(evt providerimage.PullDoneEvent) {
+	r.imageCache.AddListener(oci.ListenerFuncs{
+		HandlePullDoneFunc: func(evt oci.PullDoneEvent) {
 			machines, err := r.machines.List(ctx)
 			if err != nil {
 				log.Error(err, "failed to list machine")
@@ -374,7 +377,6 @@ func (r *MachineReconciler) processMachineDeletion(ctx context.Context, log logr
 	if _, err := r.machines.Update(ctx, machine); store.IgnoreErrNotFound(err) != nil {
 		return fmt.Errorf("failed to update machine metadata: %w", err)
 	}
-
 	r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "CompletedDeletion", "Deletion completed")
 	log.V(1).Info("Removed Finalizer. Deletion completed")
 
@@ -592,14 +594,14 @@ func (r *MachineReconciler) updateDomain(
 
 	volumeStates, err := r.reconcileVolumes(ctx, log, machine, attacher)
 	if err != nil {
-		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "reconcileVolumes", "Volume reconciliation failed with error: %s", err)
-		return volumeStates, nil, fmt.Errorf("[volumes] %w", err)
+		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttchDetachVolume", "Volume attach/detach failed with error: %s", err)
+		return nil, nil, fmt.Errorf("[volumes] %w", err)
 	}
 
 	nicStates, err := r.reconcileNetworkInterfaces(ctx, log, machine, domainDesc)
 	if err != nil {
-		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "reconcileNetworkInterfaces", "NIC reconciliation failed with error: %s", err)
-		return volumeStates, nicStates, fmt.Errorf("[network interfaces] %w", err)
+		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttachDetachNIC", "NIC attach/detach failed with error: %s", err)
+		return nil, nil, fmt.Errorf("[network interfaces] %w", err)
 	}
 
 	return volumeStates, nicStates, nil
@@ -813,8 +815,8 @@ func (r *MachineReconciler) domainFor(
 
 	volumeStates, err := r.reconcileVolumes(ctx, log, machine, attacher)
 	if err != nil {
-		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "reconcileVolumes", "Volume reconciliation failed with error: %s", err)
-		return nil, volumeStates, nil, err
+		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttchDetachVolume", "Volume attach/detach failed with error: %s", err)
+		return nil, nil, nil, err
 	}
 	if machine.Spec.Volumes != nil {
 		r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "AttchedVolume", "Successfully attached volumes")
@@ -824,10 +826,11 @@ func (r *MachineReconciler) domainFor(
 	nicStates := removePointerFromNicsStatusArray(nicStatesAsPointers)
 	if err != nil {
 		if !errors.Is(err, apinet.ErrWaitingForNetworkInterface) {
-			r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "setDomainNetworkInterfaces", "Setting domain network interface failed with error: %s", err)
+			r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttachDetachNIC", "Setting domain network interface failed with error: %s", err)
 		}
 		return nil, volumeStates, nicStates, err
 	}
+
 	if machine.Spec.NetworkInterfaces != nil {
 		r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "AttchedNIC", "Successfully attached network interfaces")
 	}
@@ -957,9 +960,10 @@ func (r *MachineReconciler) setDomainImage(
 ) error {
 	img, err := r.imageCache.Get(ctx, machineImgRef)
 	if err != nil {
-		if !errors.Is(err, providerimage.ErrImagePulling) {
+		if !errors.Is(err, oci.ErrImagePulling) {
 			return err
 		}
+
 		r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "PullingImage", "Pulling image %s", machineImgRef)
 		return err
 	}
@@ -970,7 +974,7 @@ func (r *MachineReconciler) setDomainImage(
 		return err
 	}
 	if !ok {
-		if err := r.raw.Create(rootFSFile, raw.WithSourceFile(img.SquashFS.Path)); err != nil {
+		if err := r.raw.Create(rootFSFile, raw.WithSourceFile(img.RootFS.Path)); err != nil {
 			return fmt.Errorf("error creating root fs disk: %w", err)
 		}
 		if err := os.Chmod(rootFSFile, permFile); err != nil {
@@ -978,9 +982,6 @@ func (r *MachineReconciler) setDomainImage(
 		}
 	}
 
-	domain.OS.Kernel = img.Kernel.Path
-	domain.OS.Initrd = img.InitRAMFs.Path
-	domain.OS.Cmdline = img.Config.CommandLine
 	domain.Devices.Disks = append(domain.Devices.Disks, libvirtxml.DomainDisk{
 		Alias: &libvirtxml.DomainAlias{
 			Name: rootFSAlias,
@@ -1091,7 +1092,7 @@ func removePointerFromNicsStatusArray(nics []*api.NetworkInterfaceStatus) []api.
 }
 
 func ignoreResourceNotReady(err error) error {
-	if errors.Is(err, providerimage.ErrImagePulling) || errors.Is(err, apinet.ErrWaitingForNetworkInterface) {
+	if errors.Is(err, oci.ErrImagePulling) || errors.Is(err, apinet.ErrWaitingForNetworkInterface) {
 		return nil
 	}
 	return err

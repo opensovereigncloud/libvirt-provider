@@ -25,6 +25,7 @@ import (
 
 type Image struct {
 	Config    ironcoreimage.Config
+	RootFS    *FileLayer
 	SquashFS  *FileLayer
 	InitRAMFs *FileLayer
 	Kernel    *FileLayer
@@ -34,6 +35,15 @@ type FileLayer struct {
 	Descriptor ocispecv1.Descriptor
 	Path       string
 }
+
+type Layer string
+
+var (
+	RootFSLayer    Layer = "rootfs"
+	KernelLayer    Layer = "kernel"
+	SquashFSLayer  Layer = "squashfs"
+	InitRAMFsLayer Layer = "initramfs"
+)
 
 type LocalCache struct {
 	mu      sync.Mutex
@@ -46,6 +56,8 @@ type LocalCache struct {
 
 	pullRequests chan pullRequest
 	listeners    []Listener
+
+	required sets.Set[Layer]
 }
 
 type pullRequest struct {
@@ -113,6 +125,15 @@ func (c *LocalCache) resolveImage(ctx context.Context, ociImg image.Image) (*Ima
 				Descriptor: layer.Descriptor(),
 				Path:       kernelPath,
 			}
+		case ironcoreimage.RootFSLayerMediaType:
+			rootFSPath, err := localStore.BlobPath(layer.Descriptor().Digest)
+			if err != nil {
+				return nil, fmt.Errorf("error getting path to rootfs: %w", err)
+			}
+			img.RootFS = &FileLayer{
+				Descriptor: layer.Descriptor(),
+				Path:       rootFSPath,
+			}
 		case ironcoreimage.SquashFSLayerMediaType:
 			squashFSPath, err := localStore.BlobPath(layer.Descriptor().Digest)
 			if err != nil {
@@ -125,15 +146,19 @@ func (c *LocalCache) resolveImage(ctx context.Context, ociImg image.Image) (*Ima
 
 		}
 	}
-	var missing []string
-	if img.Kernel == nil || img.Kernel.Path == "" {
-		missing = append(missing, "kernel")
+
+	var missing []Layer
+	if c.required.Has(RootFSLayer) && (img.RootFS == nil || img.RootFS.Path == "") {
+		missing = append(missing, RootFSLayer)
 	}
-	if img.SquashFS == nil || img.SquashFS.Path == "" {
-		missing = append(missing, "squashfs")
+	if c.required.Has(KernelLayer) && (img.Kernel == nil || img.Kernel.Path == "") {
+		missing = append(missing, KernelLayer)
 	}
-	if img.InitRAMFs == nil || img.InitRAMFs.Path == "" {
-		missing = append(missing, "initramfs")
+	if c.required.Has(SquashFSLayer) && (img.SquashFS == nil || img.SquashFS.Path == "") {
+		missing = append(missing, SquashFSLayer)
+	}
+	if c.required.Has(InitRAMFsLayer) && (img.InitRAMFs == nil || img.InitRAMFs.Path == "") {
+		missing = append(missing, InitRAMFsLayer)
 	}
 	if len(missing) > 0 {
 		return nil, fmt.Errorf("incomplete oci: components are missing: %v", missing)
@@ -286,12 +311,24 @@ func (c *LocalCache) Start(ctx context.Context) error {
 	return nil
 }
 
-func NewLocalCache(log logr.Logger, registry *remote.Registry, store *store.Store) (*LocalCache, error) {
+func NewLocalCache(
+	log logr.Logger,
+	registry *remote.Registry,
+	store *store.Store,
+	required sets.Set[Layer],
+) (*LocalCache, error) {
+	if len(required) == 0 {
+		log.V(0).Info("No layers required, set rootfs as default")
+		required = sets.Set[Layer]{}
+		required.Insert(RootFSLayer)
+	}
+
 	return &LocalCache{
 		log:          log,
 		store:        store,
 		registry:     registry,
 		pullRequests: make(chan pullRequest),
+		required:     required,
 	}, nil
 }
 

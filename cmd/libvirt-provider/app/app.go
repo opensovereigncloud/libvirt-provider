@@ -41,6 +41,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
 	"github.com/ironcore-dev/libvirt-provider/internal/networkinterfaceplugin"
 	"github.com/ironcore-dev/libvirt-provider/internal/oci"
+	ociutils "github.com/ironcore-dev/libvirt-provider/internal/oci/utils"
 	volumeplugin "github.com/ironcore-dev/libvirt-provider/internal/plugins/volume"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/volume/ceph"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/volume/emptydisk"
@@ -286,7 +287,14 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
-	reg, err := remote.DockerRegistry(nil)
+	platform, err := ociutils.Platform()
+	if err != nil {
+		setupLog.Error(err, "failed to get host platform: %w", err)
+		return err
+	}
+	setupLog.Info("Current platform", "architecture", platform.Architecture)
+
+	reg, err := remote.DockerRegistryWithPlatform(nil, platform)
 	if err != nil {
 		setupLog.Error(err, "failed to initialize registry")
 		return err
@@ -298,7 +306,7 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
-	imgCache, err := oci.NewLocalCache(log.WithName("oci-local-cache"), reg, ociStore)
+	imgCache, err := oci.NewLocalCache(log.WithName("oci-local-cache"), reg, ociStore, nil)
 	if err != nil {
 		setupLog.Error(err, "failed to initialize oci manager")
 		return err
