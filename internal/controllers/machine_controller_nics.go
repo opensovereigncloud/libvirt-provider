@@ -518,6 +518,9 @@ func providerNetworkInterfaceToLibvirt(name string, nic *providernetworkinterfac
 				Alias: &libvirtxml.DomainAlias{
 					Name: networkInterfaceAlias(name),
 				},
+				Model: &libvirtxml.DomainInterfaceModel{
+					Type: "virtio",
+				},
 				Source: &libvirtxml.DomainInterfaceSource{
 					Direct: &libvirtxml.DomainInterfaceSourceDirect{
 						Dev:  nic.Direct.Dev,
