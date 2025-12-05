@@ -12,7 +12,7 @@ function fetch_merge_requests() {
     project-merge-request list \
     --project-id="$PROJECT_ID" \
     --author-id="$AUTHOR_ID" \
-    --updated-after="$(date -d "@$(($(date +%s) - 14 * 24 * 60 * 60))" -Iseconds)" \
+    --updated-after="$(date -d "@$(($(date +%s) - 30 * 24 * 60 * 60))" -Iseconds)" \
     --get-all |
     jq -r ".[] | select(.state == (\"opened\", \"closed\")) | .title + \"${branch_delimiter}\" + .state + \":\" + .source_branch"
 }
