@@ -31,9 +31,8 @@ import (
 	libvirtutils "github.com/ironcore-dev/libvirt-provider/internal/libvirt/utils"
 	providerlibvirtxml "github.com/ironcore-dev/libvirt-provider/internal/libvirtxml"
 	"github.com/ironcore-dev/libvirt-provider/internal/metrics"
-	"github.com/ironcore-dev/libvirt-provider/internal/oci"
 
-	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
+	"github.com/ironcore-dev/libvirt-provider/internal/oci"
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface/apinet"
 	providervolume "github.com/ironcore-dev/libvirt-provider/internal/plugins/volume"
@@ -50,7 +49,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/utils/ptr"
 	"libvirt.org/go/libvirtxml"
 )
 
@@ -59,7 +57,6 @@ const (
 	permFile         = 0660
 	// libvirt daemon can overtake ownership
 	permFileIgnition                = 0660
-	rootFSAlias                     = "ua-rootfs"
 	libvirtDomainXMLIgnitionKeyName = "opt/com.coreos/config"
 	networkInterfaceAliasPrefix     = "ua-networkinterface-"
 
@@ -213,8 +210,8 @@ func (r *MachineReconciler) Start(ctx context.Context) error {
 			}
 
 			for _, machine := range machines {
-				if ptr.Deref(machine.Spec.Image, "") == evt.Ref {
-					r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "PulledImage", "Pulled image %s", *machine.Spec.Image)
+				if api.IsImageReferenced(machine, evt.Ref) {
+					r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "PulledImage", "Pulled image %s", evt.Ref)
 					log.V(1).Info("Image pulled: Requeue machines", "Image", evt.Ref, "Machine", machine.ID)
 					r.queue.Add(machine.ID)
 				}
@@ -511,6 +508,21 @@ func (r *MachineReconciler) reconcileMachine(ctx context.Context, id string) err
 	}
 	log.V(1).Info("Successfully made machine directories")
 
+	if bootImage := api.HasBootImage(machine); bootImage != nil {
+		log.V(1).Info("Boot image referenced", "image", bootImage)
+
+		_, err := r.imageCache.Get(ctx, *bootImage)
+		if err != nil {
+			if errors.Is(err, oci.ErrImagePulling) {
+				log.V(1).Info("Image is pulling, reconcile later")
+				r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "PullingImage", "Pulling image in progress")
+				return nil
+			}
+			return err
+		}
+		log.V(2).Info("Image is present")
+	}
+
 	log.V(1).Info("Reconciling domain")
 	state, volumeStates, nicStates, err := r.reconcileDomain(ctx, log, machine)
 	if err != nil {
@@ -794,12 +806,6 @@ func (r *MachineReconciler) domainFor(
 		r.setGuestAgent(machine, domainDesc)
 	}
 
-	if machineImgRef := machine.Spec.Image; machineImgRef != nil && ptr.Deref(machineImgRef, "") != "" {
-		if err := r.setDomainImage(ctx, log, machine, domainDesc, ptr.Deref(machineImgRef, "")); err != nil {
-			return nil, nil, nil, err
-		}
-	}
-
 	if ignitionSpec := machine.Spec.Ignition; ignitionSpec != nil {
 		if err := r.setDomainIgnition(machine, domainDesc); err != nil {
 			return nil, nil, nil, err
@@ -948,62 +954,6 @@ func (r *MachineReconciler) setPCIDevices(machine *api.Machine, domain *libvirtx
 			SubsysPCI: devices[index].Addr.GetDomainSubsysPCI(),
 		})
 	}
-	return nil
-}
-
-func (r *MachineReconciler) setDomainImage(
-	ctx context.Context,
-	log logr.Logger,
-	machine *api.Machine,
-	domain *libvirtxml.Domain,
-	machineImgRef string,
-) error {
-	img, err := r.imageCache.Get(ctx, machineImgRef)
-	if err != nil {
-		if !errors.Is(err, oci.ErrImagePulling) {
-			return err
-		}
-
-		r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "PullingImage", "Pulling image %s", machineImgRef)
-		return err
-	}
-
-	rootFSFile := r.host.MachineRootFSFile(machine.ID)
-	ok, err := osutils.RegularFileExists(rootFSFile)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		if err := r.raw.Create(rootFSFile, raw.WithSourceFile(img.RootFS.Path)); err != nil {
-			return fmt.Errorf("error creating root fs disk: %w", err)
-		}
-		if err := os.Chmod(rootFSFile, permFile); err != nil {
-			return fmt.Errorf("error changing root fs disk mode: %w", err)
-		}
-	}
-
-	domain.Devices.Disks = append(domain.Devices.Disks, libvirtxml.DomainDisk{
-		Alias: &libvirtxml.DomainAlias{
-			Name: rootFSAlias,
-		},
-		Device: "disk",
-		Driver: &libvirtxml.DomainDiskDriver{
-			Name:  "qemu",
-			Type:  "raw",
-			Cache: "none",
-		},
-		Source: &libvirtxml.DomainDiskSource{
-			File: &libvirtxml.DomainDiskSourceFile{
-				File: rootFSFile,
-			},
-		},
-		Target: &libvirtxml.DomainDiskTarget{
-			Dev: "vdaaa", // TODO: Reserving vdaaa for ramdisk, so that it doesnt conflict with other volumes, investigate better solution.
-			Bus: "virtio",
-		},
-		Serial:   "machineboot",
-		ReadOnly: &libvirtxml.DomainDiskReadOnly{},
-	})
 	return nil
 }
 

@@ -1,25 +1,28 @@
 // SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and IronCore contributors
 // SPDX-License-Identifier: Apache-2.0
 
-package emptydisk
+package localdisk
 
 import (
 	"context"
-	"crypto/rand"
+	"crypto/sha1"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/libvirt-provider/internal/oci"
+	"github.com/ironcore-dev/libvirt-provider/internal/osutils"
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/volume"
 	"github.com/ironcore-dev/libvirt-provider/internal/raw"
 	utilstrings "k8s.io/utils/strings"
 )
 
 const (
-	pluginName = "libvirt-provider.ironcore.dev/empty-disk"
+	pluginName = "libvirt-provider.ironcore.dev/local-disk"
 
 	defaultSize = 500 * 1024 * 1024 // 500Mi by default
 
@@ -32,11 +35,14 @@ const (
 type plugin struct {
 	host volume.Host
 	raw  raw.Raw
+
+	imageCache oci.Cache
 }
 
-func NewPlugin(raw raw.Raw) volume.Plugin {
+func NewPlugin(raw raw.Raw, osImages oci.Cache) volume.Plugin {
 	return &plugin{
-		raw: raw,
+		raw:        raw,
+		imageCache: osImages,
 	}
 }
 
@@ -50,14 +56,14 @@ func (p *plugin) Name() string {
 }
 
 func (p *plugin) GetBackingVolumeID(volume *api.VolumeSpec) (string, error) {
-	if volume.EmptyDisk == nil {
-		return "", fmt.Errorf("volume does not specify an EmptyDisk")
+	if volume.LocalDisk == nil {
+		return "", fmt.Errorf("volume does not specify an LocalDisk")
 	}
 	return volume.Name, nil
 }
 
 func (p *plugin) CanSupport(volume *api.VolumeSpec) bool {
-	return volume.EmptyDisk != nil
+	return volume.LocalDisk != nil
 }
 
 func (p *plugin) diskFilename(computeVolumeName string, machineID string) string {
@@ -65,46 +71,73 @@ func (p *plugin) diskFilename(computeVolumeName string, machineID string) string
 }
 
 func (p *plugin) Apply(ctx context.Context, spec *api.VolumeSpec, machine *api.Machine) (*volume.Volume, error) {
+	log := logr.FromContextOrDiscard(ctx)
+
 	volumeDir := p.host.MachineVolumeDir(machine.ID, utilstrings.EscapeQualifiedName(pluginName), spec.Name)
+
+	log.V(2).Info("Creating volume directory", "directory", volumeDir)
 	if err := os.MkdirAll(volumeDir, permFolder); err != nil {
 		return nil, err
 	}
 
-	handle, err := randomHex(8)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate WWN/handle for the disk: %w", err)
-	}
-
-	size := spec.EmptyDisk.Size
-	if size == 0 {
-		size = defaultSize
-	}
-
 	diskFilename := p.diskFilename(spec.Name, machine.ID)
-	if _, err := os.Stat(diskFilename); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("error stat-ing disk: %w", err)
+
+	ok, err := osutils.RegularFileExists(diskFilename)
+	if err != nil {
+		log.V(2).Info("Disk already exists", "file", diskFilename)
+		return nil, err
+	}
+
+	if !ok {
+		var createOption raw.CreateOption
+		if imgRef := spec.LocalDisk.Image; imgRef != nil {
+			img, err := p.imageCache.Get(ctx, *imgRef)
+			if err != nil {
+				return nil, err
+			}
+
+			log.V(2).Info("Create disk with rootfs from img", "file", img.RootFS.Path)
+			createOption = raw.WithSourceFile(img.RootFS.Path)
+		} else {
+			size := spec.LocalDisk.Size
+			if size == 0 {
+				size = defaultSize
+			}
+
+			log.V(2).Info("Create disk", "size", size)
+			createOption = raw.WithSize(size)
 		}
 
-		if err := p.raw.Create(diskFilename, raw.WithSize(size)); err != nil {
+		if err := p.raw.Create(diskFilename, createOption); err != nil {
 			return nil, fmt.Errorf("error creating disk %w", err)
 		}
 		if err := os.Chmod(diskFilename, permFile); err != nil {
 			return nil, fmt.Errorf("error changing disk file mode: %w", err)
 		}
 	}
-	return &volume.Volume{RawFile: diskFilename, Handle: handle}, nil
+
+	stat, err := os.Stat(diskFilename)
+	if err != nil {
+		return nil, fmt.Errorf("error checking disk file size: %w", err)
+	}
+
+	return &volume.Volume{
+		RawFile:                   diskFilename,
+		Handle:                    generateWWN(machine.ID, spec.Name),
+		EffectiveStorageBytesSize: stat.Size(),
+	}, nil
 }
 
 func (p *plugin) Delete(ctx context.Context, computeVolumeName string, machineID string) error {
 	return os.RemoveAll(p.host.MachineVolumeDir(machineID, utilstrings.EscapeQualifiedName(pluginName), computeVolumeName))
 }
 
-// randomHex generates random hexadecimal digits of the length n*2.
-func randomHex(n int) (string, error) {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
+func generateWWN(machineID, diskName string) string {
+	input := fmt.Sprintf("%s:%s", machineID, diskName)
+	hash := sha1.Sum([]byte(input))
+	wwnBytes := hash[:8]
+
+	wwnBytes[0] |= 0x80
+
+	return strings.ToUpper(hex.EncodeToString(wwnBytes))
 }

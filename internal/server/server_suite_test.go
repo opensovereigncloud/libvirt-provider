@@ -33,7 +33,6 @@ const (
 	pollingInterval                = 50 * time.Millisecond
 	gracefulShutdownTimeout        = 60 * time.Second
 	resyncGarbageCollectorInterval = 5 * time.Second
-	resyncVolumeSizeInterval       = 1 * time.Minute
 	consistentlyDuration           = 1 * time.Second
 	probeEveryInterval             = 2 * time.Second
 	machineClassx3xlarge           = "x3-xlarge"

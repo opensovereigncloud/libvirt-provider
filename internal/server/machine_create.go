@@ -87,10 +87,6 @@ func (s *Server) createMachineFromIRIMachine(ctx context.Context, log logr.Logge
 	api.SetClassLabel(machine, iriMachine.Spec.Class)
 	api.SetManagerLabel(machine, api.MachineManager)
 
-	if iriMachine.Spec.Image != nil {
-		machine.Spec.Image = &iriMachine.Spec.Image.Image
-	}
-
 	log.V(2).Info("allocating machine with machineclass:" + iriMachine.Spec.Class)
 	err = manager.Allocate(machine, requiredResources)
 	if err != nil {
