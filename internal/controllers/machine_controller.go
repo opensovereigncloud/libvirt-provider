@@ -211,7 +211,7 @@ func (r *MachineReconciler) Start(ctx context.Context) error {
 
 			for _, machine := range machines {
 				if api.IsImageReferenced(machine, evt.Ref) {
-					r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "PulledImage", "Pulled image %s", evt.Ref)
+					r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "ImagePullSucceeded", "Pulled image %s", evt.Ref)
 					log.V(1).Info("Image pulled: Requeue machines", "Image", evt.Ref, "Machine", machine.ID)
 					r.queue.Add(machine.ID)
 				}
@@ -374,7 +374,7 @@ func (r *MachineReconciler) processMachineDeletion(ctx context.Context, log logr
 	if _, err := r.machines.Update(ctx, machine); store.IgnoreErrNotFound(err) != nil {
 		return fmt.Errorf("failed to update machine metadata: %w", err)
 	}
-	r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "CompletedDeletion", "Deletion completed")
+	r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "MachineDeletionSucceeded", "Deleted machine")
 	log.V(1).Info("Removed Finalizer. Deletion completed")
 
 	return nil
@@ -414,7 +414,7 @@ func (r *MachineReconciler) destroyDomain(log logr.Logger, machine *api.Machine,
 		return fmt.Errorf("failed to initiate forceful shutdown: %w", err)
 	}
 
-	r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "DestroyedDomain", "Domain Destroyed")
+	r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "DomainDestroySucceeded", "Domain destroyed")
 
 	log.V(1).Info("Destroyed domain")
 	metrics.MachinesDestroyed.Inc()
@@ -433,9 +433,11 @@ func (r *MachineReconciler) shutdownMachine(log logr.Logger, machine *api.Machin
 		if libvirt.IsNotFound(err) {
 			return false, nil
 		}
+		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "TriggerShutdownFailed", "Failed to initiate shutdown: %s", err)
 		return false, fmt.Errorf("failed to initiate shutdown: %w", err)
 	}
 
+	r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "TriggerShutdownSucceeded", "Shutdown triggered")
 	return true, nil
 }
 
@@ -606,13 +608,13 @@ func (r *MachineReconciler) updateDomain(
 
 	volumeStates, err := r.reconcileVolumes(ctx, log, machine, attacher)
 	if err != nil {
-		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttchDetachVolume", "Volume attach/detach failed with error: %s", err)
+		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttachDetachVolumeFailed", "Failed to attach/detach volume: %s", err)
 		return nil, nil, fmt.Errorf("[volumes] %w", err)
 	}
 
 	nicStates, err := r.reconcileNetworkInterfaces(ctx, log, machine, domainDesc)
 	if err != nil {
-		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttachDetachNIC", "NIC attach/detach failed with error: %s", err)
+		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttachDetachNICFailed", "Failed to attach/detach NIC: %s", err)
 		return nil, nil, fmt.Errorf("[network interfaces] %w", err)
 	}
 
@@ -811,7 +813,7 @@ func (r *MachineReconciler) domainFor(
 			return nil, nil, nil, err
 		}
 	} else {
-		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "NoIgnitionData", "Machine does not have ignition data")
+		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "IgnitionDataNotFound", "Machine does not have ignition data")
 	}
 
 	attacher, err := NewLibvirtVolumeAttacher(domainDesc, NewCreateDomainExecutor(r.host.Libvirt()), r.volumeCachePolicyCeph)
@@ -821,24 +823,24 @@ func (r *MachineReconciler) domainFor(
 
 	volumeStates, err := r.reconcileVolumes(ctx, log, machine, attacher)
 	if err != nil {
-		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttchDetachVolume", "Volume attach/detach failed with error: %s", err)
+		r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttachDetachVolumeFailed", "Failed to attach/detach volume: %s", err)
 		return nil, nil, nil, err
 	}
 	if machine.Spec.Volumes != nil {
-		r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "AttchedVolume", "Successfully attached volumes")
+		r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "AttachVolumeSucceeded", "Attached volumes")
 	}
 
 	nicStatesAsPointers, err := r.setDomainNetworkInterfaces(ctx, machine, domainDesc)
 	nicStates := removePointerFromNicsStatusArray(nicStatesAsPointers)
 	if err != nil {
 		if !errors.Is(err, apinet.ErrWaitingForNetworkInterface) {
-			r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttachDetachNIC", "Setting domain network interface failed with error: %s", err)
+			r.Eventf(log, machine.Metadata, corev1.EventTypeWarning, "AttachDetachNICFailed", "Failed to set domain network interface: %s", err)
 		}
 		return nil, volumeStates, nicStates, err
 	}
 
 	if machine.Spec.NetworkInterfaces != nil {
-		r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "AttchedNIC", "Successfully attached network interfaces")
+		r.Eventf(log, machine.Metadata, corev1.EventTypeNormal, "AttachNICSucceeded", "Attached network interfaces")
 	}
 
 	if err := r.setPCIDevices(machine, domainDesc); err != nil {
