@@ -4,7 +4,7 @@ go 1.24.1
 
 require (
 	github.com/blang/semver/v4 v4.0.0
-	github.com/containerd/containerd v1.7.28
+	github.com/containerd/containerd v1.7.29
 	github.com/digitalocean/go-libvirt v0.0.0-20251202224409-8b0babaf9393
 	github.com/docker/go-units v0.5.0
 	github.com/go-chi/chi/v5 v5.2.3
@@ -48,7 +48,6 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/containerd/continuity v0.4.5 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
