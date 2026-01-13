@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"time"
 
@@ -22,6 +23,8 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/api"
 	providerhost "github.com/ironcore-dev/libvirt-provider/internal/host"
 	providernetworkinterface "github.com/ironcore-dev/libvirt-provider/internal/plugins/networkinterface"
+	"github.com/ironcore-dev/libvirt-provider/internal/utils"
+	"github.com/ironcore-dev/provider-utils/storeutils/store"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,9 +39,10 @@ const (
 
 	defaultAPINetConfigFile = "api-net.json"
 
-	perm         = 0o777
-	filePerm     = 0o666
-	pluginAPInet = "apinet"
+	perm                      = 0o777
+	filePerm                  = 0o666
+	pluginAPInet              = "apinet"
+	networkInterfaceFinalizer = "libvirt-provider.ironcore.dev/apinet-networkinterface"
 )
 
 type Plugin struct {
@@ -152,6 +156,21 @@ func (p *Plugin) Apply(ctx context.Context, spec *api.NetworkInterfaceSpec, mach
 	log.V(1).Info("Applying apinet nic")
 	if err := p.apinetClient.Patch(ctx, apinetNic, client.Apply, fieldOwner, client.ForceOwnership); err != nil {
 		return nil, fmt.Errorf("error applying apinet network interface: %w", err)
+	}
+
+	if !slices.Contains(apinetNic.Finalizers, networkInterfaceFinalizer) {
+		apinetNic.Finalizers = append(apinetNic.Finalizers, networkInterfaceFinalizer)
+		if err := p.apinetClient.Update(ctx, apinetNic); err != nil {
+			return nil, fmt.Errorf("failed to set networkinterface finalizers: %w", err)
+		}
+		return &providernetworkinterface.NetworkInterface{
+			Handle: provider.GetNetworkInterfaceID(
+				apinetNic.Namespace,
+				apinetNic.Name,
+				apinetNic.Spec.NodeRef.Name,
+				apinetNic.UID,
+			),
+		}, nil
 	}
 
 	hostDev, direct, err := getHostDevice(apinetNic)
@@ -283,18 +302,29 @@ func (p *Plugin) Delete(ctx context.Context, computeNicName, machineID string) e
 		return os.RemoveAll(p.host.MachineNetworkInterfaceDir(machineID, computeNicName))
 	}
 
-	apinetNicKey := client.ObjectKey{
-		Namespace: cfg.Namespace,
-		Name:      p.APInetNicName(machineID, computeNicName),
+	apinetNic := &apinetv1alpha1.NetworkInterface{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: cfg.Namespace,
+			Name:      p.APInetNicName(machineID, computeNicName),
+		},
 	}
+	apinetNicKey := client.ObjectKeyFromObject(apinetNic)
 	log = log.WithValues("APInetNetworkInterfaceKey", apinetNicKey)
 
-	if err := p.apinetClient.Delete(ctx, &apinetv1alpha1.NetworkInterface{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: apinetNicKey.Namespace,
-			Name:      apinetNicKey.Name,
-		},
-	}); err != nil {
+	if err = p.apinetClient.Get(ctx, apinetNicKey, apinetNic); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get networkinterface: %w", err)
+		}
+		log.V(1).Info("APInet network interface not found")
+		return os.RemoveAll(p.host.MachineNetworkInterfaceDir(machineID, computeNicName))
+	}
+
+	if !slices.Contains(apinetNic.Finalizers, networkInterfaceFinalizer) {
+		log.V(1).Info("No finalizer found, assuming network interface is already deleted")
+		return os.RemoveAll(p.host.MachineNetworkInterfaceDir(machineID, computeNicName))
+	}
+
+	if err := p.apinetClient.Delete(ctx, apinetNic); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("error deleting apinet network interface %s: %w", apinetNicKey, err)
 		}
@@ -314,6 +344,12 @@ func (p *Plugin) Delete(ctx context.Context, computeNicName, machineID string) e
 		return false, nil
 	}); err != nil {
 		return fmt.Errorf("error waiting for apinet network interface %s to be gone: %w", apinetNicKey, err)
+	}
+
+	log.V(1).Info("Removed networkinterface finalizer")
+	apinetNic.Finalizers = utils.DeleteSliceElement(apinetNic.Finalizers, networkInterfaceFinalizer)
+	if err := p.apinetClient.Update(ctx, apinetNic); store.IgnoreErrNotFound(err) != nil {
+		return fmt.Errorf("failed to update networkinterface metadata: %w", err)
 	}
 
 	log.V(1).Info("APInet network interface is gone, removing network interface dir")
