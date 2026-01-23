@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and IronCore contributors
 // SPDX-License-Identifier: Apache-2.0
 
-package server_test
+package integration_test
 
 import (
 	"time"
@@ -15,8 +15,8 @@ import (
 	"libvirt.org/go/libvirtxml"
 )
 
-var _ = Describe("AttachNetworkInterface", func() {
-	It("should attach a network interface to the machine", func(ctx SpecContext) {
+var _ = Describe("DetachNetworkInterface", func() {
+	It("should detach a network interface from the machine", func(ctx SpecContext) {
 		By("creating a machine")
 		createResp, err := machineClient.CreateMachine(ctx, &iri.CreateMachineRequest{
 			Machine: &iri.Machine{
@@ -36,6 +36,24 @@ var _ = Describe("AttachNetworkInterface", func() {
 								Image: &iri.ImageSpec{
 									Image: osImage,
 								},
+							},
+						},
+					},
+					NetworkInterfaces: []*iri.NetworkInterface{
+						{
+							Name:      "nic-1",
+							NetworkId: "nid-1",
+							Ips:       []string{"192.168.1.1"},
+							Attributes: map[string]string{
+								"key1": "value1",
+							},
+						},
+						{
+							Name:      "nic-2",
+							NetworkId: "nid-2",
+							Ips:       []string{"192.168.1.2"},
+							Attributes: map[string]string{
+								"key2": "value2",
 							},
 						},
 					},
@@ -74,17 +92,7 @@ var _ = Describe("AttachNetworkInterface", func() {
 			return libvirt.DomainState(domainState)
 		}).Should(Equal(libvirt.DomainRunning))
 
-		By("attaching network interface to the machine")
-		attachNetworkResp, err := machineClient.AttachNetworkInterface(ctx, &iri.AttachNetworkInterfaceRequest{
-			MachineId: createResp.Machine.Metadata.Id,
-			NetworkInterface: &iri.NetworkInterface{
-				Name: "nic-1",
-			},
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Expect(attachNetworkResp).NotTo(BeNil())
-
-		By("ensuring network interface attached to the machine domain")
+		By("ensuring both network interfaces are attached to the machine domain")
 		var interfaces []libvirtxml.DomainInterface
 		Eventually(func(g Gomega) int {
 			domainXMLData, err := libvirtConn.DomainGetXMLDesc(domain, 0)
@@ -93,10 +101,19 @@ var _ = Describe("AttachNetworkInterface", func() {
 			g.Expect(domainXML.Unmarshal(domainXMLData)).Should(Succeed())
 			interfaces = domainXML.Devices.Interfaces
 			return len(interfaces)
-		}).Should(Equal(1))
+		}).Should(Equal(2))
 		Expect(interfaces[0].Alias.Name).To(HaveSuffix("nic-1"))
+		Expect(interfaces[1].Alias.Name).To(HaveSuffix("nic-2"))
 
-		By("ensuring attached network interface has been updated in the machine status")
+		By("detaching nic-1 network interface from the machine")
+		detachNetworkResp, err := machineClient.DetachNetworkInterface(ctx, &iri.DetachNetworkInterfaceRequest{
+			MachineId: createResp.Machine.Metadata.Id,
+			Name:      "nic-1",
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(detachNetworkResp).NotTo(BeNil())
+
+		By("ensuring network interface has been updated in the machine status")
 		Eventually(func(g Gomega) *iri.MachineStatus {
 			listResp, err := machineClient.ListMachines(ctx, &iri.ListMachinesRequest{
 				Filter: &iri.MachineFilter{
@@ -110,7 +127,7 @@ var _ = Describe("AttachNetworkInterface", func() {
 		}).Should(SatisfyAll(
 			HaveField("NetworkInterfaces", ContainElements(
 				&iri.NetworkInterfaceStatus{
-					Name:  "nic-1",
+					Name:  "nic-2",
 					State: iri.NetworkInterfaceState_NETWORK_INTERFACE_ATTACHED,
 				})),
 			HaveField("State", Equal(iri.MachineState_MACHINE_RUNNING)),

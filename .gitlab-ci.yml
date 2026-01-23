@@ -218,7 +218,7 @@ e2e-tests:
         --label-filter="integration" \
         --coverprofile=cover.out \
         --junit-report="${TEST_REPORT_DIR}/report.xml" \
-        ./internal/server/...
+        ./internal/server/integration/...
   artifacts:
     untracked: false
     when: always

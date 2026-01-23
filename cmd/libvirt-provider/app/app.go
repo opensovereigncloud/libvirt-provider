@@ -134,6 +134,8 @@ type LibvirtOptions struct {
 	OverrideDomainXML string
 
 	PCIControllerTotal int
+
+	Qcow2Type string
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
@@ -525,7 +527,7 @@ func Run(ctx context.Context, opts Options) error {
 
 	g.Go(func() error {
 		setupLog.Info("Starting grpc server")
-		if err := runGRPCServer(ctx, setupLog, log, srv, opts.Servers.GRPC); err != nil {
+		if err := RunGRPCServer(ctx, setupLog, log, srv, opts.Servers.GRPC); err != nil {
 			setupLog.Error(err, "failed to start grpc server")
 			return err
 		}
@@ -570,7 +572,7 @@ func Run(ctx context.Context, opts Options) error {
 	return g.Wait()
 }
 
-func runGRPCServer(ctx context.Context, setupLog, log logr.Logger, srv *server.Server, opts GRPCServerOptions) error {
+func RunGRPCServer(ctx context.Context, setupLog, log logr.Logger, srv *server.Server, opts GRPCServerOptions) error {
 	setupLog.V(1).Info("Cleaning up any previous socket")
 	if err := common.CleanupSocketIfExists(opts.Addr); err != nil {
 		return fmt.Errorf("error cleaning up socket: %w", err)

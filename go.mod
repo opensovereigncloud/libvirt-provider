@@ -3,9 +3,8 @@ module github.com/ironcore-dev/libvirt-provider
 go 1.24.1
 
 require (
-	github.com/blang/semver/v4 v4.0.0
-	github.com/containerd/containerd v1.7.29
-	github.com/digitalocean/go-libvirt v0.0.0-20251202224409-8b0babaf9393
+	github.com/containerd/containerd v1.7.28
+	github.com/digitalocean/go-libvirt v0.0.0-20250616175656-5843751af96c
 	github.com/docker/go-units v0.5.0
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-logr/logr v1.4.3
