@@ -5,6 +5,7 @@ package server_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -27,6 +28,7 @@ import (
 	"github.com/ironcore-dev/libvirt-provider/internal/plugins/volume/localdisk"
 	"github.com/ironcore-dev/libvirt-provider/internal/raw"
 	"github.com/ironcore-dev/libvirt-provider/internal/server"
+	"github.com/ironcore-dev/libvirt-provider/internal/store"
 	"github.com/ironcore-dev/libvirt-provider/internal/strategy"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -188,4 +190,18 @@ func isSocketAvailable(socketPath string) error {
 		return nil
 	}
 	return fmt.Errorf("socket %s is not available", socketPath)
+}
+
+func cleanupMachine(machineID string) func(SpecContext) {
+	return func(ctx SpecContext) {
+		By(fmt.Sprintf("Cleaning up machine ID=%s", machineID))
+		Eventually(func(g Gomega) error {
+			err := machineStore.Delete(context.Background(), machineID)
+			GinkgoWriter.Printf("Deleting machine ID=%s: err=%v\n", machineID, err)
+			if errors.Is(err, store.ErrNotFound) {
+				return nil
+			}
+			return err
+		}).Should(Succeed())
+	}
 }
