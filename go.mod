@@ -3,10 +3,10 @@ module github.com/ironcore-dev/libvirt-provider
 go 1.24.1
 
 require (
-	github.com/containerd/containerd v1.7.29
-	github.com/digitalocean/go-libvirt v0.0.0-20251202224409-8b0babaf9393
+	github.com/containerd/containerd v1.7.28
+	github.com/digitalocean/go-libvirt v0.0.0-20250616175656-5843751af96c
 	github.com/docker/go-units v0.5.0
-	github.com/go-chi/chi/v5 v5.2.3
+	github.com/go-chi/chi/v5 v5.2.4
 	github.com/go-logr/logr v1.4.3
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/google/uuid v1.6.0
@@ -16,7 +16,7 @@ require (
 	github.com/ironcore-dev/ironcore-image v0.2.5
 	github.com/ironcore-dev/ironcore-net v0.2.4
 	github.com/moby/term v0.5.2
-	github.com/onsi/ginkgo/v2 v2.27.4
+	github.com/onsi/ginkgo/v2 v2.27.5
 	github.com/onsi/gomega v1.39.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
