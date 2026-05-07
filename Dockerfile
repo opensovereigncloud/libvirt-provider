@@ -21,7 +21,7 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG BUILDPLATFORM
 ARG LDFLAGS
-ENV BUILDARCH=${BUILDPLATFORM##*/}
+ARG BUILDARCH=arm64
 
 # Install common dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
