@@ -64,16 +64,30 @@ function handle_commit() {
   fi
 
   git switch osc/main --quiet
-
   git switch -c "$branch_name" --quiet
+
   if ! git cherry-pick "$commit_hash" --ff --quiet &>/dev/null; then
     # add conflicted changes
     mapfile -t files < <(git diff --name-only --diff-filter=U)
-    git add -- "${files[@]}"
+    if [[ ${#files[@]} -gt 0 ]]; then
+      git add -- "${files[@]}"
+    fi
+
+    # if resolving conflicts left nothing staged, the commit is
+    # already present upstream - abandon this branch instead of
+    # forcing an empty commit
+    if git diff --cached --quiet; then
+      echo -e "\033[33mCherry-pick of ${commit_hash} is empty after conflict resolution (already applied upstream). Skipping.\033[0m"
+      git cherry-pick --skip
+      git switch osc/main --quiet
+      git branch -D "$branch_name" --quiet
+      return 0
+    fi
+
     git cherry-pick --continue
   fi
-  git push origin "$branch_name" --quiet
 
+  git push origin "$branch_name" --quiet
   create_merge_request "$branch_name" "$commit_message" "$commit_hash"
 }
 
