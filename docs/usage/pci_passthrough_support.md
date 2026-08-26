@@ -28,55 +28,25 @@ Additionally, you must supply a PCI devices configuration file, which describes 
 
 ## PCI Devices File Overview
 
-The PCI devices file is written in YAML format and defines the PCI devices available for passthrough. It includes information such as Vendor IDs, Device or Class IDs, Device types, and human-readable names. This file provides flexibility to define multiple PCI devices of different types, making it a general-purpose solution.
+The PCI devices file is written in YAML format and defines the PCI devices available for passthrough. It includes information such as Vendor IDs, Device IDs, Device types, and human-readable names. This file provides flexibility to define multiple PCI devices of different types, making it a general-purpose solution.
 
-Detection of PCI devices is based on [sysfs](https://docs.kernel.org/filesystems/sysfs.html) and we currently support detection in **two formats** for backward compatibility. These formats use different attributes for device detection.
+Detection of PCI devices is based on [sysfs](https://docs.kernel.org/filesystems/sysfs.html) and we currently support detection in **Device ID Format**. The format uses different attributes for device detection.
 
 **Field-to-Source Mapping:**
 
 > **Note:** `<DBDF>` = Domain:Bus:Device.Function address of the PCI device (e.g., `0000:ca:00.0`).
 
-| Device Attribute  | Source Path on Host                            | Description                                                 | Class ID Format | Device ID Format |
-| ----------------- | ---------------------------------------------- | ----------------------------------------------------------- | :-------------: | :--------------: |
-| `class`           | `/sys/bus/pci/devices/<DBDF>/class`            | Broad PCI class (e.g., `0x030200` = 3D Display Controller). |        ✅        |                  |
-| `vendor`          | `/sys/bus/pci/devices/<DBDF>/vendor`           | Manufacturer of the chipset (e.g., NVIDIA, Intel).          |        ✅        |        ✅         |
-| `device`          | `/sys/bus/pci/devices/<DBDF>/device`           | Specific chipset model identifier.                          |                 |        ✅         |
-| `subsystemVendor` | `/sys/bus/pci/devices/<DBDF>/subsystem_vendor` | Manufacturer of the complete card/device (e.g., HP, Dell).  |                 |        ✅         |
-| `subsystemDevice` | `/sys/bus/pci/devices/<DBDF>/subsystem_device` | OEM-specific variant/model of the device.                   |                 |        ✅         |
-| `revision`        | `/sys/bus/pci/devices/<DBDF>/revision`         | Hardware revision identifier (e.g., `0xa1`, `0xa2`).        |                 |        ✅         |
+| Device Attribute  | Source Path on Host                            | Description                                                 |
+| ----------------- | ---------------------------------------------- | ----------------------------------------------------------- |
+| `vendor`          | `/sys/bus/pci/devices/<DBDF>/vendor`           | Manufacturer of the chipset (e.g., NVIDIA, Intel).          |
+| `device`          | `/sys/bus/pci/devices/<DBDF>/device`           | Specific chipset model identifier.                          |
+| `subsystemVendor` | `/sys/bus/pci/devices/<DBDF>/subsystem_vendor` | Manufacturer of the complete card/device (e.g., HP, Dell).  |
+| `subsystemDevice` | `/sys/bus/pci/devices/<DBDF>/subsystem_device` | OEM-specific variant/model of the device.                   |
+| `revision`        | `/sys/bus/pci/devices/<DBDF>/revision`         | Hardware revision identifier (e.g., `0xa1`, `0xa2`).        |
 
-### Class ID based format (Deprecated)
+### File format
 
-> ⚠️ **WARNING** ⚠️
->
-> Support for this format is **deprecated** and will be removed in the future once the Device ID based format is fully adopted by [Garden Linux](https://github.com/gardenlinux/gardenlinux).
-
-This format uses the `id` field under `devices` to refer to the **Class ID** of a device.
-
-This relies solely on **PCI Class IDs**. While this was sufficient for basic GPU passthrough, it came with **major drawbacks**:
-
-- **Over-broad matching:** Devices with the same class but different chipsets were indistinguishable.
-- **No revision awareness:** Could not differentiate hardware revisions of the same chipset.
-- **No subsystem differentiation:** Failed to distinguish vendor-specific variants (e.g., Intel chip rebranded by HP or Dell).
-- **Risk of driver mismatches:** A device could be matched to an incompatible driver because only the Class ID matched.
-
-**Example:**
-
-```yaml
-vendors:
-    # Source: /sys/bus/pci/<DBDF>/vendor
-  - id: "0x10de"  # Hexadecimal Vendor ID for NVIDIA
-    name: nvidia  # Human-readable name for the vendor
-    devices:
-        # Source: /sys/bus/pci/<DBDF>/class
-      - id: "0x030200"        # Hexadecimal Class ID for the NVIDIA GA100 GPU Display Controller - 3D
-        name: ga100gl.rev.a1  # Human-readable name for the device
-        type: gpu             # Device type (e.g., gpu, network, storage)
-```
-
-### Device ID based format (Recommended)
-
-This format uses **exact PCI identifiers** instead of broad class codes, enabling **pin-point hardware matching**:
+Device ID Format uses **exact PCI identifiers** instead of broad class codes, enabling **pin-point hardware matching**:
 
 - **Device-level identification:** Uses the actual PCI Device ID instead of the generic Class ID.
 - **Subsystem-level precision:** Adds `subsystemVendor` and `subsystemDevice` to differentiate OEM variants.
@@ -101,53 +71,6 @@ vendors:
         revision: "0xa1"           # Hexadecimal revision ID for further matching specificity
         name: ga100gl.rev.a1       # Human-readable name for the device
         type: gpu                  # Device type (e.g., gpu, network, storage)
-```
-
-### Migration: Class ID based format to Device ID based format
-
-- The system still supports Class ID based format entries for backward compatibility.
-- Migration mainly means the below changes to all the devices:
-    - change the value of `id` under devices from Class ID to Device ID
-    - add `subsystemVendor`
-    - add `subsystemDevice`
-    - add `revision`
-
-**Example:**
-
-*Nvidia card attributes in sysfs:*
-
-- vendor: 0x10de
-- class: 0x030200
-- device: 0x20b7
-- subsystem_vendor: 0x10de
-- subsystem_device: 0x1532
-- revision: 0xa1
-
-*Class ID based format:*
-
-```yaml
-vendors:
-  - id: "0x10de"
-    name: nvidia
-    devices:
-      - id: "0x030200"
-        name: ga100gl.rev.a1
-        type: gpu
-```
-
-*Device ID based format:*
-
-```yaml
-vendors:
-  - id: "0x10de"
-    name: nvidia
-    devices:
-      - id: "0x20b7"
-        subsystemVendor: "0x10de"
-        subsystemDevice: "0x1532"
-        revision: "0xa1"
-        name: ga100gl.rev.a1
-        type: gpu
 ```
 
 ### Example: Handling Multiple Device Types

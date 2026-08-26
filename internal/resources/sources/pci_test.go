@@ -55,17 +55,12 @@ var _ = Describe("PCI Device Manager", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 		},
-		Entry("valid old and new format devices",
+		Entry("valid format devices",
 			[]*Vendor{
 				{
 					ID:   testVendorID,
 					Name: testVendorName,
 					Devices: []*Device{
-						{
-							ID:   legacyDeviceID,
-							Name: legacyDeviceName,
-							Type: legacyDeviceType,
-						},
 						{
 							ID:              newDeviceID,
 							SubsystemVendor: newSubsystemVendorID,
@@ -87,9 +82,10 @@ var _ = Describe("PCI Device Manager", func() {
 					Name: testVendorName,
 					Devices: []*Device{
 						{
-							ID:   classIDWithWhitespaces,
-							Name: legacyDeviceName,
-							Type: legacyDeviceType,
+							ID:              deviceIDWithWhitespaces,
+							SubsystemVendor: newSubsystemVendorID,
+							Name:            newDeviceName,
+							Type:            newDeviceType,
 						},
 					},
 				},
@@ -99,7 +95,7 @@ var _ = Describe("PCI Device Manager", func() {
 				Expect(err).To(MatchError(ContainSubstring("'ID' failed on the 'hexadecimal' tag")))
 			},
 		),
-		Entry("only one new-format field set",
+		Entry("correct format field set",
 			[]*Vendor{
 				{
 					ID:   testVendorID,
@@ -108,8 +104,8 @@ var _ = Describe("PCI Device Manager", func() {
 						{
 							ID:              newDeviceID,
 							SubsystemVendor: newSubsystemVendorID,
-							Name:            legacyDeviceName,
-							Type:            legacyDeviceType,
+							Name:            newDeviceName,
+							Type:            newDeviceType,
 						},
 					},
 				},
@@ -125,14 +121,14 @@ var _ = Describe("PCI Device Manager", func() {
 					ID:   testVendorID,
 					Name: testVendorName,
 					Devices: []*Device{
-						{ID: legacyDeviceID, Name: legacyDeviceName, Type: legacyDeviceType},
+						{ID: newDeviceID, Name: newDeviceName, Type: newDeviceType},
 					},
 				},
 				{
 					ID:   testVendorID,
 					Name: testVendorName,
 					Devices: []*Device{
-						{ID: newDeviceID, Name: legacyDeviceName, Type: legacyDeviceType},
+						{ID: newDeviceID, Name: newDeviceName, Type: newDeviceType},
 					},
 				},
 			},
@@ -171,11 +167,10 @@ var _ = Describe("PCI Device Manager", func() {
 				"subsystem_vendor": newSubsystemVendorID,
 				"subsystem_device": newSubsystemDeviceID,
 				"revision":         newRevision,
-				"class":            legacyDeviceID,
 			})
 		})
 
-		It("matches new-format device by composite key", func() {
+		It("matches device format by composite key", func() {
 			Expect(pci.discoverDevices(tmpDir)).To(Succeed())
 			res := pci.GetAvailableResources()
 			Expect(res).To(HaveLen(1))
@@ -184,43 +179,11 @@ var _ = Describe("PCI Device Manager", func() {
 			}
 		})
 
-		It("falls back to legacy key when new-format fields are missing", func() {
-			deviceList := &DeviceList{
-				Vendors: []*Vendor{
-					{
-						ID:   testVendorID,
-						Name: testVendorName,
-						Devices: []*Device{
-							{
-								ID:   legacyDeviceID,
-								Name: legacyDeviceName,
-								Type: legacyDeviceType,
-							},
-						},
-					},
-				},
-			}
-			writeDeviceListToFile(yamlPath, deviceList)
-
-			createPCIPath(tmpDir, "0000:8a:00.2", map[string]string{
-				"vendor": testVendorID,
-				"device": newDeviceID,
-				"class":  legacyDeviceID,
-			})
-
-			Expect(pci.discoverDevices(tmpDir)).To(Succeed())
-			res := pci.GetAvailableResources()
-			Expect(res).To(HaveLen(1))
-			for name := range res {
-				Expect(string(name)).To(HavePrefix("network.NVIDIA/ConnectX"))
-			}
-		})
-
 		It("skips unsupported vendor", func() {
 			createPCIPath(tmpDir, "0000:99:00.0", map[string]string{
 				"vendor": "0x9999",
 				"device": "0x0001",
-				"class":  legacyDeviceID,
+				"class":  newDeviceID,
 			})
 			Expect(pci.discoverDevices(tmpDir)).To(Succeed())
 			res := pci.GetAvailableResources()
@@ -265,7 +228,6 @@ var _ = Describe("PCI Device Manager", func() {
 					"subsystem_vendor": newSubsystemVendorID,
 					"subsystem_device": newSubsystemDeviceID,
 					"revision":         newRevision,
-					"class":            legacyDeviceID,
 				})
 				createPCIPath(tmpDir, "0000:8a:00.2", map[string]string{
 					"vendor":           testVendorID,
@@ -273,7 +235,6 @@ var _ = Describe("PCI Device Manager", func() {
 					"subsystem_vendor": newSubsystemVendorID,
 					"subsystem_device": newSubsystemDeviceID,
 					"revision":         newRevision,
-					"class":            legacyDeviceID,
 				})
 
 				Expect(pci.discoverDevices(tmpDir)).To(Succeed())
@@ -323,7 +284,6 @@ var _ = Describe("PCI Device Manager", func() {
 					"subsystem_vendor": newSubsystemVendorID,
 					"subsystem_device": newSubsystemDeviceID,
 					"revision":         newRevision,
-					"class":            legacyDeviceID,
 				})
 				createPCIPath(tmpDir, "0000:8a:00.2", map[string]string{
 					"vendor":           testVendorID,
@@ -331,7 +291,6 @@ var _ = Describe("PCI Device Manager", func() {
 					"subsystem_vendor": newSubsystemVendorID,
 					"subsystem_device": newSubsystemDeviceID,
 					"revision":         "0x00",
-					"class":            legacyDeviceID,
 				})
 
 				Expect(pci.discoverDevices(tmpDir)).To(Succeed())

@@ -29,7 +29,6 @@ const (
 	SourcePCI = "pci"
 
 	attributeVendor          = "vendor"
-	attributeClass           = "class"
 	attributeDevice          = "device"
 	attributeSubsystemVendor = "subsystem_vendor"
 	attributeSubsystemDevice = "subsystem_device"
@@ -277,18 +276,10 @@ func (p *PCI) processPCIDevice(supportedDevices map[HexID]*Vendor, deviceFolder 
 
 	device, exists := vendor.loadedDevices[key]
 	if !exists {
-		// fallback for legacy YAML
-		classID, err := internalutils.ReadPCIAttribute(&p.log, deviceFolder, attributeClass)
-		if err != nil {
-			return err
-		}
-		device, exists = vendor.loadedDevices[classID]
-		if !exists {
-			return fmt.Errorf(
-				"unsupported YAML device: "+
-					"vendorID=%s, deviceID=%s, subsystemVendorID=%s, subsystemDeviceID=%s, revision=%s, classID=%s",
-				vendorID, deviceID, subsystemVendorID, subsystemDeviceID, revision, classID)
-		}
+		return fmt.Errorf(
+			"unsupported YAML device: "+
+				"vendorID=%s, deviceID=%s, subsystemVendorID=%s, subsystemDeviceID=%s, revision=%s",
+			vendorID, deviceID, subsystemVendorID, subsystemDeviceID, revision)
 	}
 	pciAddr, err := parsePCIAddress(filepath.Base(deviceFolder))
 	if err != nil {

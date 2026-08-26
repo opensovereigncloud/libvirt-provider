@@ -20,10 +20,6 @@ const (
 	testVendorID   = "0x10de"
 	testVendorName = "NVIDIA"
 
-	legacyDeviceName = "ConnectX"
-	legacyDeviceType = "network"
-	legacyDeviceID   = "0x0200" // ClassID
-
 	newDeviceName        = "MellanoxNIC"
 	newDeviceType        = "network"
 	newDeviceID          = "0x1db6"
@@ -31,7 +27,7 @@ const (
 	newSubsystemDeviceID = "0x2000"
 	newRevision          = "0xa1"
 
-	classIDWithWhitespaces = " 0x0200 "
+	deviceIDWithWhitespaces = " 0x0200 "
 
 	permTestFile   = 0o644
 	permTestFolder = 0o755
